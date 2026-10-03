@@ -31,6 +31,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
    they are shown again (Innovision#syncLoops pauses the GSAP ones the same way). */
 [data-idle] *{animation-play-state:paused !important}
 
+/* World detail: whatever the scroll timeline, the entrance or the mouse parallax moves keeps its own
+   layer from the start. GSAP otherwise promotes a layer only while its tween runs, so the first scroll
+   and every tween start/end re-rasterised the big scene images or the shadowed title mid-gesture. */
+[data-view="detail"] :is([data-speed],[data-speed]>*,[data-depth]){will-change:transform}
+[data-view="detail"] :is([data-d-titleblock],[data-d-intro],[data-d-spec],[data-d-fade],[data-d-hint]){will-change:transform,opacity}
+[data-view="detail"] [data-d-word]{will-change:transform,opacity,filter}
+
 /* Until the animation engine boots, keep the loader's animated pieces out of sight so the
    server-rendered markup doesn't flash their end state before the intro plays. */
 [data-booting] [data-loader] > :not([data-loader-bg]){visibility:hidden}

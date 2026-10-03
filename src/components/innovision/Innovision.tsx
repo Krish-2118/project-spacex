@@ -189,6 +189,7 @@ export default class Innovision extends Component<Props, State> {
       this.attract();
       this.homeScroll();
       this.galleryInit();
+      this.smoothWheel(this.$('[data-d-scroller]'));
       this.listen(window, 'hashchange', () => this.route());
       this.listen(window, 'keydown', (e) => this.onKey(e as KeyboardEvent));
       if (this.props.skipLoader) { this.hideLoader(); this.firstPaint(); return; }
@@ -527,7 +528,8 @@ export default class Innovision extends Component<Props, State> {
   homeScroll() {
     const sc = this.$('[data-view="home"]');
     gsap.timeline({ scrollTrigger: { trigger: this.$('[data-hero-wrap]'), scroller: sc, start: 'top top', end: 'bottom top', scrub: true } })
-      .fromTo(this.$('[data-h-par]'), { scale: 1, yPercent: 0, filter: 'brightness(1)' }, { scale: .93, yPercent: 6, filter: 'brightness(.7)', ease: 'none' }, 0)
+      .fromTo(this.$('[data-h-par]'), { scale: 1, yPercent: 0 }, { scale: .93, yPercent: 6, ease: 'none' }, 0)
+      .fromTo(this.$('[data-h-dim]'), { opacity: 0 }, { opacity: .3, ease: 'none' }, 0)
       .to(this.$('[data-h-scroll]'), { autoAlpha: 0, duration: .15, ease: 'none' }, 0);
     const tun = this.$('[data-tunnel]');
     if (tun) {
@@ -635,7 +637,9 @@ export default class Innovision extends Component<Props, State> {
     const q = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
     g.set(q('[data-speed],[data-d-titleblock],[data-d-hint],[data-d-word],[data-d-intro],[data-d-spec],[data-d-fade],[data-d-card]'), { clearProps: 'transform,opacity,visibility,filter' });
     const H = () => innerHeight;
-    const tl = g.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root.querySelector('[data-d-track]'), scroller: sc, start: 'top top', end: 'bottom bottom', scrub: 1, invalidateOnRefresh: true } });
+    // smoothWheel already eases the scroll itself, so the scene follows it directly: a trailing scrub
+    // drifted out of step with the page, most visibly where the sticky scene hands over to the manifest.
+    const tl = g.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root.querySelector('[data-d-track]'), scroller: sc, start: 'top top', end: 'bottom bottom', scrub: true, invalidateOnRefresh: true } });
     q('[data-speed]').forEach((el) => { const sp = parseFloat(el.dataset.speed || '') || 0; tl.to(el, { y: () => H() * sp * 2, duration: 1 }, 0); });
     tl.to(root.querySelector('[data-d-titleblock]'), { scale: 1.25, autoAlpha: 0, y: () => -H() * .08, duration: .3 }, 0)
       .to(root.querySelector('[data-d-hint]'), { autoAlpha: 0, duration: .08 }, 0);
@@ -650,6 +654,34 @@ export default class Innovision extends Component<Props, State> {
     this.dTriggers = q('[data-d-card]').map((card) => g.fromTo(card, { autoAlpha: 0, y: 50 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: card, scroller: sc, start: 'top 90%' } }).scrollTrigger);
     this.fitTitle();
     ScrollTrigger.refresh();
+  }
+  /**
+   * Eases wheel scrolling in a scroller: each notch glides instead of jumping ~100px, and the
+   * scrubbed timelines are updated in the same frame as the scroll. Touch, keys and dragging stay native.
+   */
+  smoothWheel(sc: HTMLElement | null) {
+    if (!sc || this.reduce) return;
+    let cur = 0, target = 0, on = false;
+    this.listen(sc, 'wheel', (ev) => {
+      const e = ev as globalThis.WheelEvent;
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      if (!on) { cur = target = sc.scrollTop; on = true; }
+      const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? sc.clientHeight : 1);
+      target = Math.max(0, Math.min(sc.scrollHeight - sc.clientHeight, target + d));
+    }, { passive: false });
+    const tick = () => {
+      if (!on) return;
+      // Something else moved it (keys, touch, a reset to the top): hand control back.
+      if (Math.abs(sc.scrollTop - cur) > 2) { on = false; return; }
+      cur += (target - cur) * (1 - Math.pow(.9, gsap.ticker.deltaRatio()));
+      if (Math.abs(target - cur) < .5) { cur = target; on = false; }
+      sc.scrollTop = cur;
+      ScrollTrigger.update();
+    };
+    // Prioritised: the scroll moves before this frame's tweens render, so nothing lags it by a frame.
+    gsap.ticker.add(tick, false, true);
+    this.cleanups.push(() => gsap.ticker.remove(tick));
   }
   detailEnter() {
     const root = this.$('[data-view="detail"]')!;
@@ -690,7 +722,7 @@ export default class Innovision extends Component<Props, State> {
   /* ---------- router ---------- */
   parse(): Route {
     const [v, k] = location.hash.replace(/^#\/?/, '').split('/');
-    const f = WORLDS.findIndex((w) => w.key === k), idx = this.state.index;
+    const f = WORLDS.findIndex((w) => w.slug === k || w.key === k), idx = this.state.index;
     if (v === 'worlds') return { view: 'worlds', index: f >= 0 ? f : idx };
     if (v === 'world' && f >= 0) return { view: 'detail', index: f };
     if (v === 'gallery' || v === 'merch') return { view: v, index: idx };
@@ -752,10 +784,10 @@ export default class Innovision extends Component<Props, State> {
   stepSlide(d: number) {
     if (this.busy || this.state.view !== 'worlds') return;
     this.slideDir = d;
-    this.go('#/worlds/' + WORLDS[(this.state.index + d + 3) % 3].key, true);
+    this.go('#/worlds/' + WORLDS[(this.state.index + d + 3) % 3].slug, true);
   }
   navTo(k: number) {
-    const key = WORLDS[k].key;
+    const key = WORLDS[k].slug;
     if (this.state.view === 'detail') this.go('#/world/' + key);
     else { if (k !== this.state.index) this.slideDir = k > this.state.index ? 1 : -1; this.go('#/worlds/' + key, this.state.view === 'worlds'); }
   }
@@ -766,8 +798,8 @@ export default class Innovision extends Component<Props, State> {
     if (v === 'worlds') {
       if (e.key === 'ArrowRight') { e.preventDefault(); this.stepSlide(1); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); this.stepSlide(-1); }
-      if (e.key === 'Enter' && e.target === document.body) this.go('#/world/' + WORLDS[s.index].key);
-    } else if (v === 'detail' && e.key === 'Escape') this.go('#/worlds/' + WORLDS[s.index].key);
+      if (e.key === 'Enter' && e.target === document.body) this.go('#/world/' + WORLDS[s.index].slug);
+    } else if (v === 'detail' && e.key === 'Escape') this.go('#/worlds/' + WORLDS[s.index].slug);
     else if (v === 'gallery') {
       if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.gStep(1); }
       if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); this.gStep(-1); }
@@ -912,7 +944,7 @@ export default class Innovision extends Component<Props, State> {
     const routed = (k: string) => k === 'events' || k === 'merch' || k === 'gallery';
     const navLinks = LINKS.map(([label, k]) => ({
       label: label.toUpperCase(), name: label, cur: String(k === act) as 'true' | 'false', o: k === act ? 1 : .68, bar: k === act ? 1 : 0, dc: k === act ? 'oklch(0.8 0.12 85)' : '#ECE8DF',
-      href: k === 'events' ? '#/worlds/' + w.key : k === 'merch' ? '#/merch' : k === 'gallery' ? '#/gallery' : '#/',
+      href: k === 'events' ? '#/worlds/' + w.slug : k === 'merch' ? '#/merch' : k === 'gallery' ? '#/gallery' : '#/',
       onClick: (e: MouseEvent<HTMLAnchorElement>) => {
         if (routed(k)) { if (this.state.about || this.state.menu) this.setState({ about: false, menu: false }); return; }
         e.preventDefault(); this.goSection(k === 'home' ? null : k);
@@ -970,9 +1002,9 @@ export default class Innovision extends Component<Props, State> {
       loaderSparks: LOADER_SPARKS,
       worlds: WORLDS.map((x, k) => ({
         ...x, secNo: String(k + 1).padStart(2, '0'), sealText: x.statL.toUpperCase() + ' · ' + x.category.toUpperCase() + ' · ',
-        href: '#/world/' + x.key, stroke: 'color-mix(in oklab, ' + x.ink + ' 36%, transparent)', statLU: x.statL.toUpperCase(), categoryU: x.category.toUpperCase(),
+        href: '#/world/' + x.slug, stroke: 'color-mix(in oklab, ' + x.ink + ' 36%, transparent)', statLU: x.statL.toUpperCase(), categoryU: x.category.toUpperCase(),
         astroBottom: x.astroSit ? 'calc(100% - 7vh)' : 'calc(100% - 3.5vh)', astroH: x.astroSit ? (s.narrow ? '32vh' : '42vh') : (s.narrow ? '30vh' : '40vh'),
-        onExplore: () => this.go('#/world/' + x.key),
+        onExplore: () => this.go('#/world/' + x.slug),
         onEnter: () => { if (this.mapOpen !== k) this.play('beep'); this.openMap(k); },
       })),
       cw: {
@@ -984,7 +1016,7 @@ export default class Innovision extends Component<Props, State> {
         specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })), missionCount: String(dw.missions.length).padStart(2, '0'),
         missions: dw.missions.map(([name, text, format, dur], k) => ({ no: String(k + 1).padStart(2, '0'), name, text, format, dur, img: A + dw.gates[k % dw.gates.length] })),
       },
-      nw: { href: '#/world/' + nx.key, nameU: nx.name.toUpperCase(), planet: nx.planet },
+      nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
       isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
@@ -992,7 +1024,7 @@ export default class Innovision extends Component<Props, State> {
       taglineW: s.compact ? '88vw' : 'min(640px, 34vw)',
       labelRight: s.narrow ? '8%' : (s.compact ? '10%' : '26%'),
       arrowsDisplay: s.narrow ? 'none' : 'grid',
-      backHref: '#/worlds/' + w.key,
+      backHref: '#/worlds/' + w.slug,
       nav: WORLDS.map((x, k) => ({ no: String(k + 1).padStart(2, '0'), label: x.name.toUpperCase(), current: k === i, color: k === i ? '#ECE8DF' : 'rgba(20,19,18,.72)', onClick: () => this.navTo(k) })),
       navX: (i * 100) + '%',
       navGlow: '#141312',

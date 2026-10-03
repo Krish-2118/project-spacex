@@ -11,7 +11,8 @@ export default function HomeView({ v }: { v: V }) {
     <main data-view="home" data-noscroll="" data-screen-label="Home" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden" }}>
       <div data-hero-wrap="" style={{ position: "relative", height: "calc(max(100vh, 620px) + 45vh)" }}>
         <section data-hero="" style={{ position: "sticky", top: "0", height: "100vh", minHeight: "620px", overflow: "hidden" }}>
-          <div data-h-par="" style={{ position: "absolute", inset: "0", background: "#ECE8DF" }}>
+          {/* will-change keeps the scroll-scrubbed scale from re-rastering every layer inside the hero each frame. */}
+          <div data-h-par="" style={{ position: "absolute", inset: "0", background: "#ECE8DF", willChange: "transform" }}>
             <div data-depth=".12" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
               <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .58)", top: "calc(53% - min(84vh, 72vw) * .58)", width: "calc(min(84vh, 72vw) * 1.16)", height: "calc(min(84vh, 72vw) * 1.16)", border: "1px solid rgba(20,19,18,.26)", borderRadius: "50%" }}>
                 <div data-orbit="" data-dur="70" data-start="40" style={{ position: "absolute", inset: "0" }}>
@@ -29,7 +30,8 @@ export default function HomeView({ v }: { v: V }) {
                 </div>
               </div>
             </div>
-            <div data-hero-disc="" data-attract=".03" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) / 2)", top: "calc(53% - min(84vh, 72vw) / 2)", width: "min(84vh, 72vw)", height: "min(84vh, 72vw)", borderRadius: "50%", background: "#141312", overflow: "hidden" }}>
+            {/* Own layer: the cursor pull nudges it every frame, which otherwise re-rasters the starfield. */}
+            <div data-hero-disc="" data-attract=".03" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) / 2)", top: "calc(53% - min(84vh, 72vw) / 2)", width: "min(84vh, 72vw)", height: "min(84vh, 72vw)", borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
               <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
               <span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
@@ -50,12 +52,18 @@ export default function HomeView({ v }: { v: V }) {
             ))}
             <div data-depth=".6" style={{ position: "absolute", left: "-14vh", bottom: "-26vh", width: "60vh", height: "60vh", pointerEvents: "none" }}>
               <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
-                <img data-spin="320" src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                {/* The loop turns a wrapper so the image filter is rastered once, not re-applied every frame. */}
+                <div data-spin="320" style={{ width: "100%", height: "100%" }}>
+                  <img src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                </div>
               </div>
             </div>
             <div data-depth=".4" style={{ position: "absolute", right: "clamp(12px,5vw,110px)", bottom: "max(7vh, 48px)", width: "38vh", height: "38vh", display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
               <div data-h-astro="" data-attract=".14" style={{ width: "100%", height: "100%" }}>
-                <img data-bob="" src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", transform: "rotate(-8deg)", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
+                {/* Same box and tilt as the image, so the bob moves it exactly as before while the filter stays static. */}
+                <div data-bob="" style={{ width: "fit-content", height: "100%", transform: "rotate(-8deg)" }}>
+                  <img src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
+                </div>
               </div>
             </div>
             <div style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6vh 16px 0", textAlign: "center", pointerEvents: "none" }}>
@@ -76,7 +84,7 @@ export default function HomeView({ v }: { v: V }) {
               </div>
               <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "clamp(18px,3.6vh,46px)", marginBottom: "clamp(96px,14vh,150px)", pointerEvents: "auto" }}>
                 <div data-h-cta="">
-                  <a data-magnet="" href="#/worlds/takeoff" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "184px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-gold-fill">
+                  <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "184px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-gold-fill">
                     <span data-scr="">BEGIN THE ODYSSEY</span>
                   </a>
                 </div>
@@ -102,6 +110,9 @@ export default function HomeView({ v }: { v: V }) {
             <CornerFrame color="rgba(20,19,18,.5)">
               <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", fontSize: "11px", fontWeight: "700", letterSpacing: ".3em", color: "#141312" }}>22.2533° N · 84.9011° E · NIT ROURKELA</span>
             </CornerFrame>
+            {/* Scroll dimming: black at opacity a matches filter: brightness(1 - a) on the whole hero, but
+                fades on the compositor instead of re-filtering the full-screen scene every frame. */}
+            <div data-h-dim="" aria-hidden="true" style={{ position: "absolute", inset: "0", background: "#000", opacity: "0", willChange: "opacity", pointerEvents: "none" }}></div>
           </div>
         </section>
       </div>
@@ -293,7 +304,7 @@ export default function HomeView({ v }: { v: V }) {
             <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
               <span data-scr="">REGISTER</span>
             </a>
-            <a data-magnet="" href="#/worlds/takeoff" onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-bronze">
+            <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-bronze">
               <span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#ECE8DF", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
               <span data-scr="">EXPLORE THE WORLDS</span>
             </a>

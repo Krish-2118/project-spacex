@@ -40,7 +40,7 @@ export default function AboutPanel({ v }: { v: V }) {
               <span>Students, makers &amp; dreamers</span>
             </div>
           </div>
-          <a href="#/worlds/takeoff" onClick={v.closeAbout} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s" }} className="hv-gold-fill">
+          <a href="#/worlds/flagship-events" onClick={v.closeAbout} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s" }} className="hv-gold-fill">
             <span data-scr="">EXPLORE THE WORLDS</span>
           </a>
         </div>
