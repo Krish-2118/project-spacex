@@ -1,82 +1,69 @@
-:root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --primary: #3b82f6;
-  --primary-glow: rgba(59, 130, 246, 0.5);
-}
+/* ---------- base (from the Innovision 2026 design) ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-grotesk),'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+img{display:block;max-width:none;user-select:none;-webkit-user-drag:none}
+button{font:inherit;color:inherit}
+a{color:#141312}
+a:hover{color:#8a6a2a}
+:focus-visible{outline:2px solid #c9a24a;outline-offset:4px}
+[data-noscroll]::-webkit-scrollbar{display:none}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.32;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .07 0 0 0 0 .06 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ---------- ambient css loops ---------- */
+@keyframes iv-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.4vh)}}
+@keyframes iv-pulse{0%{transform:scale(.55);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@keyframes iv-spin{to{transform:rotate(360deg)}}
+@keyframes iv-flame{from{transform:scaleY(.8);opacity:.75}to{transform:scaleY(1.08);opacity:1}}
+@keyframes iv-hang{0%,100%{transform:translate(0,0)}50%{transform:translate(2px,-7px)}}
+@keyframes iv-sheen{0%{transform:translateX(300px)}55%,100%{transform:translateX(2100px)}}
+@keyframes iv-focus{0%,72%,100%{transform:scale(1);opacity:1}76%{transform:scale(1.06);opacity:.35}80%{transform:scale(.98);opacity:1}84%{transform:scale(1)}}
+@keyframes iv-hop{0%,93%,100%{transform:translateY(0) scale(1.06,.92)}12%{transform:translateY(0) scale(.97,1.04);animation-timing-function:cubic-bezier(.2,.6,.35,1)}50%{transform:translateY(-11vh) rotate(-4deg) scale(1);animation-timing-function:cubic-bezier(.6,0,.8,.4)}86%{transform:translateY(0) rotate(0) scale(1)}}
+@keyframes iv-hopshadow{0%,12%,86%,100%{transform:scale(1);opacity:.55}12%{animation-timing-function:cubic-bezier(.2,.6,.35,1)}50%{transform:scale(.45);opacity:.18;animation-timing-function:cubic-bezier(.6,0,.8,.4)}}
+@keyframes iv-dust{0%,85%{transform:scale(.3);opacity:0}88%{opacity:1}100%{transform:scale(1.7);opacity:0}}
+@keyframes iv-march{to{stroke-dashoffset:-170}}
+@keyframes iv-porthole{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(4deg)}}
+@keyframes iv-drift{0%,100%{transform:translate(0,0)}50%{transform:translate(1vh,-2.4vh)}}
+@keyframes iv-blink{50%{opacity:.2}}
+@keyframes iv-tick{to{transform:translateX(-50%)}}
+@keyframes iv-nudge{0%,100%{transform:translateY(-3px)}50%{transform:translateY(4px)}}
+@keyframes iv-sig{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+/* Loops inside a hidden view, an inactive world slide or the resting curtain stop ticking until
+   they are shown again (Innovision#syncLoops pauses the GSAP ones the same way). */
+[data-idle] *{animation-play-state:paused !important}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+/* Until the animation engine boots, keep the loader's animated pieces out of sight so the
+   server-rendered markup doesn't flash their end state before the intro plays. */
+[data-booting] [data-loader] > :not([data-loader-bg]){visibility:hidden}
 
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 2rem;
-  text-align: center;
-}
+/* ---------- hover states ---------- */
+.hv-gold-fill:hover{background:oklch(0.8 0.12 85) !important;color:#141312 !important}
+.hv-gold:hover{color:oklch(0.8 0.12 85) !important}
+.hv-bronze:hover{color:#8a6a2a !important}
+.hv-bronze-fill:hover{background:#8a6a2a !important;color:#ECE8DF !important}
+.hv-bronze-bg:hover{background:#8a6a2a !important}
+.hv-gold-bg:hover{background:oklch(0.8 0.12 85) !important}
+.hv-link-paper:hover{opacity:1 !important;color:#ECE8DF !important}
+.hv-link-white:hover{opacity:1 !important;color:#fff !important}
+.hv-black:hover{color:#000 !important}
+.hv-sand-fill:hover{background:oklch(0.84 0.09 85) !important;color:#141312 !important}
+.hv-sand:hover{color:oklch(0.84 0.09 85) !important}
+.hv-ink:hover{color:#141312 !important}
+.hv-paper:hover{color:#ECE8DF !important}
+.hv-arrow:hover{opacity:1 !important;background:#141312 !important;color:#ECE8DF !important}
+.hv-lift:hover{transform:translateY(-6px) !important}
+/* Mission ticket: lifts and picks up the world accent passed in --hv-accent. */
+.hv-ticket:hover{transform:translateY(-6px) !important;border-color:var(--hv-accent) !important}
 
-.title {
-  font-size: 4rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  background: linear-gradient(to right, #60a5fa, #a78bfa);
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: fade-in-up 0.8s ease-out;
-}
+/* ---------- hud on small phones ---------- */
+/* Keep REGISTER and MENU on screen: drop the wordmark beside BACK, then tighten spacing. */
+@media (max-width:519px){.hud-wordmark-detail{display:none}}
+@media (max-width:419px){.hud-bar,.hud-group{gap:12px !important}.hud-register{padding:10px 14px !important}}
+@media (max-width:359px){.hud-wordmark{display:none}}
 
-.description {
-  font-size: 1.25rem;
-  color: #94a3b8;
-  max-w: 600px;
-  margin-bottom: 2rem;
-  line-height: 1.6;
-  animation: fade-in-up 1s ease-out;
-}
-
-.button {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 14px 0 var(--primary-glow);
-  text-decoration: none;
-  animation: fade-in-up 1.2s ease-out;
-}
-
-.button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px 0 var(--primary-glow);
-  background: #2563eb;
-}
-
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* ---------- image slot ---------- */
+.image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
+.image-slot-frame{position:absolute;inset:0;overflow:hidden;background:rgba(127,127,127,.08)}
+.image-slot-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:12px;box-sizing:border-box;user-select:none}
+.image-slot-empty svg{opacity:.45}
+.image-slot-cap{max-width:90%;font-weight:500;letter-spacing:.01em;opacity:.75}
+.image-slot-ring{position:absolute;inset:0;pointer-events:none;border:1.5px dashed currentColor;opacity:.35}
