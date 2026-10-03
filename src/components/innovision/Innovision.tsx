@@ -213,6 +213,16 @@ export default class Innovision extends Component<Props, State> {
       const st = +(el.dataset.start || 0) || 0, dir = el.dataset.rev ? -1 : 1;
       return g.fromTo(el, { rotation: st }, { rotation: st + 360 * dir, duration: +(el.dataset.dur || 0) || 60, ease: 'none', repeat: -1 });
     }));
+    this.$$('[data-orbit-fast]').forEach((el) => add(el, () => {
+      const arc = +(el.dataset.arcOrbit || 85);
+      const durTop = +(el.dataset.dur || 35);
+      const durBottom = 1.5;
+      const tl = g.timeline({ repeat: -1 });
+      tl.fromTo(el, { rotation: arc }, { rotation: -arc, duration: durTop, ease: 'none' });
+      tl.to(el, { rotation: -(360 - arc), duration: durBottom, ease: 'none' });
+      tl.progress((durTop / 2) / (durTop + durBottom));
+      return tl;
+    }));
     this.$$('[data-spin]').forEach((el) => add(el, () => g.to(el, { rotation: '+=360', duration: +(el.dataset.spin || 0) || 140, ease: 'none', repeat: -1 })));
     this.$$('[data-twinkle]').forEach((el, i) => add(el, () => g.fromTo(el, { scale: .5, opacity: .3 }, { scale: 1, opacity: 1, duration: 1.1 + ((i * 37) % 17) / 10, ease: 'sine.inOut', repeat: -1, yoyo: true, delay: (i * .23) % 2 })));
     this.$$('[data-bob]').forEach((el) => add(el, () => g.to(el, { y: -22, rotation: '+=4', duration: 3.6, ease: 'sine.inOut', repeat: -1, yoyo: true })));
@@ -460,6 +470,7 @@ export default class Innovision extends Component<Props, State> {
     const p = Math.max(0, Math.min(1, this.gZ / G_MAX));
     this.gBar!.style.transform = 'scaleY(' + p.toFixed(4) + ')';
     this.gGlow!.style.transform = 'scale(' + (1 + Math.pow(p, 3) * 14).toFixed(3) + ')';
+    this.gGlow!.style.opacity = p.toFixed(3);
     this.gStars!.style.transform = 'scale(' + (1 + p * .25).toFixed(4) + ')';
     const end = p > .94;
     this.gEnd!.style.opacity = end ? '1' : '0';
@@ -556,7 +567,10 @@ export default class Innovision extends Component<Props, State> {
     const fw = this.$$('[data-fill]');
     if (fw.length) gsap.fromTo(fw, { opacity: .14 }, { opacity: 1, stagger: .1, ease: 'none', scrollTrigger: { trigger: fw[0].parentElement, scroller: sc, start: 'top 82%', end: 'bottom 48%', scrub: true } });
     const ls = this.$('[data-launch-sec]');
-    if (ls) gsap.fromTo(this.$('[data-launch]'), { y: innerHeight * .3 }, { y: -innerHeight * 1.15, ease: 'power2.in', scrollTrigger: { trigger: ls, scroller: sc, start: 'top bottom', end: 'bottom top', scrub: true } });
+    if (ls) {
+      gsap.fromTo(this.$('[data-launch]'), { y: innerHeight * .3 }, { y: -innerHeight * 1.15, ease: 'power2.in', scrollTrigger: { trigger: ls, scroller: sc, start: 'top bottom', end: 'bottom top', scrub: true } });
+      gsap.fromTo(ls, { y: 0 }, { y: innerHeight * 0.4, ease: 'none', scrollTrigger: { trigger: ls, scroller: sc, start: 'bottom bottom', end: '+=40%', scrub: true } });
+    }
     this.openMap(0);
   }
   /** Expands odyssey-map panel i; when the panels wrap onto several rows they all stay open. */
