@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import { Component, createRef, memo, type ComponentType, type FormEvent, type MouseEvent, type TouchEvent, type WheelEvent } from 'react';
@@ -19,6 +20,7 @@ import WorldNav from './WorldNav';
 import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
 import MenuOverlay from './MenuOverlay';
+import AuthOverlay from './AuthOverlay';
 import BagPanel from './BagPanel';
 import CartPill from './CartPill';
 import Toast from './Toast';
@@ -74,8 +76,11 @@ const partList = (p: SlideParts) => [p.hero, p.rot, p.astro, p.outline, ...p.lab
 
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
-  state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING', gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null };
+  state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null as any, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null };
   busy = false; pending = false; slideDir = 0;
+  authBusy = false; authClosing = false;
+  _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
   /** Home section to scroll to once the home view has been prepared. */
   pendingSec: string | null = null;
 
@@ -906,7 +911,443 @@ export default class Innovision extends Component<Props, State> {
     gsap.to(sp, { duration: .5, scrambleText: { text: sp.dataset.text, chars: SCRAMBLE, speed: .6 }, overwrite: true });
   };
   beep = () => this.play('beep');
-  register = (e?: MouseEvent) => { if (e) e.preventDefault(); this.play('thumpSoft'); this.toast('Registrations open soon. Stay in orbit.'); };
+  /* ---------- auth: register / login ---------- */
+  RN = 22;
+  // @ts-ignore
+  register = (e) => { 
+    e.preventDefault();
+    const t = e.currentTarget, disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
+    this.openAuth(this.state.user ? 'pass' : 'register', disc || t, !!disc);
+  };
+  // @ts-ignore
+  loginClick = (e) => {
+    e.preventDefault();
+    if (this.state.user) { this.logout(); return; }
+    const src = e.currentTarget;
+    if (this.state.about) this.setState({ about: false });
+    this.openAuth('login', src);
+  };
+  // @ts-ignore
+  logout() {
+    this.reg = null; this.pass = null; this.dropFiles();
+    const f = this.$ && this.$('[data-auth-form]'); if (f) f.reset();
+    this.setState({ user: null, authMode: 'register', step: 0, err: {}, files: {}, about: false });
+    this.play('thumpSoft'); this.toast('Logged out. See you in orbit.');
+  }
+  // @ts-ignore
+  emailOk(x) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(x); }
+  nameFrom(em) { return em.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase()) || 'Explorer'; }
+  // @ts-ignore
+  newId() { return 'IV26-' + (Math.floor(Math.random() * 9000) + 1000); }
+  drop(err, k) { const e = { ...err }; delete e[k]; return e; }
+  fee() { const n = Math.round(Number(this.props.regFee ?? 499)); return n > 0 ? n : 499; }
+  // @ts-ignore
+  upi() { return String(this.props.upiId || 'innovision@sbi').trim(); }
+  speed() { const n = Number(this.props.riftSpeed ?? 1); return n > 0 ? n : 1; }
+  // @ts-ignore
+  fmtSize(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
+  livePage() { return [...this.$$('[data-view]').filter((el) => getComputedStyle(el).visibility !== 'hidden'), this.$('[data-hud]')].filter(Boolean); }
+  // @ts-ignore
+  pagePush(z) {
+    const sc = z ? String(1 + .12 * z) : '', o = this.authO, to = z && o ? o.x.toFixed(0) + 'px ' + o.y.toFixed(0) + 'px' : '';
+  // @ts-ignore
+    (this.page || []).forEach((el) => { el.style.scale = sc; el.style.transformOrigin = to; });
+    const veil = this.$ && this.$('[data-rift-veil]'); if (veil) veil.style.opacity = String(z * .85);
+  }
+  // @ts-ignore
+  riftNew(p, v, e, z) {
+    const r = { p, v, e, z, j: [], k: [] };
+    for (let i = 0; i <= this.RN; i++) { r.j.push(Math.random() * 2 - 1); r.k.push(Math.random() * 2 - 1); }
+    this._rEls = { sec: this.$('[data-auth]') };
+    return r;
+  }
+  // @ts-ignore
+  originOf(src, disc) {
+    const W = innerWidth, H = innerHeight, b = src && src.getBoundingClientRect ? src.getBoundingClientRect() : null;
+    const o = b && b.width ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : { x: W / 2, y: H / 2 };
+    return { x: Math.min(Math.max(o.x, 0), W), y: Math.min(Math.max(o.y, 0), H), r0: disc && b ? b.width / 2 : 0 };
+  }
+  // @ts-ignore
+  riftDraw() {
+    const r = this._rift, E = this._rEls; if (!r || !E || !E.sec) return;
+    const W = innerWidth, H = innerHeight, o = this.authO || { x: W / 2, y: H / 2 };
+    const r0 = o.r0 || 0, rad = r0 + (Math.hypot(Math.max(o.x, W - o.x), Math.max(o.y, H - o.y)) + 4 - r0) * r.p;
+    E.sec.style.clipPath = 'circle(' + rad.toFixed(1) + 'px at ' + o.x.toFixed(1) + 'px ' + o.y.toFixed(1) + 'px)';
+    this.pagePush(r.z);
+  }
+  // @ts-ignore
+  warp(dur) {
+    const c = this.$ && this.$('[data-warp]'); if (!c || !gsap) return;
+    this.warpStop();
+    const W = innerWidth, H = innerHeight, dpr = Math.min(devicePixelRatio || 1, 1.5), cw = Math.round(W * dpr), ch = Math.round(H * dpr);
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+    const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // @ts-ignore
+    const N = Math.round(Math.min(320, Math.max(120, W * H / 4500))), rnd = () => Math.random() * 2 - 1;
+  // @ts-ignore
+    if (!this._stars || this._stars.length !== N) this._stars = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), z: .05 + Math.random() * .95 }));
+    const S = this._stars, w = { s: 0 }, cx = W / 2, cy = H / 2;
+  // @ts-ignore
+    const draw = (dt) => {
+      ctx.clearRect(0, 0, W, H);
+      const moving = w.s > .04;
+      for (let i = 0; i < S.length; i++) {
+        const st = S[i];
+        st.z -= w.s * dt;
+        if (st.z <= .04) { st.x = rnd(); st.y = rnd(); st.z = 1; continue; }
+        const sx = cx + (st.x / st.z) * cx, sy = cy + (st.y / st.z) * cy;
+        if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) { if (moving) { st.x = rnd(); st.y = rnd(); st.z = 1; } continue; }
+        const a = Math.min(1, (1.05 - st.z) * 1.3).toFixed(2);
+        if (moving) {
+          const tz = Math.min(1.2, st.z + w.s * .06), tx = cx + (st.x / tz) * cx, ty = cy + (st.y / tz) * cy;
+          ctx.strokeStyle = 'rgba(236,232,223,' + a + ')'; ctx.lineWidth = .6 + (1 - st.z) * 1.8;
+          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(sx, sy); ctx.stroke();
+        } else {
+          const rr = .5 + (1 - st.z) * 1.4;
+          ctx.fillStyle = 'rgba(236,232,223,' + a + ')'; ctx.fillRect(sx - rr / 2, sy - rr / 2, rr, rr);
+        }
+      }
+    };
+    if (this.reduce || !dur) { draw(0); return; }
+    let last = performance.now();
+  // @ts-ignore
+    const loop = (t) => { const dt = Math.min(.05, (t - last) / 1000); last = t; draw(dt); this._warpRaf = requestAnimationFrame(loop); };
+    this._warpRaf = requestAnimationFrame(loop);
+  // @ts-ignore
+    this._warpTw = gsap.timeline({ onComplete: () => { cancelAnimationFrame(this._warpRaf); this._warpRaf = 0; w.s = 0; draw(0); } })
+      .to(w, { s: 2.2, duration: dur * .3, ease: 'power2.in' })
+      .to(w, { s: 0, duration: dur * .7, ease: 'power3.out' });
+  }
+  warpStop() { cancelAnimationFrame(this._warpRaf); this._warpRaf = 0; if (this._warpTw) { this._warpTw.kill(); this._warpTw = null; } }
+  // @ts-ignore
+  async openAuth(mode, src, fromDisc) {
+    if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
+if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
+    if (this.state.auth) { this.switchMode(mode); return; }
+    this.authBusy = true;
+    const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
+    this.page = this.livePage(); this.authO = this.originOf(src, fromDisc);
+    await this.set({ auth: true, authMode: mode, err: {} });
+    const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
+    const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
+    g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
+    this.play('swoosh');
+    this.authSpin(true);
+    g.set(planet, { rotation: -Math.min(this.state.step, 4) * 26 });
+    if (this.reduce) {
+      sec.style.clipPath = 'none';
+      g.set(ins, { autoAlpha: 1, y: 0 }); g.set(planet, { autoAlpha: 1, scale: 1, yPercent: 0 }); g.set(ui, { scale: 1 });
+      this.warp(0);
+  // @ts-ignore
+      g.fromTo(sec, { autoAlpha: 0 }, { autoAlpha: 1, duration: .4, onComplete: () => { this.authBusy = false; this.focusAuth(); } });
+      return;
+    }
+    g.set(ins, { autoAlpha: 0, y: 26 }); g.set(planet, { autoAlpha: 0, scale: .7, yPercent: 16 }); g.set(ui, { scale: .94 });
+    const r = this._rift = this.riftNew(0, 0, 1, 0);
+    this.riftDraw();
+    const k = this.speed();
+    this.warp(2.4 / k);
+  // @ts-ignore
+    this.authTl = g.timeline({ onUpdate: () => this.riftDraw(), onComplete: () => {
+      this._rift = null; sec.style.clipPath = 'none';
+      this.pagePush(0); this.authBusy = false; this.focusAuth();
+    } })
+      .fromTo(sec, { autoAlpha: fromDisc ? 0 : 1 }, { autoAlpha: 1, duration: fromDisc ? .35 : .01, ease: 'power1.out' }, 0)
+      .to(r, { p: 1, duration: 1.3, ease: fromDisc ? 'power3.inOut' : 'expo.inOut' }, fromDisc ? .15 : 0)
+      .to(r, { z: 1, duration: 1.3, ease: 'power2.inOut' }, 0)
+      .add(() => this.play('thumpSoft'), .6)
+      .to(planet, { autoAlpha: 1, scale: 1, yPercent: 0, duration: 2, ease: 'expo.out' }, .55)
+      .to(ui, { scale: 1, duration: 1.5, ease: 'expo.out' }, .6)
+      .to(ins, { autoAlpha: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .07 }, .7);
+    this.authTl.timeScale(k);
+  }
+  // @ts-ignore
+  closeAuth(after) {
+    if (!this.state.auth || this.authClosing || !gsap) return;
+    this.authClosing = true;
+    if (this.authTl) this.authTl.kill();
+    clearTimeout(this._wait); this.warpStop();
+    const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
+    this.page = this.livePage();
+  // @ts-ignore
+    const done = () => {
+      this._rift = null;
+      g.set(root, { autoAlpha: 0, pointerEvents: 'none' }); g.set(sec, { autoAlpha: 1 }); sec.style.clipPath = 'none';
+      this.pagePush(0);
+      this.authSpin(false); this.authClosing = false; this.authBusy = false;
+      this.setState({ auth: false, err: {}, busyLbl: '', drag: '' });
+      if (after) after();
+    };
+    this.play('vanish');
+    if (this.reduce) { g.to(sec, { autoAlpha: 0, duration: .3, onComplete: () => { g.set(sec, { autoAlpha: 1 }); done(); } }); return; }
+    const r = this._rift = this.riftNew(1, 1, 0, 1);
+    this.riftDraw();
+  // @ts-ignore
+    this.authTl = g.timeline({ onUpdate: () => this.riftDraw(), onComplete: done })
+      .to(this.$$('[data-a-in]'), { autoAlpha: 0, y: -14, duration: .3, ease: 'power2.in', stagger: .02 }, 0)
+      .to(this.$('[data-a-planet-wrap]'), { autoAlpha: 0, scale: .85, duration: .5, ease: 'power2.in' }, 0)
+      .to(r, { p: 0, duration: 1, ease: this.authO && this.authO.r0 ? 'power3.inOut' : 'expo.inOut' }, .2)
+      .to(r, { z: 0, duration: 1, ease: 'power2.inOut' }, .2);
+    if (this.authO && this.authO.r0) this.authTl.to(sec, { autoAlpha: 0, duration: .3, ease: 'power1.in' }, 1.1);
+    this.authTl.timeScale(this.speed());
+  }
+  // @ts-ignore
+  hideAuth() {
+    if (!this.state.auth || !gsap) return;
+    if (this.authTl) this.authTl.kill();
+    clearTimeout(this._wait); this.warpStop(); this._rift = null;
+    const sec = this.$('[data-auth]'); if (sec) { sec.style.clipPath = 'none'; gsap.set(sec, { autoAlpha: 1 }); }
+    gsap.set(this.$('[data-auth-root]'), { autoAlpha: 0, pointerEvents: 'none' });
+    this.pagePush(0);
+    this.authSpin(false); this.authBusy = false; this.authClosing = false;
+    this.setState({ auth: false, busyLbl: '', drag: '' });
+  }
+  // @ts-ignore
+  authSpin(on) {
+  // @ts-ignore
+    (this._spin || []).forEach((t) => t.kill()); this._spin = null;
+    if (!on || this.reduce) return;
+    this._spin = [
+      gsap.to(this.$('[data-a-planet]'), { rotation: '+=360', duration: 180, ease: 'none', repeat: -1 }),
+      gsap.to(this.$('[data-a-orbit]'), { rotation: '+=360', duration: 26, ease: 'none', repeat: -1 }),
+    ];
+  }
+  // @ts-ignore
+  focusAuth() {
+    if (matchMedia('(pointer: coarse)').matches) return;
+  // @ts-ignore
+    const el = this.$$('[data-auth] input').find((i) => i.type !== 'file' && i.offsetParent);
+    if (el) el.focus({ preventScroll: true });
+  }
+  // @ts-ignore
+  animPane(dir, head) {
+    if (this.reduce || !gsap) return;
+  // @ts-ignore
+    const vis = (el) => el.offsetParent !== null;
+    gsap.fromTo(this.$$('[data-auth] [data-s-in]').filter(vis), { autoAlpha: 0, x: 28 * dir }, { autoAlpha: 1, x: 0, duration: .65, ease: 'power3.out', stagger: .05, overwrite: true });
+    if (head) gsap.fromTo(this.$$('[data-m-in]').filter(vis), { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .06, overwrite: true });
+  }
+  // @ts-ignore
+  switchMode = (mode) => {
+    const s = this.state, m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
+    if (m === s.authMode || s.busyLbl) return;
+    this.play('thumpSoft');
+    this.setState({ authMode: m, err: {} }, () => { this.animPane(1, true); this.focusAuth(); });
+  };
+  // @ts-ignore
+  toStep(n) {
+    const dir = n > this.state.step ? 1 : -1;
+    this.play('thumpSoft');
+    this.setState({ step: n, err: {} }, () => {
+      const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+      this.animPane(dir); this.focusAuth();
+      if (this.reduce) return;
+      gsap.to(this.$('[data-a-planet-wrap]'), { rotation: -n * 26, duration: 1.8, ease: 'expo.out' });
+      const node = this.$$('[data-rail-node]')[n];
+      if (node) gsap.fromTo(node, { scale: .5 }, { scale: 1, duration: .8, ease: 'back.out(3)' });
+      if (n === 2) setTimeout(() => this.scan('qr'), 380);
+    });
+  }
+  railGo(k) { const s = this.state; if (s.authMode === 'register' && k < s.step && !s.busyLbl) this.toStep(k); }
+  // @ts-ignore
+  stepBack = () => { if (this.state.step > 0 && !this.state.busyLbl) this.toStep(this.state.step - 1); };
+  // @ts-ignore
+  wait(lbl, ms) {
+    this.setState({ busyLbl: lbl });
+  // @ts-ignore
+    return new Promise((r) => { this._wait = setTimeout(() => { this.setState({ busyLbl: '' }); r(); }, ms); });
+  }
+  // @ts-ignore
+  fail(err) {
+    this.setState({ err });
+    const k = Object.keys(err)[0];
+    if (!k) return false;
+    this.play('beep');
+    if (k !== 'idfile' && k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
+    const row = this.$('[data-auth-act]');
+    if (row && !this.reduce) gsap.fromTo(row, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
+    return true;
+  }
+  // @ts-ignore
+  pickFile(kind) { return (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) this.takeFile(kind, f); }; }
+  dragOver(kind) { return (e) => { e.preventDefault(); if (this.state.drag !== kind) this.setState({ drag: kind }); }; }
+  dragLeave(kind) { return (e) => { if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return; if (this.state.drag) this.setState({ drag: '' }); }; }
+  // @ts-ignore
+  dropFile(kind) { return (e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.setState({ drag: '' }); if (f) this.takeFile(kind, f); }; }
+  // @ts-ignore
+  takeFile(kind, f) {
+    const ek = kind === 'id' ? 'idfile' : 'payfile', isImg = /^image\//.test(f.type), isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    if (kind === 'pay' ? !isImg : !(isImg || isPdf)) { this.fail({ [ek]: kind === 'pay' ? 'Upload the screenshot as an image (JPG or PNG).' : 'Use a JPG, PNG or PDF file.' }); return; }
+    if (f.size > 5 * 1048576) { this.fail({ [ek]: 'That file is over 5 MB. Try a smaller photo.' }); return; }
+  // @ts-ignore
+    const old = (this.state.files || {})[kind]; if (old && old.url) URL.revokeObjectURL(old.url);
+    const url = isImg ? URL.createObjectURL(f) : '';
+    this.play('beep');
+    this.setState((st) => ({ files: { ...st.files, [kind]: { name: f.name, size: f.size, url, pdf: !isImg, status: 'up' } }, err: this.drop(st.err, ek) }), () => this.runUpload(kind));
+  }
+  // @ts-ignore
+  runUpload(kind) {
+    const bar = this.$('[data-up-bar="' + kind + '"]'), pct = this.$('[data-up-pct="' + kind + '"]'), o = { v: 0 };
+    this._up = this._up || {};
+    if (this._up[kind]) this._up[kind].kill();
+  // @ts-ignore
+    const paint = () => { if (bar) bar.style.transform = 'scaleX(' + (o.v / 100).toFixed(3) + ')'; if (pct) pct.textContent = Math.round(o.v) + '%'; };
+    paint();
+  // @ts-ignore
+    this._up[kind] = gsap.to(o, { v: 100, duration: this.reduce ? .3 : 1.3, ease: 'power2.inOut', onUpdate: paint, onComplete: () => {
+      this.play('thumpSoft');
+      this.setState((st) => (st.files[kind] ? { files: { ...st.files, [kind]: { ...st.files[kind], status: 'done' } } } : null), () => this.scan(kind));
+    } });
+  }
+  // @ts-ignore
+  scan(kind) {
+    if (this.reduce || !gsap) return;
+    const s = this.$('[data-scan="' + kind + '"]');
+    if (s && s.offsetParent !== null) gsap.fromTo(s, { yPercent: 0, autoAlpha: 1 }, { yPercent: 100, duration: 1.2, ease: 'power2.inOut', onComplete: () => gsap.to(s, { autoAlpha: 0, duration: .3 }) });
+  }
+  // @ts-ignore
+  removeFile(kind) {
+  // @ts-ignore
+    const f = (this.state.files || {})[kind]; if (f && f.url) URL.revokeObjectURL(f.url);
+    if (this._up && this._up[kind]) this._up[kind].kill();
+    this.play('beep');
+    this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
+  }
+  replaceFile(kind) { const i = this.$('[data-auth] [name="' + (kind === 'id' ? 'idfile' : 'payfile') + '"]'); if (i) i.click(); }
+  dropFiles() { Object.values(this.state.files || {}).forEach((f) => { if (f && f.url) URL.revokeObjectURL(f.url); }); }
+  // @ts-ignore
+  copyUpi = () => {
+    const t = this.upi();
+  // @ts-ignore
+    const ok = () => { this.play('beep'); this.setState({ copied: true }); clearTimeout(this._copy); this._copy = setTimeout(() => this.setState({ copied: false }), 1600); };
+  // @ts-ignore
+    const no = () => this.toast('UPI ID: ' + t);
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, no); else no(); } catch (e) { no(); }
+  };
+  // @ts-ignore
+  authSubmit = (e) => {
+    e.preventDefault();
+    const s = this.state;
+    if (s.busyLbl) return;
+  // @ts-ignore
+    const f = e.currentTarget.elements, v = (n) => ((f[n] && f[n].value) || '').trim(), err = {}, files = s.files || {};
+    if (s.authMode === 'login') {
+      const em = v('lemail'), id = v('lid').toUpperCase().replace(/\s+/g, '');
+      if (!this.emailOk(em)) err.lemail = 'Enter the email you registered with.';
+      if (!/^IV26-?\d{4}$/.test(id)) err.lid = 'Registration IDs look like IV26-1234.';
+      if (this.fail(err)) return;
+      this.wait('CHECKING', 900).then(() => {
+        if (!this.pass || this.pass.email !== em) this.pass = { name: this.nameFrom(em), college: '', id: id.replace(/^IV26-?/, 'IV26-'), email: em, status: 'CONFIRMED' };
+        const name = this.pass.name;
+        this.setState({ user: { name, email: em } });
+        this.closeAuth(() => this.toast('Welcome back, ' + name.split(' ')[0] + '.'));
+      });
+      return;
+    }
+    if (s.authMode !== 'register') return;
+    if (s.step === 0) {
+      const name = v('name').replace(/\s+/g, ' '), college = v('college').replace(/\s+/g, ' '), email = v('email'), phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+      if (name.length < 2) err.name = 'Tell us your full name.';
+      if (college.length < 3) err.college = 'Which college are you from?';
+      if (!this.emailOk(email)) err.email = "That email doesn't look right.";
+      if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
+      if (this.fail(err)) return;
+      this.reg = { name, college, email, phone };
+      this.toStep(1);
+    } else if (s.step === 1) {
+      const fi = files.id;
+      if (!fi) err.idfile = 'Upload your college ID to continue.';
+      else if (fi.status !== 'done') err.idfile = 'Hold on, your ID is still uploading.';
+      if (this.fail(err)) return;
+      this.toStep(2);
+    } else if (s.step === 2) {
+      this.toStep(3);
+    } else if (s.step === 3) {
+      const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
+      if (!fp) err.payfile = 'Upload the screenshot of your payment.';
+      else if (fp.status !== 'done') err.payfile = 'Hold on, your screenshot is still uploading.';
+      if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
+      if (this.fail(err)) return;
+      this.wait('SUBMITTING', 1300).then(() => {
+        const r = this.reg || {};
+        this.pass = { name: r.name, college: r.college, id: this.newId(), email: r.email, status: 'PAYMENT UNDER REVIEW', utr };
+        this.play('fx');
+        this.setState({ authMode: 'pass', step: 4, user: { name: r.name, email: r.email } }, () => this.passReveal());
+      });
+    }
+  };
+  // @ts-ignore
+  passReveal() {
+    const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+    this.animPane(1, true);
+    if (this.reduce) return;
+    this.warp(1.8 / this.speed());
+    gsap.to(this.$('[data-a-planet-wrap]'), { rotation: -4 * 26, duration: 1.8, ease: 'expo.out' });
+    const w = this.$('[data-pass-wrap]');
+    if (w) gsap.fromTo(w, { clipPath: 'inset(0% 0% 100% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.2, ease: 'expo.out', delay: .1, onComplete: () => gsap.set(w, { clearProps: 'clipPath' }) });
+    setTimeout(() => this.scan('pass'), 260);
+  }
+  // @ts-ignore
+  clearErr = (e) => {
+    const n = e.target && e.target.name;
+    if (n && this.state.err[n]) this.setState((st) => ({ err: this.drop(st.err, n) }));
+  };
+  // @ts-ignore
+  exploreFromPass = (e) => { e.preventDefault(); this.closeAuth(() => this.go('#/worlds/takeoff')); };
+  // @ts-ignore
+  authVals(s) {
+  // @ts-ignore
+    const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.8 0.12 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
+    const E = Object.assign({ name: '', college: '', email: '', phone: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
+    const bc = {}, inv = {};
+  // @ts-ignore
+    Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });
+    const P = this.pass || {}, fee = this.fee(), upi = this.upi(), R = this.reg || {}, files = s.files || {};
+  // @ts-ignore
+    const up = (kind, ek, prompt) => {
+      const f = files[kind], dz = s.drag === kind;
+      return {
+        emptyD: show(!f), prevD: f ? 'block' : 'none', busyD: show(!!f && f.status === 'up'), rowD: show(!!f && f.status === 'done'), hasImg: !!(f && f.url), pdfD: show(!!f && f.pdf),
+        url: (f && f.url) || '', name: f ? f.name : '', size: f ? this.fmtSize(f.size) : '',
+        bc: dz ? gold : E[ek] ? bad : 'rgba(236,232,223,.32)', bg: dz ? 'rgba(220,183,106,.1)' : 'rgba(236,232,223,.03)', prompt: dz ? 'Release to upload' : prompt,
+        pick: this.pickFile(kind), over: this.dragOver(kind), leave: this.dragLeave(kind), drop: this.dropFile(kind), remove: () => this.removeFile(kind), replace: () => this.replaceFile(kind),
+      };
+    };
+    const showRail = reg || (am === 'pass' && st === 4);
+    const notes = [R.name, files.id && files.id.name, 'by UPI', 'Submitted'];
+    return {
+      noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
+      authHidden: String(!s.auth),
+      authAria: reg ? 'Register for Innovision 2026' : am === 'login' ? 'Log in to Innovision' : 'Your boarding pass',
+      authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
+      authTitle: reg ? 'CLAIM YOUR SEAT' : am === 'login' ? 'WELCOME BACK' : "YOU'RE ON BOARD",
+      authSub: reg ? 'Four short stops to register for Innovision 2026 at NIT Rourkela.' : am === 'login' ? 'Use the email and registration ID from your confirmation mail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
+      railD: show(showRail && !s.narrow), hprogD: showRail && s.narrow ? 'grid' : 'none',
+      prog: [['DETAILS', 'Name, college, email, phone', 'DETAILS'], ['COLLEGE ID', 'Photo or PDF of your ID card', 'ID'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']].map(([label, hint, short], k) => {
+        const done = k < st, cur = k === st && reg, back = done && reg;
+        return {
+          label, short, note: done ? (k === 2 ? 'by UPI' : notes[k] || hint) : hint, cur: cur ? 'step' : 'false',
+          c: done || cur ? cream : 'rgba(236,232,223,.6)', bc: done || cur ? gold : 'rgba(236,232,223,.3)', fill: done ? gold : 'transparent', chk: done ? 1 : 0, dot: cur ? 1 : 0, dotS: cur ? 1 : .2,
+          lineD: k < 3 ? 'block' : 'none', lineS: done ? 1 : 0, segS: done ? 1 : cur ? .5 : 0,
+          lock: !back || !!s.busyLbl, cursor: back ? 'pointer' : 'default', go: () => this.railGo(k), aria: label + (done ? ', done. Go back to edit' : cur ? ', current step' : ''),
+        };
+      }),
+      d: { s0: show(reg && st === 0), s1: show(reg && st === 1), s2: show(reg && st === 2), s3: show(reg && st === 3), login: show(am === 'login'), pass: show(am === 'pass'), act: show(reg || am === 'login') },
+      err: E, bc, inv,
+      upId: up('id', 'idfile', 'Drop your ID card here or browse'), upPay: up('pay', 'payfile', 'Drop the screenshot here or browse'),
+      fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
+      upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
+      upiAppD: s.narrow ? 'inline-flex' : 'none',
+      authSubmit: this.authSubmit, clearErr: this.clearErr, switchMode: this.switchMode, closeAuthH: () => this.closeAuth(),
+      showSwitch: am !== 'pass', switchQ: reg ? 'Already registered?' : 'New to Innovision?', switchLbl: reg ? 'LOG IN' : 'REGISTER', switchQD: s.narrow ? 'none' : 'inline',
+      canBack: reg && st > 0, stepBack: this.stepBack,
+      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : ['CONTINUE', 'CONTINUE', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
+      busy: !!s.busyLbl, busyO: s.busyLbl ? .72 : 1,
+      passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || '', passStatus: P.status || '',
+      passNote: P.status === 'CONFIRMED' ? 'Show this pass at the registration desk when you arrive.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified.',
+      exploreFromPass: this.exploreFromPass,
+    };
+  }
   checkout = () => { this.play('thumpSoft'); this.toast('Pre-orders open with registrations. Stay in orbit.'); };
   linkGo = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -1038,6 +1479,8 @@ export default class Innovision extends Component<Props, State> {
       toTop: (e: MouseEvent) => { e.preventDefault(); const h = this.$('[data-view="home"]'); if (h) h.scrollTo({ top: 0, behavior: 'smooth' }); },
       toastO: s.toastOn ? 1 : 0, toastY: s.toastOn ? '0px' : '16px',
       register: this.register, hover: this.hover, beep: this.beep,
+      // @ts-ignore
+      ...this.authVals(s),
       curtainLabel: s.curtainLabel, curtainKicker: s.curtainKicker,
       prevSlide: () => this.stepSlide(-1), nextSlide: () => this.stepSlide(1),
       onWheel: this.onWheel, onTouchStart: this.onTouchStart, onTouchEnd: this.onTouchEnd,
@@ -1067,6 +1510,7 @@ export default class Innovision extends Component<Props, State> {
         <Curtain v={v} />
         <AboutPanel v={v} />
         <MenuOverlay v={v} />
+        <AuthOverlay v={v} />
         <BagPanel v={v} />
         <CartPill v={v} />
         <Toast v={v} />
@@ -1077,3 +1521,4 @@ export default class Innovision extends Component<Props, State> {
     );
   }
 }
+
