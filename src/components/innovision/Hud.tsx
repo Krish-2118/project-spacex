@@ -1,6 +1,9 @@
 import { Logo } from './icons';
 import type { V } from './types';
 
+/** Top-bar label size: 13px up to ~1370px wide, growing with the screen to 16px beside the 24px wordmark. */
+const LABEL = "clamp(13px,.95vw,16px)";
+
 /** Fixed top bar (back, logo, nav, register, about/menu) and bottom bar (Instagram, sound). */
 export default function Hud({ v }: { v: V }) {
   return (
@@ -9,7 +12,7 @@ export default function Hud({ v }: { v: V }) {
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "18px", pointerEvents: "auto" }}>
           {v.isDetail && (
             <>
-              <a href={v.backHref} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 0", textDecoration: "none", fontWeight: "500", fontSize: "14px", letterSpacing: ".04em", color: "#fff" }}>
+              <a href={v.backHref} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 0", textDecoration: "none", fontWeight: "500", fontSize: LABEL, letterSpacing: ".04em", color: "#fff" }}>
                 <svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true">
                   <path d="M5 1 1 5l4 4M1 5h15" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
                 </svg>
@@ -26,7 +29,7 @@ export default function Hud({ v }: { v: V }) {
         {v.wide && (
           <nav aria-label="Primary" style={{ display: "flex", alignItems: "center", gap: "clamp(14px,2.2vw,36px)", pointerEvents: "auto" }}>
             {v.navLinks.map((l, lI) => (
-              <a key={lI} data-magnet="" href={l.href} onClick={l.onClick} onMouseEnter={v.hover} aria-current={l.cur} style={{ position: "relative", display: "inline-block", padding: "8px 0", textDecoration: "none", fontWeight: "500", fontSize: "13px", letterSpacing: ".14em", color: "#fff", opacity: l.o, transition: "opacity .4s" }} className="hv-link-white">
+              <a key={lI} data-magnet="" href={l.href} onClick={l.onClick} onMouseEnter={v.hover} aria-current={l.cur} style={{ position: "relative", display: "inline-block", padding: "8px 0", textDecoration: "none", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "#fff", opacity: l.o, transition: "opacity .4s" }} className="hv-link-white">
                 <span data-scr="">{l.label}</span>
                 <span style={{ position: "absolute", left: "0", right: "0", bottom: "2px", height: "1.5px", background: "#fff", transform: `scaleX(${l.bar})`, transformOrigin: "left", transition: "transform .5s cubic-bezier(.25,1,.1,1)" }}></span>
               </a>
@@ -34,10 +37,10 @@ export default function Hud({ v }: { v: V }) {
           </nav>
         )}
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "18px", pointerEvents: "auto" }}>
-          <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "12px 20px", textDecoration: "none", fontWeight: "700", fontSize: "13px", letterSpacing: ".08em", color: "#000", background: "#fff", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }} className="hv-black hud-register">
+          <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: "#000", background: "#fff", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }} className="hv-black hud-register">
             <span data-scr="">REGISTER</span>
           </a>
-          <button type="button" onClick={v.menuButton} onMouseEnter={v.hover} aria-expanded={v.menuExpanded} style={{ display: "inline-flex", alignItems: "center", padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "13px", letterSpacing: ".14em", color: "#fff" }}>
+          <button type="button" onClick={v.menuButton} onMouseEnter={v.hover} aria-expanded={v.menuExpanded} style={{ display: "inline-flex", alignItems: "center", padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "#fff" }}>
             <span data-scr="">{v.menuLabel}</span>
           </button>
         </div>

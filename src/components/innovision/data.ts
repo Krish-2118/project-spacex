@@ -6,6 +6,8 @@ export type WorldKey = 'takeoff' | 'touchdown' | 'highpoint';
 
 export interface World {
   key: WorldKey;
+  /** URL segment used in #/worlds/<slug> and #/world/<slug>. */
+  slug: string;
   name: string;
   category: string;
   accent: string;
@@ -36,7 +38,7 @@ export interface World {
 }
 
 export const WORLDS: World[] = [
-  { key: 'takeoff', name: 'Flagship Events', category: 'Technical Events', accent: 'oklch(0.56 0.13 32)', accentL: 'oklch(0.76 0.11 38)', ink: 'oklch(0.3 0.08 32)', tint: 'oklch(0.94 0.02 55)', tint2: 'oklch(0.85 0.045 40)',
+  { key: 'takeoff', slug: 'flagship-events', name: 'Flagship Events', category: 'Technical Events', accent: 'oklch(0.56 0.13 32)', accentL: 'oklch(0.76 0.11 38)', ink: 'oklch(0.3 0.08 32)', tint: 'oklch(0.94 0.02 55)', tint2: 'oklch(0.85 0.045 40)',
     planet: A + 'planet-yellow.webp', astro: A + 'indian-astronaut.webp', astroSit: false, music: 'takeoff',
     gates: ['indian-astronaut.webp', 'astro-red.webp', 'spaceship.webp', 'big-spaceship.webp'],
     coord: 'RA 05h 35m · DEC −05° 23′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(22vh, 210px)', decoR: '-14deg',
@@ -44,7 +46,7 @@ export const WORLDS: World[] = [
     intro: 'Strap in for the technical arena of Innovision. Hackathons, robotics and coding battles where ideas get their launch thrust. Bring your crew, your laptop and your wildest builds.',
     specs: [['Category', 'Technical'], ['Format', 'Solo & team'], ['Launch pad', 'NIT Rourkela'], ['Fuel', 'Code & circuits'], ['Status', 'Boarding soon']],
     missions: [['Hackathon', 'A non-stop build sprint. Ship a working prototype before the countdown hits zero.', 'Team · 2–4', '36 hrs'], ['Robo Wars', 'Bring your bot into the arena. Last machine standing takes the crown.', 'Team · up to 5', 'Knockout'], ['Code Sprint', 'Competitive programming under pressure. Fast logic, faster fingers.', 'Solo', '3 hrs'], ['Circuit Lab', 'Design, debug and demo hardware that works on the first try.', 'Team · 2', '4 hrs']] },
-  { key: 'touchdown', name: 'Main Events', category: 'Workshops & Talks', accent: 'oklch(0.55 0.12 295)', accentL: 'oklch(0.77 0.09 295)', ink: 'oklch(0.3 0.08 295)', tint: 'oklch(0.94 0.018 295)', tint2: 'oklch(0.85 0.04 295)',
+  { key: 'touchdown', slug: 'main-events', name: 'Main Events', category: 'Workshops & Talks', accent: 'oklch(0.55 0.12 295)', accentL: 'oklch(0.77 0.09 295)', ink: 'oklch(0.3 0.08 295)', tint: 'oklch(0.94 0.018 295)', tint2: 'oklch(0.85 0.04 295)',
     planet: A + 'planet-blue.webp', astro: A + 'home-astronaut.webp', astroSit: false, music: 'touchdown',
     gates: ['astro-yellow.webp', 'home-astronaut.webp', 'spaceship.webp', 'planet-blue.webp'],
     coord: 'RA 18h 36m · DEC +38° 47′', deco: A + 'big-spaceship.webp', decoL: 'clamp(28px,10vw,200px)', decoT: '31%', decoH: 'min(19vh, 180px)', decoR: '8deg',
@@ -52,7 +54,7 @@ export const WORLDS: World[] = [
     intro: 'Slow the descent and land on new ideas. Hands-on workshops and talks from people who have been there, built that, and are ready to show you how.',
     specs: [['Category', 'Workshops'], ['Format', 'Hands-on'], ['Crew', 'Experts & alumni'], ['Fuel', 'Curiosity'], ['Status', 'Boarding soon']],
     missions: [['AI & ML Workshop', 'From first model to deployed demo in a single session.', 'Hands-on', 'Full day'], ['Guest Lectures', 'Stories and lessons from engineers, founders and researchers.', 'Open to all', '90 min'], ['Startup Talks', 'How ideas become companies, straight from the people who did it.', 'Open to all', '60 min'], ['Maker Labs', 'Solder, print and prototype with guidance at every step.', 'Limited seats', 'Half day']] },
-  { key: 'highpoint', name: 'DTS and Fun Events', category: 'Games & Showcases', accent: 'oklch(0.56 0.09 178)', accentL: 'oklch(0.8 0.08 178)', ink: 'oklch(0.3 0.06 185)', tint: 'oklch(0.94 0.018 178)', tint2: 'oklch(0.85 0.04 180)',
+  { key: 'highpoint', slug: 'dts-and-fun-events', name: 'DTS and Fun Events', category: 'Games & Showcases', accent: 'oklch(0.56 0.09 178)', accentL: 'oklch(0.8 0.08 178)', ink: 'oklch(0.3 0.06 185)', tint: 'oklch(0.94 0.018 178)', tint2: 'oklch(0.85 0.04 180)',
     planet: A + 'planet-green.webp', astro: A + 'astro-yellow.webp', astroSit: true, music: 'highpoint',
     gates: ['astro-green.webp', 'moon.webp', 'astro-red.webp', 'big-spaceship.webp'],
     coord: 'RA 13h 25m · DEC −11° 09′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(21vh, 200px)', decoR: '24deg',
