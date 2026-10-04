@@ -50,15 +50,102 @@ export default function Hud({ v }: { v: V }) {
             ))}
           </nav>
         )}
-        <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "18px", pointerEvents: "auto" }}>
-          <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} className="hud-register hud-cta" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: solid ? PAPER : "#000", background: solid ? INK : "#fff", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)", transition: "background-color .4s, color .4s" }}>
-            <span data-scr="">{v.noUser ? "REGISTER" : "MY PASS"}</span>
+        <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "14px", pointerEvents: "auto" }}>
+          {/* Staff Portal Shortcut (Admin / IT-Team) */}
+          {!v.noUser && v.isStaff && (
+            <button
+              id="hud-staff-portal-btn"
+              type="button"
+              onClick={v.openAdmin}
+              onMouseEnter={v.hover}
+              className="hud-register"
+              title="Open Staff Control Portal"
+              style={{
+                position: "relative",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "clamp(10px,.7vw,12px) clamp(14px,1vw,18px)",
+                border: "1px solid oklch(0.8 0.12 85)",
+                background: "rgba(220,183,106,0.15)",
+                color: fg,
+                fontWeight: "700",
+                fontSize: LABEL,
+                letterSpacing: ".08em",
+                cursor: "pointer",
+                clipPath: "polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span data-scr="">PORTAL</span>
+            </button>
+          )}
+
+          {/* Primary Action Button: REGISTER if not registered, MY PASS if registered */}
+          <a
+            id="hud-reg-pass-btn"
+            data-magnet=""
+            href="#register"
+            onClick={v.register}
+            onMouseEnter={v.hover}
+            className="hud-register hud-cta"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)",
+              textDecoration: "none",
+              fontWeight: "700",
+              fontSize: LABEL,
+              letterSpacing: ".08em",
+              color: solid ? PAPER : "#000",
+              background: solid ? INK : "#fff",
+              clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
+              transition: "background-color .4s, color .4s",
+            }}
+          >
+            <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
           </a>
-          {/* Outlined twin of REGISTER: a 1.5px ring of the HUD colour around a fill of the bar behind it. */}
+
+          {/* Secondary Action: LOG IN if not logged in, PROFILE if logged in */}
           {v.showLogin && (
-            <a data-magnet="" href="#login" onClick={v.loginClick} onMouseEnter={v.hover} className="hud-register hud-ghost" style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: "inherit", background: "currentColor", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }}>
-              <span aria-hidden="true" style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: solid ? PAPER : "#000", clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)", transition: "background-color .4s" }}></span>
-              <span data-scr="" style={{ color: fg }}>{v.noUser ? "LOG IN" : "LOG OUT"}</span>
+            <a
+              id="hud-auth-profile-btn"
+              data-magnet=""
+              href={v.noUser ? "#login" : "#profile"}
+              onClick={v.noUser ? v.loginClick : v.openProfile}
+              onMouseEnter={v.hover}
+              className="hud-register hud-ghost"
+              style={{
+                position: "relative",
+                isolation: "isolate",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)",
+                textDecoration: "none",
+                fontWeight: "700",
+                fontSize: LABEL,
+                letterSpacing: ".08em",
+                color: "inherit",
+                background: "currentColor",
+                clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: "1.5px",
+                  zIndex: "-1",
+                  background: solid ? PAPER : "#000",
+                  clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)",
+                  transition: "background-color .4s",
+                }}
+              ></span>
+              <span data-scr="" style={{ color: fg }}>{v.noUser ? "LOG IN" : "PROFILE"}</span>
             </a>
           )}
           {!v.wide && (

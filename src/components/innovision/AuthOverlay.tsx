@@ -81,26 +81,37 @@ export default function AuthOverlay({ v }: { v: V }) {
                         </p>
                       ) : null}
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>FULL NAME</span>
-<input name="name" autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-{v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
-</label>
+                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>FULL NAME</span>
+                        <input name="name" defaultValue={v.regVals.name} autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
+                        {v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
+                      </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
-<input name="college" autoComplete="organization" placeholder="Full name of your institute" aria-invalid={v.inv.college} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.college}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-{v.err.college ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
-</label>
+                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
+                        <input name="college" defaultValue={v.regVals.college} readOnly={v.isInternal} autoComplete="organization" placeholder="Full name of your institute" aria-invalid={v.inv.college} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: v.isInternal ? "rgba(236,232,223,.08)" : "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.college}`, cursor: v.isInternal ? "not-allowed" : "text" }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
+                        {v.isInternal && <span style={{ fontSize: "12px", color: "oklch(0.8 0.12 85)" }}>Verified NIT Rourkela student registration (Free).</span>}
+                        {v.err.college ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
+                      </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL</span>
-<input name="email" type="email" autoComplete="email" placeholder="you@college.edu" aria-invalid={v.inv.email} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.email}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-<span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>Your registration ID is sent here.</span>
-{v.err.email ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.email}</span>) : null}
-</label>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL (LOCKED)</span>
+                          <span style={{ fontSize: "11px", color: "oklch(0.8 0.12 85)", fontWeight: "600" }}>🔒 Authenticated Account</span>
+                        </div>
+                        <input name="email" type="email" value={v.regVals.email} readOnly autoComplete="email" placeholder="you@college.edu" aria-invalid={v.inv.email} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.08)", fontSize: "16px", color: "#ECE8DF", outline: "none", border: `1.5px solid ${v.bc.email}`, cursor: "not-allowed", opacity: "0.85" }} />
+                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>This email is bound to your account and cannot be altered.</span>
+                        {v.err.email ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.email}</span>) : null}
+                      </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>PHONE</span>
-<span style={{ display: "flex", gap: "8px" }}><span style={{ display: "flex", alignItems: "center", padding: "0 14px", border: "1.5px solid rgba(236,232,223,.28)", fontSize: "16px", fontWeight: "500" }}>+91</span><input name="phone" type="tel" autoComplete="tel-national" inputMode="numeric" placeholder="98765 43210" aria-invalid={v.inv.phone} style={{ flex: "1", minWidth: "0", height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.phone}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" /></span>
-{v.err.phone ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.phone}</span>) : null}
-</label>
+                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>
+                          {v.isInternal ? "NIT RKL ROLL NO. / ENROLLMENT NO." : "COLLEGE ENROLLMENT NO. / ROLL NO."}
+                        </span>
+                        <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" placeholder={v.isInternal ? "e.g. 122CS0123" : "Your college roll / student ID number"} aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
+                        {v.err.enrollment_no ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.enrollment_no}</span>) : null}
+                      </label>
+                      <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>PHONE</span>
+                        <span style={{ display: "flex", gap: "8px" }}><span style={{ display: "flex", alignItems: "center", padding: "0 14px", border: "1.5px solid rgba(236,232,223,.28)", fontSize: "16px", fontWeight: "500" }}>+91</span><input name="phone" defaultValue={v.regVals.phone} type="tel" autoComplete="tel-national" inputMode="numeric" placeholder="98765 43210" aria-invalid={v.inv.phone} style={{ flex: "1", minWidth: "0", height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.phone}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" /></span>
+                        {v.err.phone ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.phone}</span>) : null}
+                      </label>
                     </div>
 
                     <div style={{ display: v.d.s1, flexDirection: "column", gap: "16px" }}>
@@ -111,7 +122,7 @@ export default function AuthOverlay({ v }: { v: V }) {
 <span style={{ display: v.upId.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
 <span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.8 0.12 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
 <span style={{ fontSize: "16px", fontWeight: "500" }}>{v.upId.prompt}</span>
-<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG, PNG or PDF up to 5 MB</span>
+<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG, PNG or PDF up to 2 MB</span>
 </span>
 <span style={{ display: v.upId.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
 {v.upId.hasImg ? (<img src={v.upId.url} alt="Your college ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />) : null}
@@ -181,7 +192,7 @@ export default function AuthOverlay({ v }: { v: V }) {
 <span style={{ display: v.upPay.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
 <span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.8 0.12 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
 <span style={{ fontSize: "16px", fontWeight: "500" }}>{v.upPay.prompt}</span>
-<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 5 MB</span>
+<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 2 MB</span>
 </span>
 <span style={{ display: v.upPay.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
 {v.upPay.hasImg ? (<img src={v.upPay.url} alt="Your payment screenshot" style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
@@ -216,33 +227,47 @@ export default function AuthOverlay({ v }: { v: V }) {
 </label>
                     </div>
 
-                    <div style={{ display: v.d.login, flexDirection: "column", gap: "20px" }}>
-                      <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "Cinzel,serif", fontWeight: "900", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Log in</h3>
-                      {/* Google's dark-theme sign-in button: their four-colour mark and sentence-case label, square to match the fields. */}
-                      <button data-s-in="" data-g-btn="" type="button" onClick={v.googleLogin} onMouseEnter={v.beep} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1px solid #8e918f", borderRadius: "0", background: "#131314", color: "#e3e3e3", cursor: v.gBusy ? "progress" : "pointer", fontSize: "16px", fontWeight: "500", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
-                        <span style={{ position: "relative", display: "grid", placeItems: "center", width: "30px", height: "30px" }}>
-                          <svg viewBox="0 0 48 48" aria-hidden="true" style={{ width: "20px", height: "20px" }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
-                          {v.gBusy ? (<span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", border: "2px solid rgba(236,232,223,.14)", borderTopColor: "oklch(0.8 0.12 85)", animation: "iv-spin .9s linear infinite" }}></span>) : null}
+                    <div style={{ display: v.d.login, flexDirection: "column", gap: "18px" }}>
+                      <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "Cinzel,serif", fontWeight: "900", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Log in / Sign up</h3>
+                      
+                      <div data-s-in="" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(220,183,106,0.08)", border: "1px solid rgba(220,183,106,0.3)", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="oklch(0.8 0.12 85)" strokeWidth="2" style={{ width: "18px", height: "18px", flex: "none" }}>
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span style={{ fontSize: "13px", lineHeight: "1.45", color: "#ECE8DF" }}>
+                          <strong style={{ color: "oklch(0.8 0.12 85)", letterSpacing: ".04em" }}>AUTHENTICATION REQUIRED:</strong> Log in or sign up below to unlock event registration.
                         </span>
-                        <span>{v.gLbl}</span>
-                      </button>
-                      {v.gErr ? (<span role="alert" style={{ marginTop: "-8px", fontSize: "14px", lineHeight: "1.45", color: "oklch(0.76 0.14 35)" }}>{v.gErr}</span>) : null}
-                      <div data-s-in="" aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "13px", color: "rgba(236,232,223,.62)" }}>
-                        <span style={{ flex: "1", height: "1px", background: "rgba(236,232,223,.16)" }}></span>
-                        <span>or use your registration ID</span>
-                        <span style={{ flex: "1", height: "1px", background: "rgba(236,232,223,.16)" }}></span>
                       </div>
-                      <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL</span>
-<input name="lemail" type="email" autoComplete="email" placeholder="you@college.edu" aria-invalid={v.inv.lemail} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.lemail}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-{v.err.lemail ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.lemail}</span>) : null}
-</label>
-                      <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>REGISTRATION ID</span>
-<input name="lid" autoComplete="off" placeholder="IV26-0000" aria-invalid={v.inv.lid} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.lid}`, letterSpacing: ".06em", textTransform: "uppercase" }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-<span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>It&apos;s in your confirmation email.</span>
-{v.err.lid ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.lid}</span>) : null}
-</label>
+
+                      <p data-s-in="" style={{ margin: "0 0 4px", fontSize: "14px", lineHeight: "1.5", color: "rgba(236,232,223,.75)" }}>Select your student portal to authenticate via Google Auth:</p>
+
+                      {/* Option 1: External Students */}
+                      <div data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".14em", color: "rgba(236,232,223,.6)" }}>EXTERNAL STUDENTS (ALL COLLEGES)</span>
+                        <button id="google-login-external" data-g-btn="" type="button" onClick={() => v.googleLogin(false)} onMouseEnter={v.beep} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1px solid #8e918f", borderRadius: "0", background: "#131314", color: "#e3e3e3", cursor: v.gBusy ? "progress" : "pointer", fontSize: "15px", fontWeight: "500", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
+                          <span style={{ position: "relative", display: "grid", placeItems: "center", width: "24px", height: "24px" }}>
+                            <svg viewBox="0 0 48 48" aria-hidden="true" style={{ width: "20px", height: "20px" }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+                          </span>
+                          <span>Continue with Google (External)</span>
+                        </button>
+                      </div>
+
+                      {/* Option 2: Internal Students (@nitrkl.ac.in) */}
+                      <div data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".14em", color: "oklch(0.8 0.12 85)" }}>NIT ROURKELA STUDENTS ONLY</span>
+                          <span style={{ fontSize: "10px", fontWeight: "800", letterSpacing: ".1em", padding: "2px 8px", background: "rgba(220,183,106,0.18)", color: "oklch(0.8 0.12 85)", border: "1px solid rgba(220,183,106,0.3)" }}>FREE ENTRY PASS</span>
+                        </div>
+                        <button id="google-login-internal" data-g-btn="" type="button" onClick={() => v.googleLogin(true)} onMouseEnter={v.beep} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1.5px solid oklch(0.8 0.12 85)", borderRadius: "0", background: "rgba(220,183,106,0.08)", color: "#ECE8DF", cursor: v.gBusy ? "progress" : "pointer", fontSize: "15px", fontWeight: "600", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
+                          <span style={{ position: "relative", display: "grid", placeItems: "center", width: "24px", height: "24px" }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="oklch(0.8 0.12 85)" strokeWidth="2" style={{ width: "20px", height: "20px" }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                          </span>
+                          <span>Institute Webmail (@nitrkl.ac.in)</span>
+                        </button>
+                      </div>
+
+                      {v.gErr ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.45", color: "oklch(0.76 0.14 35)", padding: "10px 12px", background: "rgba(239,68,68,0.1)", border: "1px solid oklch(0.76 0.14 35)" }}>{v.gErr}</span>) : null}
                     </div>
 
                     <div style={{ display: v.d.pass, flexDirection: "column", gap: "22px" }}>
