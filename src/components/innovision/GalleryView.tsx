@@ -27,7 +27,7 @@ export default function GalleryView({ v }: { v: V }) {
           ))}
         </div>
       </div>
-      <div data-g-ui="" style={{ position: "absolute", left: "clamp(16px,2.6vw,44px)", bottom: "calc(clamp(16px,2.6vw,44px) + 56px)", pointerEvents: "none" }}>
+      <div data-g-ui="" style={{ position: "absolute", left: "clamp(16px,2.6vw,44px)", bottom: "calc(clamp(16px,2.6vw,44px) + 56px)", pointerEvents: "none", mixBlendMode: "difference", color: "#fff" }}>
         <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 10px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.84 0.09 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />THE ARCHIVE</p>
         <h1 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,7vw,112px)", lineHeight: ".9" }}>Gallery</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: "14px", marginTop: "18px", fontSize: "13px", letterSpacing: ".18em" }}>

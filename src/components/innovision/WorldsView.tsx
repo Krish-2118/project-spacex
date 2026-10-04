@@ -14,11 +14,13 @@ export default function WorldsView({ v }: { v: V }) {
             <OrbitBackdrop top="54%" />
           </div>
           <Radar depth=".22" top="54%" size={180} mask="radial-gradient(circle,transparent 20%,#000 27%,transparent 58%)" />
-          <div data-depth=".55" aria-hidden="true" style={{ position: "absolute", left: w.decoL, top: w.decoT, height: w.decoH, pointerEvents: "none" }}>
-            <div style={{ height: "100%", transform: `rotate(${w.decoR})` }}>
-              <img src={w.deco} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
+          {w.deco && (
+            <div data-depth=".55" aria-hidden="true" style={{ position: "absolute", left: w.decoL, top: w.decoT, height: w.decoH, pointerEvents: "none" }}>
+              <div style={{ height: "100%", transform: `rotate(${w.decoR})` }}>
+                <img src={w.deco} alt="" style={{ height: "100%", width: "auto", mixBlendMode: "multiply", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
+              </div>
             </div>
-          </div>
+          )}
           <div aria-hidden="true" style={{ position: "absolute", left: "calc(clamp(16px,2.6vw,44px) + 36px)", top: "calc(72px + 3vh)", display: "flex", flexDirection: "column", gap: "7px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: w.ink, pointerEvents: "none" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: w.accent, animation: "iv-blink 1.6s steps(2) infinite" }}></span>
@@ -33,16 +35,7 @@ export default function WorldsView({ v }: { v: V }) {
             </div>
           </div>
           <a data-s-label="" href={w.href} onMouseEnter={v.beep} style={{ position: "absolute", top: "47%", right: v.labelRight, marginTop: "-.7em", display: "flex", flexDirection: "column", alignItems: "flex-start", textDecoration: "none", fontWeight: "700", fontSize: "clamp(14px,1.15vw,19px)", letterSpacing: ".02em", textTransform: "uppercase", color: w.ink, zIndex: "3" }}>
-            <span aria-hidden="true" style={{ position: "absolute", left: "-6px", bottom: "calc(100% + 18px)", width: "112px", height: "112px", pointerEvents: "none" }}>
-              <span style={{ position: "absolute", inset: "0", animation: "iv-spin 26s linear infinite" }}>
-                <svg viewBox="0 0 200 200" style={{ width: "100%", height: "100%", overflow: "visible" }}>
-                  <defs><path id={"seal-" + w.key} d="M100 100m-80 0a80 80 0 1 1 160 0a80 80 0 1 1 -160 0"></path></defs>
-                  <circle cx="100" cy="100" r="60" fill="none" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 6"></circle>
-                  <text style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "3.5px", fill: "currentColor" }}><textPath href={"#seal-" + w.key}>{w.sealText}</textPath></text>
-                </svg>
-              </span>
-              <Sparkle style={{ position: "absolute", left: "50%", top: "50%", width: "26px", height: "26px", margin: "-13px 0 0 -13px", color: w.accent }} />
-            </span>
+
             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>Explore <span style={{ width: "28px", height: "2px", background: w.accent }}></span></span>
             <small style={{ marginTop: "8px", fontWeight: "500", fontSize: "11px", letterSpacing: ".25em", opacity: ".8" }}>{w.category}</small>
           </a>
@@ -50,8 +43,14 @@ export default function WorldsView({ v }: { v: V }) {
             <div data-s-rot="" onClick={w.onExplore} style={{ position: "absolute", inset: "0", cursor: "pointer" }}>
               <img data-spin="140" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
             </div>
-            <div data-s-astro="" style={{ position: "absolute", left: "0", right: "0", bottom: w.astroBottom, height: w.astroH, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-              <img src={w.astro} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))" }} />
+            <div data-s-astro="" style={{ position: "absolute", left: "0", right: "0", bottom: w.astroBottom, height: w.astroH, display: "flex", justifyContent: "center", alignItems: "flex-end", pointerEvents: "none" }}>
+              {w.astro && (wI === 0 ? (
+                <div data-orbit-fast="" data-arc-orbit="85" data-dur="35" style={{ height: "100%", width: "100%", display: "flex", justifyContent: "center", alignItems: "flex-end", transformOrigin: `50% calc(100% + min(56vw, 75vh) - ${w.astroSit ? '7vh' : '3.5vh'})` }}>
+                  <img src={w.astro} alt="" style={{ height: "45%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))" }} />
+                </div>
+              ) : (
+                <img src={w.astro} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))", ...w.astroStyle }} />
+              ))}
             </div>
           </div>
         </article>
