@@ -91,9 +91,8 @@ export default function DetailView({ v }: { v: V }) {
                   <OrbitBackdrop top="30%" />
                 </div>
                 <div data-speed="-0.14" style={{ position: "absolute", left: "calc(50% - max(47vw, 60vh) / 2)", top: "calc(77% - max(47vw, 60vh) * 1.329)", width: "max(47vw, 60vh)", pointerEvents: "none" }}>
-                  <div data-depth=".25" style={{ position: "relative", width: "62%", margin: "28% auto 0", aspectRatio: "1" }}>
-                    <img data-spin="220" src="/assets/planet-yellow.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
-                    <span style={{ position: "absolute", left: "-38%", top: "38%", width: "176%", height: "24%", borderRadius: "50%", border: "2px solid rgba(20,19,18,.55)", transform: "rotate(-14deg)", boxShadow: "0 0 0 10px rgba(20,19,18,.06)" }}></span>
+                  <div data-depth=".25" style={{ position: "relative", width: "110%", margin: "4% 0 0 -5%", aspectRatio: "1" }}>
+                    <img src="/assets/planet-ringed.webp" alt="" style={{ width: "100%", height: "100%", transform: "rotate(6deg)", filter: MONO, animation: "iv-drift 9s ease-in-out infinite" }} />
                   </div>
                 </div>
                 <div data-speed="-0.22" aria-hidden="true" style={{ position: "absolute", right: "max(9%, 40px)", top: "17%", height: "min(30vh, 290px)", pointerEvents: "none" }}>
@@ -131,17 +130,17 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
                 <div data-speed="-0.16" style={{ position: "absolute", left: "calc(50% - max(37vw, 52vh) / 2.4)", top: "calc(38% - max(37vw, 52vh) * 1.0625)", width: "max(37vw, 52vh)", pointerEvents: "none" }}>
                   <div data-depth=".15" style={{ position: "relative", aspectRatio: "1" }}>
-                    <img data-spin="260" src="/assets/planet-yellow.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
+                    <img src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
                     <span style={{ position: "absolute", inset: "-14%", borderRadius: "50%", border: "1px dashed rgba(20,19,18,.4)" }}></span>
                   </div>
                 </div>
                 <div data-speed="-0.1" style={{ position: "absolute", right: "-4%", top: "-6%", width: "min(34vw, 560px)", opacity: ".9", pointerEvents: "none" }}>
                   <div data-depth=".3" style={{ width: "38%", marginLeft: "40%", aspectRatio: "1" }}>
-                    <img data-spin="180" src="/assets/planet-blue.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
+                    <img data-spin="180" src="/assets/moon-cratered.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
                   </div>
                 </div>
                 <div data-speed="-0.1" style={{ position: "absolute", right: "10%", top: "-12%", height: "88%", pointerEvents: "none" }}>
-                  <img src="/assets/moon.webp" alt="" data-depth=".35" style={{ height: "16%", width: "auto", marginTop: "60vh", filter: MONO }} />
+                  <div data-depth=".35" style={{ height: "18%", marginTop: "60vh" }}><img data-spin="90" src="/assets/asteroid.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO }} /></div>
                 </div>
               </>
             )}

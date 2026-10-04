@@ -17,6 +17,7 @@ export default function MenuOverlay({ v }: { v: V }) {
           ))}
         </nav>
         <div style={{ position: "relative", display: "flex", gap: "28px", marginTop: "36px", fontWeight: "500", fontSize: "14px", letterSpacing: ".14em" }}>
+          {!v.showLogin && <a href="#login" onClick={v.menuLogin} style={{ color: "#ECE8DF", textDecoration: "none" }}>{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
           <a href="#about" onClick={v.openAbout} style={{ color: "#ECE8DF", textDecoration: "none" }}>ABOUT</a>
           <a href="https://www.instagram.com/" target="_blank" rel="noopener" style={{ color: "#ECE8DF", textDecoration: "none" }}>INSTAGRAM</a>
         </div>

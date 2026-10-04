@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
 import { Sparkle } from './icons';
 import { CornerFrame } from './decor';
+import Sponsors from './Sponsors';
 import ImageSlot from './ImageSlot';
 import { LiveFooter } from './SiteFooter';
 import type { V } from './types';
@@ -21,12 +22,12 @@ export default function HomeView({ v }: { v: V }) {
               </div>
               <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .71)", top: "calc(53% - min(84vh, 72vw) * .71)", width: "calc(min(84vh, 72vw) * 1.42)", height: "calc(min(84vh, 72vw) * 1.42)", border: "1px dashed rgba(20,19,18,.4)", borderRadius: "50%" }}>
                 <div data-orbit="" data-dur="120" data-start="232" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/moon.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "8vh", height: "auto", margin: "-4vh 0 0 -4vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img src="/assets/asteroid.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "11vh", height: "auto", margin: "-5.5vh 0 0 -5.5vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
               <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .89)", top: "calc(53% - min(84vh, 72vw) * .89)", width: "calc(min(84vh, 72vw) * 1.78)", height: "calc(min(84vh, 72vw) * 1.78)", border: "1px dotted rgba(20,19,18,.5)", borderRadius: "50%" }}>
                 <div data-orbit="" data-dur="200" data-start="318" data-rev="1" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/planet-yellow.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "14vh", height: "14vh", margin: "-7vh 0 0 -7vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img src="/assets/planet-ringed.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "24vh", height: "24vh", margin: "-12vh 0 0 -12vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
             </div>
@@ -52,10 +53,8 @@ export default function HomeView({ v }: { v: V }) {
             ))}
             <div data-depth=".6" style={{ position: "absolute", left: "-14vh", bottom: "-26vh", width: "60vh", height: "60vh", pointerEvents: "none" }}>
               <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
-                {/* The loop turns a wrapper so the image filter is rastered once, not re-applied every frame. */}
-                <div data-spin="320" style={{ width: "100%", height: "100%" }}>
-                  <img src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
-                </div>
+                {/* The storm texture is lit from one side, so it holds still instead of spinning. */}
+                <img src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
               </div>
             </div>
             <div data-depth=".4" style={{ position: "absolute", right: "clamp(12px,5vw,110px)", bottom: "max(7vh, 48px)", width: "38vh", height: "38vh", display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
@@ -96,16 +95,15 @@ export default function HomeView({ v }: { v: V }) {
                 </div>
               </div>
             </div>
-            <div data-h-scroll="" style={{ position: "absolute", left: "calc(50% - 38px)", bottom: "max(14px, calc(47% - min(84vh, 72vw) / 2 + 10px))", width: "76px", height: "76px", color: "#fff", mixBlendMode: "difference", pointerEvents: "none" }}>
-              <span style={{ position: "absolute", inset: "0", animation: "iv-spin 18s linear infinite" }}>
-                <svg viewBox="0 0 200 200" style={{ width: "100%", height: "100%", overflow: "visible" }}>
-                  <defs><path id="h-seal" d="M100 100m-80 0a80 80 0 1 1 160 0a80 80 0 1 1 -160 0"></path></defs>
-                  <text style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "3px", fill: "currentColor" }}><textPath href="#h-seal">SCROLL TO EXPLORE · SCROLL TO EXPLORE · </textPath></text>
-                </svg>
-              </span>
-              <svg viewBox="0 0 24 24" style={{ position: "absolute", left: "50%", top: "50%", width: "22px", height: "22px", margin: "-11px 0 0 -11px", animation: "iv-nudge 1.8s ease-in-out infinite" }}>
-                <path d="M12 4v15M6 13l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path>
+            {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on. */}
+            <div style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", display: "flex", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
+            <button data-h-scroll="" type="button" onClick={v.scrollNext} onMouseEnter={v.beep} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
+              <svg viewBox="0 0 16 24" aria-hidden="true" style={{ width: "15px", height: "23px", overflow: "visible" }}>
+                <rect x="1" y="1" width="14" height="22" rx="7" fill="none" stroke="currentColor" strokeWidth="1.6"></rect>
+                <circle data-scroll-wheel="" cx="8" cy="7" r="1.9" fill="currentColor"></circle>
               </svg>
+              <span>SCROLL TO EXPLORE</span>
+            </button>
             </div>
             <CornerFrame color="rgba(20,19,18,.5)">
               <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", fontSize: "11px", fontWeight: "700", letterSpacing: ".3em", color: "#141312" }}>22.2533° N · 84.9011° E · NIT ROURKELA</span>
@@ -241,20 +239,8 @@ export default function HomeView({ v }: { v: V }) {
             </div>
             <p style={{ maxWidth: "380px", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>The brands fuelling Innovision 2026. Full line-up announced closer to launch.</p>
           </header>
-          <div data-reveal="" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,220px),1fr))", gap: "1px", background: "rgba(20,19,18,.18)", border: "1px solid rgba(20,19,18,.18)" }}>
-            <div style={{ gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "24px 48px", padding: "clamp(24px,4vw,48px)", background: "#ECE8DF" }}>
-              <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}>TITLE SPONSOR</span>
-              <div style={{ flex: "1 1 280px", maxWidth: "520px", aspectRatio: "4 / 1" }}>
-                <ImageSlot attract=".06" id="sponsor-title" shape="rect" fit="contain" placeholder="Title sponsor logo" />
-              </div>
-            </div>
-            {v.sponsors.map((sp, spI) => (
-              <div key={spI} style={{ aspectRatio: "3 / 2", padding: "14%", background: "#ECE8DF" }}>
-                <ImageSlot attract=".18" id={sp.id} shape="rect" fit="contain" placeholder="Partner logo" />
-              </div>
-            ))}
-          </div>
-          <div data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "20px", marginTop: "40px" }}>
+          <Sponsors v={v} />
+          <div data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "20px", marginTop: "clamp(48px,7vh,72px)", paddingTop: "28px", borderTop: "1px solid rgba(20,19,18,.14)" }}>
             <p style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(22px,2.2vw,32px)" }}>Want your brand in orbit?</p>
             <a data-magnet="" href="#sponsor" onClick={v.sponsorCta} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)", color: "#ECE8DF", background: "#141312" }} className="hv-bronze-fill">
               <span data-scr="">BECOME A SPONSOR</span>
@@ -289,7 +275,7 @@ export default function HomeView({ v }: { v: V }) {
       <section data-launch-sec="" style={{ position: "relative", overflow: "hidden", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(260px,40vh,420px)", textAlign: "center", background: "#ECE8DF" }}>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "100%", width: "220vmax", height: "220vmax", margin: "-110vmax 0 0 -110vmax", borderRadius: "50%", background: "repeating-conic-gradient(from 0deg,rgba(20,19,18,.09) 0deg .5deg,transparent .5deg 5deg)", WebkitMaskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", maskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", pointerEvents: "none" }}></div>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", bottom: "calc(min(130vw, 1700px) * -.8)", width: "min(130vw, 1700px)", aspectRatio: "1", marginLeft: "calc(min(130vw, 1700px) / -2)", pointerEvents: "none" }}>
-          <img data-spin="480" src="/assets/planet-yellow.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+          <img data-spin="480" src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
         </div>
         <div data-launch="" aria-hidden="true" style={{ position: "absolute", right: "clamp(20px,11vw,220px)", bottom: "16%", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none" }}>
           <img src="/assets/spaceship.webp" alt="" style={{ height: "min(34vh, 320px)", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.2))" }} />

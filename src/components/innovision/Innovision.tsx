@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
+/* eslint-disable @typescript-eslint/no-explicit-any -- view-model is dynamically constructed and consumed across many child views */
+/* eslint-disable @typescript-eslint/no-unused-vars -- some destructured vars are kept for future use */
 // @ts-nocheck
 'use client';
 
@@ -8,13 +11,14 @@ import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import type { Howl } from 'howler';
 import {
   A, WORLDS, PRELOAD, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
-  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, inr, type Product, type WorldKey,
+  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
 } from './data';
 import HomeView from './HomeView';
 import WorldsView from './WorldsView';
 import DetailView from './DetailView';
 import GalleryView from './GalleryView';
 import MerchView from './MerchView';
+import ScheduleView from './ScheduleView';
 import Hud from './Hud';
 import WorldNav from './WorldNav';
 import Curtain from './Curtain';
@@ -25,6 +29,7 @@ import BagPanel from './BagPanel';
 import CartPill from './CartPill';
 import Toast from './Toast';
 import Cursor from './Cursor';
+import WorldHint from './WorldHint';
 import Loader from './Loader';
 import { LiveV } from './SiteFooter';
 import type { V } from './types';
@@ -38,17 +43,19 @@ type PureProps = { v: V; deps: readonly unknown[] };
  */
 const pure = (View: ComponentType<{ v: V }>) => memo(function Pure({ v }: PureProps) { return <View v={v} />; },
   (a, b) => a.deps.length === b.deps.length && a.deps.every((d, k) => Object.is(d, b.deps[k])));
-const HomeV = pure(HomeView), WorldsV = pure(WorldsView), DetailV = pure(DetailView), GalleryV = pure(GalleryView), MerchV = pure(MerchView), LoaderV = pure(Loader);
+const HomeV = pure(HomeView), WorldsV = pure(WorldsView), DetailV = pure(DetailView), GalleryV = pure(GalleryView), MerchV = pure(MerchView), ScheduleV = pure(ScheduleView), LoaderV = pure(Loader);
 
-type ViewName = 'loading' | 'home' | 'worlds' | 'detail' | 'gallery' | 'merch';
+type ViewName = 'loading' | 'home' | 'worlds' | 'detail' | 'gallery' | 'merch' | 'schedule';
 type Route = { view: Exclude<ViewName, 'loading'>; index: number; section?: string };
 /** A bag line: product id, colour index (-1 if none), size ('' if none), quantity. */
 type BagLine = { id: string; key: string; c: number; s: string; qty: number };
 type Sel = { color?: number; size?: string };
 type MusicKey = 'home' | WorldKey;
 type Track = { h: Howl; vol: number; seek?: number; started?: boolean; waiting?: boolean };
-type SlideParts = { hero: HTMLElement | null; rot: HTMLElement | null; astro: HTMLElement | null; outline: HTMLElement | null; labels: HTMLElement[] };
+type SlideParts = { hero: HTMLElement | null; rot: HTMLElement | null; astro: HTMLElement[]; link: HTMLElement[]; outline: HTMLElement | null; labels: HTMLElement[] };
 type El = HTMLElement & { _tw?: gsap.core.Tween };
+/** Schedule timeline parts; each node remembers whether it is lit. */
+type SchedParts = { list: HTMLElement; rows: HTMLElement[]; nodes: (HTMLElement & { _on?: boolean })[]; fill: HTMLElement; rocket: HTMLElement };
 type Attracted = HTMLElement & { _a: { x: number; y: number; tx: number; ty: number; s: number; on: boolean } };
 
 interface Props {
@@ -56,6 +63,12 @@ interface Props {
   loaderSeconds?: number;
   startMuted?: boolean;
   skipLoader?: boolean;
+  /** Google OAuth client ID for "Continue with Google" (defaults to NEXT_PUBLIC_GOOGLE_CLIENT_ID). */
+  googleClientId?: string;
+  /** Flagship rover stops to take a sample and look around (true) or drives a steady loop (false). */
+  roverPauses?: boolean;
+  /** Flagship rover driving speed multiplier (min .25). */
+  roverSpeed?: number;
 }
 
 interface State {
@@ -63,24 +76,43 @@ interface State {
   view: ViewName; index: number; dIndex: number; muted: boolean; about: boolean; compact: boolean; narrow: boolean;
   menu: boolean; toastOn: boolean; toastMsg: string; curtainLabel: string; curtainKicker: string;
   gIdx: number; sel: Record<string, Sel>; bag: BagLine[]; bagOpen: boolean; added: string | null;
+  /** Schedule: selected day index, filter ('all' | 'saved' | world index as a string), starred event ids. */
+  schedDay: number; schedFilter: string; saved: string[];
+  /** The active page has scrolled under the HUD, which then sits on a frosted bar. */
+  hudSolid: boolean;
+  /** Continue with Google: popup in progress, the last problem to show, and the account it returned. */
+  gBusy: boolean; gErr: string; gUser: { name: string; email: string } | null;
+  /** First-visit guide on the worlds slider is showing; coarse: touch-first device (hint wording). */
+  hint: boolean; coarse: boolean;
 }
 
 const BAG_KEY = 'innovisionCart';
+const SAVED_KEY = 'iv26-schedule-saved';
+const HINT_KEY = 'iv26-hint-worlds';
 
 const parts = (s: Element): SlideParts => ({
   hero: s.querySelector<HTMLElement>('[data-s-hero]'), rot: s.querySelector<HTMLElement>('[data-s-rot]'),
-  astro: s.querySelector<HTMLElement>('[data-s-astro]'), outline: s.querySelector<HTMLElement>('[data-s-outline]'),
+  // The flagship rover enters and leaves with the astronaut.
+  astro: [s.querySelector<HTMLElement>('[data-s-astro]'), s.querySelector<HTMLElement>('[data-rover]')].filter((el): el is HTMLElement => !!el), outline: s.querySelector<HTMLElement>('[data-s-outline]'),
   labels: [...s.querySelectorAll<HTMLElement>('[data-s-label]')],
+  // The uplink's waves wait until the planet has swung into place.
+  link: [...s.querySelectorAll<HTMLElement>('[data-s-link]')],
 });
-const partList = (p: SlideParts) => [p.hero, p.rot, p.astro, p.outline, ...p.labels];
+const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.labels, ...p.link];
 
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null as any, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null };
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null as any, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
+  // flagship rover ticker; _rvReseq is set when roverPauses changes so the drive sequence is rebuilt
+  _rvTick: ((time: number, dms: number) => void) | null = null; _rvReseq = false;
+  // schedule timeline: measured list parts, pending scroll frame, day/filter swap in progress
+  _sc: SchedParts | null = null; _scRaf = 0; _dayBusy = false;
+  // new-visitor guidance: the worlds guide has been seen/dismissed, and its delayed appearance
+  hintSeen = false; _hintT?: ReturnType<typeof setTimeout>;
   /** Home section to scroll to once the home view has been prepared. */
   pendingSec: string | null = null;
 
@@ -140,7 +172,10 @@ export default class Innovision extends Component<Props, State> {
     try { const v = localStorage.getItem('innovisionMuted'); if (v !== null) m = v === 'true'; } catch {}
     let bag: BagLine[] = [];
     try { bag = JSON.parse(localStorage.getItem(BAG_KEY) || '[]') || []; } catch {}
-    this.setState({ muted: m, bag, compact: innerWidth < 1100, narrow: innerWidth < 720 });
+    let saved: string[] = [];
+    try { const sv = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); if (Array.isArray(sv)) saved = sv; } catch {}
+    try { this.hintSeen = localStorage.getItem(HINT_KEY) === '1'; } catch {}
+    this.setState({ muted: m, bag, saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
     // Resize work forces layout (title fit, map panels), so it runs at most once per frame.
     let rz = 0;
     this.listen(window, 'resize', () => {
@@ -151,6 +186,7 @@ export default class Innovision extends Component<Props, State> {
         if (c !== this.state.compact || n !== this.state.narrow) this.setState({ compact: c, narrow: n }, () => { if (this.state.view === 'detail') this.setupDetailScroll(true); });
         this.fitTitle();
         if (this.ctx) this.openMap(this.mapOpen);
+        if (this.state.view === 'schedule') this.schedMeasure();
       });
     });
     this.cleanups.push(() => cancelAnimationFrame(rz));
@@ -159,7 +195,8 @@ export default class Innovision extends Component<Props, State> {
 
   componentWillUnmount() {
     this.alive = false;
-    clearTimeout(this._toast); clearTimeout(this._added);
+    clearTimeout(this._toast); clearTimeout(this._added); clearTimeout(this._hintT);
+    cancelAnimationFrame(this._scRaf); this._scRaf = 0; this._sc = null; this._dayBusy = false;
     this.cleanups.splice(0).forEach((fn) => fn());
     this.io?.disconnect(); this.io = undefined; this.off.clear(); this.amb.clear();
     this.ctx?.revert();
@@ -191,9 +228,15 @@ export default class Innovision extends Component<Props, State> {
       this.syncLoops();
       this.parallax();
       this.magnet();
+      this.tapRipple();
       this.attract();
       this.homeScroll();
       this.galleryInit();
+      try { this.rover(); } catch (e) { console.warn('rover', e); }
+      // Scroll doesn't bubble, but a capturing listener on the root hears every view's scroller.
+      let hr = 0;
+      this.listen(R, 'scroll', () => { if (!hr) hr = requestAnimationFrame(() => { hr = 0; this.hudSync(); }); }, { capture: true, passive: true });
+      this.cleanups.push(() => cancelAnimationFrame(hr));
       this.smoothWheel(this.$('[data-d-scroller]'));
       this.listen(window, 'hashchange', () => this.route());
       this.listen(window, 'keydown', (e) => this.onKey(e as KeyboardEvent));
@@ -276,7 +319,122 @@ export default class Innovision extends Component<Props, State> {
     const w = this.$('[data-wave]') as El | null;
     if (w && !w._tw) { w._tw = gsap.to(w, { scaleY: .35, transformOrigin: 'center', duration: 1.1, ease: 'sine.inOut', repeat: -1, yoyo: true }); }
   }
-  componentDidUpdate() { if (this.ctx) this.waveLoop(); }
+  componentDidUpdate(pp: Props) { if (this.ctx) this.waveLoop(); if (pp.roverPauses !== this.props.roverPauses) this._rvReseq = true; }
+
+  /* ---------- flagship rover ---------- */
+  /**
+   * Drives the rover over the flagship planet from one throttled ticker: it follows a sequence of
+   * drives and parks (sample with the arm, look around), its rocker-bogie wheels ride a terrain
+   * profile fixed to the spinning planet, and the body, antenna whip, dish and dust react to speed.
+   * It only runs while its slide is visible (nothing above it is [data-idle]).
+   */
+  rover() {
+    const rig = this.$('[data-rover-rig]');
+    if (!rig || this._rvTick) return;
+    const svg = rig.querySelector('svg'), q = (s) => [...svg.querySelectorAll(s)], one = (s) => svg.querySelector(s);
+    const wheels = q('[data-rv-wheel]'), body = one('[data-rv-body]'), head = one('[data-rv-head]'), eyes = one('[data-rv-eyes]'), whip = one('[data-rv-whip]'), dust = q('[data-rv-dust] circle');
+    const dish = one('[data-rv-dish]'), arm = one('[data-rv-arm]'), spark = one('[data-rv-spark]'), beam = one('[data-rv-beam]');
+    const wpos = q('[data-rv-wpos]').map((g) => { const [x, y] = g.getAttribute('data-rv-wpos').split(' ').map(Number); return { g, x, y, d: 0 }; });
+    const linkB = q('[data-rv-link="b"]'), linkF = q('[data-rv-link="f"]'), pR = q('[data-rv-piv="r"]'), pB = q('[data-rv-piv="b"]'), pM = q('[data-rv-piv="m"]');
+    const planet = rig.closest('[data-s-rot]').querySelector('[data-spin]');
+    const WHEEL = 33.3, RAD = 800, DEG = 180 / Math.PI;
+    const E = { out: (p) => 1 - (1 - p) * (1 - p), in: (p) => p * p, inOut: (p) => .5 - Math.cos(Math.PI * p) / 2, none: (p) => p };
+    const seq = () => (this.props.roverPauses ?? true)
+      ? [{ to: -32, d: 7, e: 'out' }, { park: 4.8, arm: true }, { to: 34, d: 10, e: 'inOut' }, { park: 4.6, look: -13 }, { to: 86, d: 7, e: 'in' }, { jump: -86 }]
+      : [{ to: 86, d: 24, e: 'none' }, { jump: -86 }];
+    // surface relief, fixed to the planet: small ripples plus a rock every ~19 degrees
+    const terr = (a) => { const r = a / DEG; return 2.2 * Math.sin(r * 57) + 1.3 * Math.sin(r * 131 + 1.3) + 7.5 * Math.pow(Math.max(0, Math.sin(r * 19 + .4)), 14); };
+    let steps = seq(), step = 0, t = 0, th = -62, from = th, wheel = 0, dist = 0, v = 0, aS = 0, wA = 0, wV = 0, pA = 0, pV = 0, lastSpin = null, nextBlink = 2.5, acc = 0;
+    const H = { svgOrigin: '230.5 28' }, AR = { svgOrigin: '272 112' };
+    const blink = () => gsap.fromTo(eyes, { scaleY: 1 }, { scaleY: .12, svgOrigin: '244 16.5', duration: .07, yoyo: true, repeat: 1, ease: 'power1.in' });
+    const look = (a) => gsap.timeline()
+      .to(head, { ...H, rotation: a, duration: .8, ease: 'power2.inOut' })
+      .to(beam, { opacity: .85, duration: .35 }, .45)
+      .to(beam, { opacity: .4, duration: .07, repeat: 3, yoyo: true, ease: 'none' }, .85)
+      .add(blink, '+=.3')
+      .to(head, { ...H, rotation: a * -.45, duration: 1, ease: 'power2.inOut' }, '+=.45')
+      .to(head, { ...H, rotation: 0, duration: .7, ease: 'power2.inOut' }, '+=.35')
+      .to(beam, { opacity: 0, duration: .4 }, '<');
+    const sample = () => gsap.timeline()
+      .to(head, { ...H, rotation: 12, duration: .7, ease: 'power2.inOut' }, .2)
+      .to(arm, { ...AR, rotation: -38, duration: 1.1, ease: 'back.out(1.6)' }, .3)
+      .to(beam, { opacity: .8, duration: .25 }, 1.15)
+      .set(spark, { opacity: 1 }, 1.45)
+      .to(arm, { ...AR, rotation: -35.5, duration: .05, repeat: 15, yoyo: true, ease: 'none' }, 1.45)
+      .set(spark, { opacity: 0 }, 2.3)
+      .to(beam, { opacity: 0, duration: .3 }, 2.4)
+      .add(blink, 2.6)
+      .to(arm, { ...AR, rotation: 0, duration: 1, ease: 'power3.inOut' }, 2.9)
+      .to(head, { ...H, rotation: 0, duration: .8, ease: 'power2.inOut' }, 3.1);
+    const next = () => {
+      if (this._rvReseq) { this._rvReseq = false; steps = seq(); step = steps.findIndex((s) => s.to > th + 1); if (step < 0) step = steps.length - 1; }
+      else step = (step + 1) % steps.length;
+      t = 0; from = th;
+      if (steps[step].look) look(steps[step].look);
+      if (steps[step].arm) sample();
+    };
+    gsap.set(wheels, { clearProps: 'all' });
+    const f = (n) => n.toFixed(2);
+    const lk = (a, b, c) => { const bo = (a + b) / 2, ro = (bo + c) / 2; return [bo, ro, ro * .4 + c * .6]; };
+    const tick = (time, dms) => {
+      if (rig.closest('[data-idle]') || document.hidden) { lastSpin = null; return; }
+      // ~33 fps is plenty for this small figure and roughly halves its attribute writes
+      acc += dms;
+      if (acc < 30) return;
+      const dt = Math.min(.08, acc / 1000); acc = 0;
+      const spin = Number(gsap.getProperty(planet, 'rotation')) || 0, dSpin = lastSpin == null ? 0 : spin - lastSpin;
+      lastSpin = spin;
+      if (this._rvReseq && steps[step].park == null) next();
+      const s = steps[step], prev = th;
+      const sp = Math.max(.25, +(this.props.roverSpeed ?? 1) || 1);
+      if (s.jump != null) { th = s.jump; next(); }
+      else if (s.park != null) { th += dSpin; t += dt; if (t >= s.park) next(); }
+      else { t += dt * sp; const p = Math.min(1, t / s.d); th = from + (s.to - from) * E[s.e](p); if (p >= 1) next(); }
+      const rel = s.jump != null ? 0 : (th - prev) - dSpin;
+      const nv = rel / dt, a = (nv - v) / dt; v = nv;
+      aS += (a - aS) * .08;
+      wheel += (s.park != null ? 0 : rel) * WHEEL;
+      dist += Math.abs(rel);
+      const k = Math.min(1, Math.abs(v) / 7);
+      rig.style.transform = 'rotate(' + th.toFixed(3) + 'deg)';
+      const wt = 'rotate(' + wheel.toFixed(2) + ')';
+      for (const w of wheels) w.setAttribute('transform', wt);
+      // rocker-bogie: every wheel rides the relief, links and pivots follow
+      const srf = th - spin;
+      for (const w of wpos) { w.d = -terr(srf + (w.x - 160) / RAD * DEG); w.g.setAttribute('transform', 'translate(' + w.x + ' ' + f(w.y + w.d) + ')'); }
+      const [b1, b2, b3, f1, f2, f3] = wpos.map((w) => w.d), [bb, rb, mb] = lk(b1, b2, b3), [bf, rf, mf] = lk(f1, f2, f3);
+      const dB = 'M70 ' + f(189 + b1) + 'L116 ' + f(153 + bb) + 'L164 ' + f(183 + b2) + 'M116 ' + f(153 + bb) + 'L188 ' + f(125 + rb) + 'L248 ' + f(143 + mb) + 'L270 ' + f(190 + b3);
+      const dF = 'M58 ' + f(196 + f1) + 'L104 ' + f(160 + bf) + 'L152 ' + f(190 + f2) + 'M104 ' + f(160 + bf) + 'L176 ' + f(132 + rf) + 'L236 ' + f(150 + mf) + 'L258 ' + f(197 + f3);
+      for (const p of linkB) p.setAttribute('d', dB);
+      for (const p of linkF) p.setAttribute('d', dF);
+      for (const c of pR) c.setAttribute('cy', f(132 + rf));
+      for (const c of pB) c.setAttribute('cy', f(160 + bf));
+      for (const c of pM) c.setAttribute('cy', f(150 + mf));
+      // body: follows the rockers, pitches with terrain, squats on accel and dips on braking (spring)
+      const tilt = Math.atan2(((f3 + b3) - (f1 + b1)) / 2, 200) * DEG;
+      const pT = Math.max(-7, Math.min(7, tilt - aS * .35));
+      pV += ((pT - pA) * 70 - pV * 9) * dt; pA += pV * dt;
+      const bob = (Math.sin(dist * 1.9) * 1.1 + Math.sin(dist * 4.7) * .5) * k;
+      body.setAttribute('transform', 'translate(0 ' + f((rf + rb) / 2 + bob) + ') rotate(' + f(pA) + ' 176 132)');
+      const target = Math.max(-18, Math.min(18, -aS * 1.6 - pV * .4 + Math.sin(dist * 2.2) * 3 * k));
+      wV += ((target - wA) * 90 - wV * 9) * dt; wA += wV * dt;
+      whip.setAttribute('transform', 'rotate(' + f(wA) + ' 96 85)');
+      if (dish) dish.setAttribute('transform', 'rotate(' + f(Math.sin(time * .7) * 16 + Math.sin(time * 1.9) * 3) + ' 118 66)');
+      const now = time * 1.7;
+      dust.forEach((c, i) => {
+        const p = (now + i / dust.length) % 1;
+        c.setAttribute('cx', (32 - p * 40).toFixed(1));
+        c.setAttribute('cy', (217 - p * 18 - (i % 2) * 5 + f1).toFixed(1));
+        c.setAttribute('r', (2.5 + p * 9).toFixed(1));
+        c.setAttribute('opacity', ((1 - p) * k * .9).toFixed(2));
+      });
+      nextBlink -= dt;
+      if (nextBlink <= 0) { nextBlink = 3 + Math.random() * 4; blink(); }
+    };
+    this._rvTick = tick;
+    gsap.ticker.add(tick);
+    this.cleanups.push(() => { gsap.ticker.remove(tick); this._rvTick = null; });
+  }
 
   /* ---------- sound ---------- */
   sound() {
@@ -426,6 +584,7 @@ export default class Innovision extends Component<Props, State> {
   async prepView(to: Route) {
     if (to.view === 'home') { gsap.set(this.$('[data-hero-disc]'), { autoAlpha: 1, scale: 1 }); this.$('[data-view="home"]')!.scrollTop = 0; }
     else if (to.view === 'merch') this.$('[data-view="merch"]')!.scrollTop = 0;
+    else if (to.view === 'schedule') this.$('[data-view="schedule"]')!.scrollTop = 0;
     else if (to.view === 'gallery') { this.gZ = -2600; this.gTarget = -2600; }
     else { await this.setSlide(to.index); if (to.view === 'detail') await this.prepDetail(to.index); }
     await this.showView(to.view);
@@ -433,8 +592,10 @@ export default class Innovision extends Component<Props, State> {
   enterView(to: Route): gsap.core.Timeline {
     if (to.view === 'home') { this.playMusic('home'); return this.homeEnter(); }
     if (to.view === 'gallery') { this.playMusic('touchdown'); return this.galleryEnter(); }
+    if (to.view === 'schedule') { this.playMusic('home'); return this.schedEnter(); }
     if (to.view === 'merch') { this.playMusic('home'); return gsap.timeline().fromTo(this.$$('[data-view="merch"] [data-m-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .06 }, .1); }
     this.playMusic(WORLDS[to.index].music);
+    if (to.view === 'worlds') this.queueHint();
     return to.view === 'detail' ? this.detailEnter() : this.worldsEnter(to.index);
   }
 
@@ -600,6 +761,14 @@ export default class Innovision extends Component<Props, State> {
     // The detail scene is rendered per world: start its loops and drop the previous world's.
     this.ctx?.add(() => this.loops());
     this.syncLoops();
+    this.hudSync();
+  }
+  /** Puts the HUD on its frosted bar once the active view's page has scrolled under it. */
+  hudSync() {
+    const v = this.state.view;
+    const sc = v === 'detail' ? this.$('[data-d-scroller]') : v === 'home' || v === 'merch' || v === 'schedule' ? this.$('[data-view="' + v + '"]') : null;
+    const solid = !!sc && sc.scrollTop > 24;
+    if (solid !== this.state.hudSolid) this.setState({ hudSolid: solid });
   }
   clr(els: (HTMLElement | null)[]) { gsap.set(els.filter(Boolean), { clearProps: 'transform,opacity,visibility,filter,zIndex' }); }
   async setSlide(i: number) {
@@ -616,7 +785,9 @@ export default class Innovision extends Component<Props, State> {
       .fromTo(p.rot, { rotation: -30 }, { rotation: 0, duration: 2.4, ease: 'expo.out' }, 0)
       .fromTo(p.astro, { y: -innerHeight * .4, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 1.8, ease: 'expo.out' }, .35)
       .fromTo(p.outline, { autoAlpha: 0 }, { autoAlpha: 1, duration: 1.4 }, .3)
-      .fromTo(p.labels, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'expo.out', stagger: .1 }, .7);
+      .fromTo(p.labels, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'expo.out', stagger: .1 }, .7)
+      .fromTo(p.link, { autoAlpha: 0 }, { autoAlpha: 1, duration: 1 }, 1.5)
+      .add(() => this.coach(i), 1.7);
   }
   slideTo(to: number, dir: number) {
     const g = gsap, sl = this.$$('[data-slide]'), from = this.state.index;
@@ -633,13 +804,15 @@ export default class Innovision extends Component<Props, State> {
         .to(pa.hero, { x: -W * .7 * dir, yPercent: 12, duration: 1.3, ease: 'power3.inOut' }, 0)
         .to(pa.rot, { rotation: -70 * dir, duration: 1.3, ease: 'power3.inOut' }, 0)
         .to(pa.astro, { x: -W * .15 * dir, y: -H * .35, rotation: -25 * dir, autoAlpha: 0, duration: 1, ease: 'power3.in' }, 0)
-        .to([pa.outline, ...pa.labels], { autoAlpha: 0, duration: .5 }, 0)
+        .to([pa.outline, ...pa.labels, ...pa.link], { autoAlpha: 0, duration: .5 }, 0)
         .to(b, { autoAlpha: 1, duration: 1, ease: 'power2.inOut' }, .2)
         .fromTo(pb.hero, { x: W * .7 * dir, yPercent: 12 }, { x: 0, yPercent: 0, duration: 1.5, ease: 'expo.out' }, .55)
         .fromTo(pb.rot, { rotation: 70 * dir }, { rotation: 0, duration: 1.8, ease: 'expo.out' }, .55)
         .fromTo(pb.astro, { y: -H * .4, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 1.5, ease: 'expo.out' }, .95)
         .fromTo(pb.outline, { autoAlpha: 0 }, { autoAlpha: 1, duration: 1 }, .8)
-        .fromTo(pb.labels, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: .9, ease: 'expo.out', stagger: .08 }, 1);
+        .fromTo(pb.labels, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: .9, ease: 'expo.out', stagger: .08 }, 1)
+        .fromTo(pb.link, { autoAlpha: 0 }, { autoAlpha: 1, duration: .9 }, 1.7)
+        .add(() => this.coach(to), 1.9);
     });
   }
 
@@ -720,6 +893,137 @@ export default class Innovision extends Component<Props, State> {
     if (w > max) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * (max / w)) + 'px';
   }
 
+  /* ---------- new-visitor guidance ---------- */
+  /** Shows the worlds guide once the slide's entrance has played, unless this visitor has already seen it. */
+  queueHint() {
+    if (this.hintSeen) return;
+    clearTimeout(this._hintT);
+    this._hintT = setTimeout(() => { if (this.alive && this.state.view === 'worlds' && !this.hintSeen) this.setState({ hint: true }); }, 2600);
+  }
+  /** Touch has no hover, so a tap on a planet answers at once with a ripple from the finger before the curtain falls. */
+  tapRipple() {
+    const R = this.rootRef.current;
+    if (!R) return;
+    this.listen(R, 'pointerdown', (ev) => {
+      const e = ev as PointerEvent;
+      if (e.pointerType === 'mouse' || this.state.view !== 'worlds' || this.busy || this.reduce) return;
+      if (!(e.target as Element | null)?.closest?.('[data-s-rot]')) return;
+      const d = document.createElement('span');
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;z-index:55;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid #141312;box-shadow:0 0 0 3px rgba(236,232,223,.8),inset 0 0 0 3px rgba(236,232,223,.8);pointer-events:none';
+      R.appendChild(d);
+      gsap.fromTo(d, { scale: .3, opacity: 1 }, { scale: 2.6, opacity: 0, duration: .7, ease: 'expo.out', onComplete: () => d.remove() });
+    }, { passive: true });
+  }
+  /** Starts the touch tap demo on world k's Enter button, once its entrance has played (CSS ignores it on pointer devices). */
+  coach(k: number) { this.$$('[data-slide]')[k]?.querySelector('.cta-wrap')?.setAttribute('data-coach', ''); }
+  dismissHint = () => {
+    clearTimeout(this._hintT);
+    if (!this.hintSeen) { this.hintSeen = true; try { localStorage.setItem(HINT_KEY, '1'); } catch {} }
+    if (this.state.hint) this.setState({ hint: false });
+  };
+
+  /* ---------- schedule ---------- */
+  schedEnter() {
+    const v = this.$('[data-view="schedule"]')!;
+    return gsap.timeline({ onStart: () => this.schedMeasure() })
+      .fromTo(v.querySelectorAll('[data-sc-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .08 }, 0)
+      .fromTo(v.querySelectorAll('[data-sc-tab]'), { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'expo.out', stagger: .08 }, .2)
+      .fromTo(v.querySelector('[data-sc-planet]'), { scale: .8, rotation: -12, autoAlpha: 0 }, { scale: 1, rotation: 0, autoAlpha: 1, duration: 2, ease: 'expo.out' }, 0)
+      .fromTo(v.querySelectorAll('[data-sc-row]'), { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: .9, ease: 'expo.out', stagger: .05 }, .35);
+  }
+  /** Fades the list out, applies a day/filter change, then slides the new list in (dir: -1, 0 or 1). */
+  schedSwap(patch: Partial<State>, dir: number) {
+    if (this._dayBusy) return;
+    this._dayBusy = true;
+    this.play('thumpSoft');
+    const v = this.$('[data-view="schedule"]'), list = this.$('[data-sc-list]');
+    const out = [this.$('[data-sc-title]'), ...this.$$('[data-sc-row]')].filter(Boolean);
+    const go = () => this.setState(patch as State, () => {
+      this._dayBusy = false;
+      if (v && list && v.scrollTop > list.offsetTop) v.scrollTo({ top: Math.max(0, list.offsetTop - 220), behavior: 'smooth' });
+      this.schedIn(dir);
+    });
+    if (this.reduce) { go(); return; }
+    gsap.to(out, { autoAlpha: 0, x: dir ? -36 * dir : 0, y: dir ? 0 : -14, duration: .26, ease: 'power2.in', stagger: .012, overwrite: true, onComplete: go });
+  }
+  schedIn(dir: number) {
+    const title = this.$('[data-sc-title]'), rows = this.$$('[data-sc-row]');
+    (this._sc?.nodes || []).forEach((n) => { n._on = false; });
+    this.schedMeasure();
+    if (this.reduce) { gsap.set([title, ...rows], { autoAlpha: 1, x: 0, y: 0 }); return; }
+    gsap.fromTo(title, { autoAlpha: 0, x: 40 * dir, y: dir ? 0 : 16 }, { autoAlpha: 1, x: 0, y: 0, duration: .8, ease: 'expo.out' });
+    gsap.fromTo(rows, { autoAlpha: 0, x: 52 * dir, y: dir ? 0 : 24 }, { autoAlpha: 1, x: 0, y: 0, duration: .85, ease: 'expo.out', stagger: .04, delay: .05 });
+  }
+  pickDay(k: number) { const d = this.state.schedDay; if (k !== d) this.schedSwap({ schedDay: k }, k > d ? 1 : -1); }
+  pickFilter(f: string) { if (f !== this.state.schedFilter) this.schedSwap({ schedFilter: f }, 0); }
+  toggleSave(id: string, e?: MouseEvent<HTMLButtonElement>) {
+    const on = this.state.saved.includes(id), saved = on ? this.state.saved.filter((x) => x !== id) : [...this.state.saved, id];
+    this.play(on ? 'beep' : 'thumpSoft');
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch {}
+    const svg = e?.currentTarget?.querySelector('svg');
+    if (svg && !this.reduce) gsap.fromTo(svg, { scale: on ? .8 : .4, rotation: on ? 0 : -72 }, { scale: 1, rotation: 0, duration: .7, ease: 'elastic.out(1,.45)' });
+    this.setState({ saved }, () => { if (this.state.schedFilter === 'saved') this.schedMeasure(); });
+  }
+  schedMeasure() {
+    const list = this.$('[data-sc-list]'); if (!list) return;
+    this._sc = { list, rows: this.$$('[data-sc-list] article[data-sc-row]'), nodes: this.$$('[data-sc-node]'), fill: this.$('[data-sc-fill]'), rocket: this.$('[data-sc-rocket]') };
+    this.schedPaint();
+  }
+  schedScroll = () => { if (this._scRaf) return; this._scRaf = requestAnimationFrame(() => { this._scRaf = 0; this.schedPaint(); }); };
+  /** Fills the timeline and moves the rocket down to the reading line (62% of the viewport); passed nodes light up. */
+  schedPaint() {
+    const S = this._sc; if (!S || !S.list.isConnected) return;
+    const r = S.list.getBoundingClientRect(), H = Math.max(1, r.height), y = Math.max(0, Math.min(H, innerHeight * .62 - r.top));
+    S.fill.style.transform = 'scaleY(' + (y / H).toFixed(4) + ')';
+    S.rocket.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
+    S.rocket.style.opacity = y > 2 && y < H - 2 ? '1' : '0';
+    S.rows.forEach((row, i) => {
+      const n = S.nodes[i]; if (!n) return;
+      const on = row.offsetTop + 30 <= y;
+      if (n._on === on) return;
+      n._on = on;
+      if (this.reduce) { n.style.background = on ? 'oklch(0.8 0.12 85)' : '#ECE8DF'; return; }
+      gsap.to(n, { backgroundColor: on ? 'oklch(0.8 0.12 85)' : '#ECE8DF', scale: on ? 1.3 : 1, duration: on ? .55 : .3, ease: on ? 'back.out(3)' : 'power2.out' });
+    });
+  }
+  schedVals(s: State) {
+    const day = s.schedDay, f = s.schedFilter, list = SCHED[day].map((e, i) => ({ e, id: 'd' + (day + 1) + '-' + i }));
+    const rows = list.filter(({ e, id }) => f === 'all' || (f === 'saved' ? s.saved.includes(id) : e[3] === +f));
+    const fmt = (t: string) => { const [h, m] = t.split(':').map(Number); return [(h % 12 || 12) + ':' + String(m).padStart(2, '0'), h < 12 ? 'AM' : 'PM']; };
+    const dur = (m: number) => m >= 600 ? Math.round(m / 60) + ' HRS' : m >= 120 && m % 60 === 0 ? m / 60 + ' HRS' : m + ' MIN';
+    const names = ['FLAGSHIP', 'MAIN', 'DTS & FUN'];
+    const nar = s.narrow;
+    const chips = [['all', 'All', ''], ['0', 'Flagship', WORLDS[0].accent], ['1', 'Main', WORLDS[1].accent], ['2', 'DTS & Fun', WORLDS[2].accent], ['saved', 'Starred', '']].map(([k, label, dot]) => {
+      const n = k === 'all' ? list.length : k === 'saved' ? list.filter((x) => s.saved.includes(x.id)).length : list.filter((x) => x.e[3] === +k).length, on = f === k;
+      return { label, n: String(n), on, bg: on ? '#141312' : 'transparent', fg: on ? '#ECE8DF' : '#141312', dot: dot || 'transparent', dotD: dot ? 'block' : 'none', pick: () => this.pickFilter(k) };
+    });
+    return {
+      schedScroll: this.schedScroll,
+      schedDays: SCHED_DAYS.map(([theme, img], k) => {
+        const on = k === day;
+        return {
+          no: 'DAY ' + String(k + 1).padStart(2, '0'), theme, img: A + img, meta: nar ? SCHED[k].length + ' events' : SCHED[k].length + ' events · from ' + fmt(SCHED[k][0][0]).join(' '),
+          sel: on, o: on ? 1 : .55, ps: on ? 1.12 : .86, pr: on ? '-14deg' : '0deg', bar: on ? 1 : 0, barO: k > day ? 'left' : 'right', sep: k ? 'rgba(236,232,223,.18)' : 'transparent', imgD: nar ? 'none' : 'block',
+          pick: () => this.pickDay(k),
+        };
+      }),
+      schedKicker: 'DAY ' + String(day + 1).padStart(2, '0') + ' · ' + rows.length + (rows.length === 1 ? ' EVENT' : ' EVENTS'),
+      schedHeading: SCHED_DAYS[day][0],
+      schedDayName: 'Day ' + (day + 1),
+      schedChips: chips,
+      schedEmpty: !rows.length,
+      schedRows: rows.map(({ e, id }) => {
+        const [t, ap] = fmt(e[0]), on = s.saved.includes(id);
+        return { id, t, ap, dur: dur(e[1]), title: e[2], wn: names[e[3]], wc: WORLDS[e[3]].accent, venue: e[4], on, star: on ? 'oklch(0.8 0.12 85)' : 'transparent', aria: (on ? 'Remove ' : 'Star ') + e[2], toggle: (ev: MouseEvent<HTMLButtonElement>) => this.toggleSave(id, ev) };
+      }),
+      rowCols: nar ? '78px 26px minmax(0,1fr) 44px' : '132px 40px minmax(0,1fr) minmax(0,280px) 56px',
+      lineL: nar ? '91px' : '152px',
+      timeFs: nar ? '19px' : 'clamp(26px,2.4vw,34px)',
+      venueColD: nar ? 'none' : 'flex', venueInD: nar ? 'flex' : 'none',
+    };
+  }
+
   /* ---------- curtain ---------- */
   async curtain(kicker: string, label: string, { delay = 0, covered, reveal }: { delay?: number; covered?: () => Promise<void> | void; reveal?: () => void } = {}) {
     await this.set({ curtainKicker: kicker, curtainLabel: label });
@@ -746,7 +1050,7 @@ export default class Innovision extends Component<Props, State> {
     const f = WORLDS.findIndex((w) => w.slug === k || w.key === k), idx = this.state.index;
     if (v === 'worlds') return { view: 'worlds', index: f >= 0 ? f : idx };
     if (v === 'world' && f >= 0) return { view: 'detail', index: f };
-    if (v === 'gallery' || v === 'merch') return { view: v, index: idx };
+    if (v === 'gallery' || v === 'merch' || v === 'schedule') return { view: v, index: idx };
     if (v === 'sponsors') return { view: 'home', section: 'sponsors', index: idx };
     return { view: 'home', index: idx };
   }
@@ -761,13 +1065,14 @@ export default class Innovision extends Component<Props, State> {
     if (s.about || s.menu || s.bagOpen) this.setState({ about: false, menu: false, bagOpen: false });
     if (to.view === s.view && to.view === 'home') { if (to.section) this.scrollHome(to.section, true); return; }
     if (to.view === s.view && to.view === 'gallery') { this.gTarget = 0; return; }
-    if (to.view === s.view && (to.view === 'merch' || to.index === s.index)) return;
+    if (to.view === s.view && (to.view === 'merch' || to.view === 'schedule' || to.index === s.index)) return;
     this.busy = true;
     try { await this.transition(to); } finally { this.busy = false; this.slideDir = 0; }
     if (this.pending) { this.pending = false; this.route(); }
   }
   async transition(to: Route) {
     const from = this.state.view, w = WORLDS[to.index];
+    if (to.view === 'detail') this.dismissHint();
     if (to.view === 'home') {
       this.play('vanish');
       if (to.section) this.pendingSec = to.section;
@@ -782,7 +1087,7 @@ export default class Innovision extends Component<Props, State> {
       await this.slideTo(to.index, this.slideDir || (to.index > this.state.index ? 1 : -1));
       return;
     }
-    const label = to.view === 'worlds' ? 'THE WORLDS' : to.view === 'merch' ? 'THE STORE' : to.view === 'gallery' ? 'THE GALLERY' : w.name.toUpperCase();
+    const label = to.view === 'worlds' ? 'THE WORLDS' : to.view === 'merch' ? 'THE STORE' : to.view === 'gallery' ? 'THE GALLERY' : to.view === 'schedule' ? 'THE SCHEDULE' : w.name.toUpperCase();
     if (from === 'home') this.homeLeave(); else this.play('vanish');
     let tlIn: gsap.core.Timeline | undefined;
     await this.curtain('NOW ENTERING', label, {
@@ -804,6 +1109,7 @@ export default class Innovision extends Component<Props, State> {
   /* ---------- interaction ---------- */
   stepSlide(d: number) {
     if (this.busy || this.state.view !== 'worlds') return;
+    this.dismissHint();
     this.slideDir = d;
     this.go('#/worlds/' + WORLDS[(this.state.index + d + 3) % 3].slug, true);
   }
@@ -943,11 +1249,74 @@ export default class Innovision extends Component<Props, State> {
     if (this.state.about) this.setState({ about: false });
     this.openAuth('login', src);
   };
+  /* ---------- continue with google ---------- */
+  gClient() { return String(this.props.googleClientId || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim(); }
+  /** Loads Google Identity Services once. Started when the overlay opens so a click can open the popup at once. */
+  gsiLoad() {
+    if (window.google?.accounts?.oauth2) return Promise.resolve();
+    if (!this._gsi) this._gsi = new Promise((res, rej) => {
+      const el = document.createElement('script');
+      el.src = 'https://accounts.google.com/gsi/client'; el.async = true;
+      el.onload = () => res(); el.onerror = () => { this._gsi = null; rej(new Error('gsi')); };
+      document.head.appendChild(el);
+    });
+    return this._gsi;
+  }
+  googleLogin = async () => {
+    const s = this.state;
+    if (s.gBusy || s.busyLbl) return;
+    const id = this.gClient();
+    if (!id) { this.gFail("Google sign-in isn't switched on yet. Log in with your email and registration ID below."); return; }
+    this.play('thumpSoft');
+    this.setState({ gBusy: true, gErr: '' });
+    try {
+      await this.gsiLoad();
+      // The token client opens Google's account picker in a popup; the token only reads the account's name and email.
+      const token = await new Promise((res, rej) => {
+        window.google.accounts.oauth2.initTokenClient({
+          client_id: id, scope: 'openid email profile',
+          callback: (r) => (r.error ? rej(r) : res(r.access_token)),
+          error_callback: (e) => rej(e),
+        }).requestAccessToken();
+      });
+      const me = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : Promise.reject(r)));
+      if (!this.alive || !this.state.auth) return;
+      if (!me.email) throw new Error('no email');
+      this.googleDone({ name: me.name || this.nameFrom(me.email), email: me.email });
+    } catch (e) {
+      if (!this.alive) return;
+      const closed = e && (e.type === 'popup_closed' || e.error === 'access_denied');
+      this.gFail(closed ? 'Google sign-in was closed before it finished. Try again when you are ready.' : "Couldn't reach Google. Try again, or log in with your email and registration ID.");
+    } finally {
+      if (this.alive) this.setState({ gBusy: false });
+    }
+  };
+  gFail(msg) {
+    this.play('beep');
+    this.setState({ gErr: msg });
+    const b = this.$('[data-g-btn]');
+    if (b && !this.reduce) gsap.fromTo(b, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
+  }
+  /** Registered this session: straight in. Otherwise registration opens with the Google name and email filled in. */
+  googleDone(g) {
+    if (this.pass && this.pass.email === g.email) {
+      this.setState({ user: { name: this.pass.name, email: g.email }, gUser: null });
+      this.closeAuth(() => this.toast('Welcome back, ' + this.pass.name.split(' ')[0] + '.'));
+      return;
+    }
+    this.play('thumpSoft');
+    this.setState({ gUser: g, authMode: 'register', step: 0, err: {} }, () => {
+      const f = this.$('[data-auth-form]');
+      if (f) { f.elements.name.value = g.name; f.elements.email.value = g.email; }
+      this.animPane(1, true);
+      const c = f && f.elements.college; if (c && !matchMedia('(pointer: coarse)').matches) c.focus();
+    });
+  }
   // @ts-ignore
   logout() {
     this.reg = null; this.pass = null; this.dropFiles();
     const f = this.$ && this.$('[data-auth-form]'); if (f) f.reset();
-    this.setState({ user: null, authMode: 'register', step: 0, err: {}, files: {}, about: false });
+    this.setState({ user: null, authMode: 'register', step: 0, err: {}, files: {}, about: false, gUser: null, gErr: '' });
     this.play('thumpSoft'); this.toast('Logged out. See you in orbit.');
   }
   // @ts-ignore
@@ -1043,7 +1412,8 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
     this.authBusy = true;
     const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
     this.page = this.livePage(); this.authO = this.originOf(src, fromDisc);
-    await this.set({ auth: true, authMode: mode, err: {} });
+    await this.set({ auth: true, authMode: mode, err: {}, gErr: '' });
+    if (this.gClient()) this.gsiLoad().catch(() => {});
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
     const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
     g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
@@ -1148,7 +1518,7 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
     const s = this.state, m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
     if (m === s.authMode || s.busyLbl) return;
     this.play('thumpSoft');
-    this.setState({ authMode: m, err: {} }, () => { this.animPane(1, true); this.focusAuth(); });
+    this.setState({ authMode: m, err: {}, gErr: '' }, () => { this.animPane(1, true); this.focusAuth(); });
   };
   // @ts-ignore
   toStep(n) {
@@ -1362,6 +1732,8 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || '', passStatus: P.status || '',
       passNote: P.status === 'CONFIRMED' ? 'Show this pass at the registration desk when you arrive.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified.',
       exploreFromPass: this.exploreFromPass,
+      googleLogin: this.googleLogin, gBusy: s.gBusy, gErr: s.gErr, gLbl: s.gBusy ? 'Waiting for Google…' : 'Continue with Google',
+      gNote: reg && st === 0 && s.gUser ? 'Signed in with Google as ' + s.gUser.email + '. Add your college and phone to finish.' : '',
     };
   }
   checkout = () => { this.play('thumpSoft'); this.toast('Pre-orders open with registrations. Stay in orbit.'); };
@@ -1397,11 +1769,11 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
     // Handlers below read this.state when they run: memoised views may hold an older v.
     const s = this.state, i = s.index, w = WORLDS[i], dw = WORLDS[s.dIndex], nx = WORLDS[(s.dIndex + 1) % 3];
     const navOn = s.view === 'worlds' || s.view === 'detail';
-    const act = s.view === 'merch' ? 'merch' : s.view === 'gallery' ? 'gallery' : navOn ? 'events' : 'home';
-    const routed = (k: string) => k === 'events' || k === 'merch' || k === 'gallery';
+    const act = s.view === 'merch' ? 'merch' : s.view === 'gallery' ? 'gallery' : s.view === 'schedule' ? 'schedule' : navOn ? 'events' : 'home';
+    const routed = (k: string) => k === 'events' || k === 'merch' || k === 'gallery' || k === 'schedule';
     const navLinks = LINKS.map(([label, k]) => ({
       label: label.toUpperCase(), name: label, cur: String(k === act) as 'true' | 'false', o: k === act ? 1 : .68, bar: k === act ? 1 : 0, dc: k === act ? 'oklch(0.8 0.12 85)' : '#ECE8DF',
-      href: k === 'events' ? '#/worlds/' + w.slug : k === 'merch' ? '#/merch' : k === 'gallery' ? '#/gallery' : '#/',
+      href: k === 'events' ? '#/worlds/' + w.slug : k === 'merch' ? '#/merch' : k === 'gallery' ? '#/gallery' : k === 'schedule' ? '#/schedule' : '#/',
       onClick: (e: MouseEvent<HTMLAnchorElement>) => {
         if (routed(k)) { if (this.state.about || this.state.menu) this.setState({ about: false, menu: false }); return; }
         e.preventDefault(); this.goSection(k === 'home' ? null : k);
@@ -1411,10 +1783,12 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
     const count = lines.reduce((a, l) => a + l.qty, 0), total = lines.reduce((a, l) => a + l.qty * l.p.price, 0);
     const cartOn = s.view === 'merch' && count > 0;
     return {
-      navLinks, footLinks: navLinks.slice(0, 5), wide: !s.compact, menuLabel: s.compact ? 'MENU' : 'ABOUT',
+      navLinks, footLinks: navLinks.slice(0, 5), wide: !s.compact,
       // Wide screens open the About drawer; compact screens open the full-screen menu.
-      menuButton: () => { this.play('thumpSoft'); if (this.state.compact) this.setState({ menu: true }); else this.setState({ about: !this.state.about }); },
-      menuExpanded: s.compact ? s.menu : s.about,
+      // The MENU button only exists on compact screens; wide screens show LOG IN in its place.
+      menuButton: () => { this.play('thumpSoft'); this.setState({ menu: true }); },
+      menuExpanded: s.menu,
+      menuLogin: (e: MouseEvent<HTMLAnchorElement>) => { this.setState({ menu: false }); this.loginClick(e); },
       goHome: (e: MouseEvent) => { e.preventDefault(); this.goSection(null); },
       topNav: navLinks.map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, onClick: l.onClick })),
       linkGo: this.linkGo,
@@ -1422,7 +1796,16 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       closeMenu: () => this.setState({ menu: false }),
       tunnel: TUNNEL.map(([cap, x, y, ar], k) => ({ id: 'gallery-' + (k + 1), ph: cap + ' photo', capU: cap.toUpperCase(), no: String(k + 1).padStart(2, '0'), x, y, ar, c: TUNNEL_C[k % 3] })),
       tunnelTotal: String(TUNNEL.length).padStart(2, '0'),
-      sponsors: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ id: 'sponsor-' + n })),
+      titleSponsor: TITLE_SPONSOR,
+      sponsorTiers: SPONSOR_TIERS.map((t) => ({
+        key: t.key, title: t.title, lg: t.size === 'lg', countL: t.items.length + (t.items.length === 1 ? ' partner' : ' partners'),
+        cards: t.items.map((it, k) => ({ ...it, slot: 'sponsor-' + t.key + '-' + (k + 1), ph: t.key === 'main' ? 'Sponsor logo' : t.key === 'media' ? 'Media partner logo' : 'Food partner logo' })),
+      })).map((t) => {
+        // The ticker repeats a short tier until one pass is wider than any screen, so the loop never shows a gap;
+        // its duration grows with the pass so every row drifts at the same gentle speed.
+        const loop = t.cards.length ? Array.from({ length: Math.max(8, t.cards.length) }, (_, k) => t.cards[k % t.cards.length]) : [];
+        return { ...t, loop, dur: (loop.length * (t.lg ? 3.6 : 3)).toFixed(1) + 's' };
+      }),
       merchTeaser: PRODUCTS.slice(0, 3).map((p) => ({ slot: 'merch-' + p.id, ph: p.name, name: p.name, priceL: '₹' + p.price })),
       products: PRODUCTS.map((p) => {
         const sl = s.sel[p.id] || {}, size = sl.size || (p.sizes ? 'M' : null), color = sl.color || 0;
@@ -1479,7 +1862,6 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       isDetail: s.view === 'detail',
       compact: s.compact, notCompact: !s.compact,
       taglineW: s.compact ? '88vw' : 'min(640px, 34vw)',
-      labelRight: s.narrow ? '8%' : (s.compact ? '10%' : '26%'),
       arrowsDisplay: s.narrow ? 'none' : 'grid',
       backHref: '#/worlds/' + w.slug,
       nav: WORLDS.map((x, k) => ({ no: String(k + 1).padStart(2, '0'), label: x.name.toUpperCase(), current: k === i, color: k === i ? '#ECE8DF' : 'rgba(20,19,18,.72)', onClick: () => this.navTo(k) })),
@@ -1487,6 +1869,17 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       navGlow: '#141312',
       navO: navOn ? 1 : 0, navY: navOn ? '0px' : '30px', navPE: (navOn ? 'auto' : 'none') as 'auto' | 'none',
       navBottom: s.narrow ? 'calc(clamp(16px,2.6vw,44px) + 40px)' : 'clamp(16px,2.6vw,44px)',
+      hudSolid: s.hudSolid,
+      scrollNext: () => {
+        const sc = this.$('[data-view="home"]'), hw = this.$('[data-hero-wrap]');
+        if (sc && hw) sc.scrollTo({ top: hw.offsetTop + hw.offsetHeight, behavior: this.reduce ? 'auto' : 'smooth' });
+      },
+      hintOn: s.hint && s.view === 'worlds' && !s.auth && !s.menu,
+      // Entering is spelled out by the world's Enter button; the guide covers what isn't on screen: there are three worlds.
+      // Name only the controls this screen shows: no side arrows on narrow screens, no keys on touch.
+      hintMain: s.coarse ? 'Swipe left or right to visit all three worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all three worlds' : 'Use the side arrows or ← → keys to visit all three worlds',
+      hintSub: s.coarse ? 'Tap Enter, or the planet itself, to step inside one.' : 'Hover over a planet, then click Enter to step inside.',
+      dismissHint: this.dismissHint,
       muted: s.muted, soundOn: !s.muted, soundLabel: s.muted ? 'Turn sound on' : 'Turn sound off', toggleSound: this.toggleSound,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',
       aboutHidden: !s.about,
@@ -1506,6 +1899,7 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       gCur: GALLERY[s.gIdx], gTotal: String(GALLERY.length).padStart(2, '0'),
       gRestart: () => { this.gTarget = 0; },
       gWheel: this.gWheel, gTouchStart: this.gTouchStart, gTouchMove: this.gTouchMove,
+      ...this.schedVals(s),
     };
   }
 
@@ -1521,8 +1915,10 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
         <DetailV v={v} deps={[s.dIndex, s.compact]} />
         <GalleryV v={v} deps={[s.gIdx]} />
         <MerchV v={v} deps={[s.sel, s.added]} />
+        <ScheduleV v={v} deps={[s.schedDay, s.schedFilter, s.saved, s.narrow]} />
         <Hud v={v} />
         <WorldNav v={v} />
+        <WorldHint v={v} />
         <Curtain v={v} />
         <AboutPanel v={v} />
         <MenuOverlay v={v} />
