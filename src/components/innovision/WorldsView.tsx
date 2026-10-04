@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
 import { CornerFrame, OrbitBackdrop, Radar } from './decor';
-import { Sparkle } from './icons';
+import Rover from './Rover';
+import SignalLink from './SignalLink';
 import type { V } from './types';
 
 /** Horizontal world slider (Events). */
@@ -34,14 +35,40 @@ export default function WorldsView({ v }: { v: V }) {
               <span style={{ flex: "none" }}>{w.name}&nbsp;</span>
             </div>
           </div>
-          <a data-s-label="" href={w.href} onMouseEnter={v.beep} style={{ position: "absolute", top: "47%", right: v.labelRight, marginTop: "-.7em", display: "flex", flexDirection: "column", alignItems: "flex-start", textDecoration: "none", fontWeight: "700", fontSize: "clamp(14px,1.15vw,19px)", letterSpacing: ".02em", textTransform: "uppercase", color: w.ink, zIndex: "3" }}>
-
-            <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>Explore <span style={{ width: "28px", height: "2px", background: w.accent }}></span></span>
-            <small style={{ marginTop: "8px", fontWeight: "500", fontSize: "11px", letterSpacing: ".25em", opacity: ".8" }}>{w.category}</small>
-          </a>
+          {/*
+            The way into this world: a round Enter button on the planet's face. Pointer devices show a quiet
+            "hover the planet" prompt in its place until the planet (or the prompt) is hovered or the button has
+            keyboard focus. Touch devices, which can't hover, always show the button, with a hand demonstrating a
+            tap the first time it appears.
+            GSAP fades [data-s-label] in and out with the slide, so the hover swap lives on its children (globals.css).
+          */}
+          <div className="cta-slot" style={{ position: "absolute", left: "0", right: "0", zIndex: "3", display: "flex", justifyContent: "center", padding: "0 16px", pointerEvents: "none" }}>
+            <div data-s-label="" className="cta-wrap" style={{ position: "relative", display: "grid", placeItems: "center", maxWidth: "100%", filter: "drop-shadow(0 14px 22px rgba(20,19,18,.28))" }}>
+              <span className="cta-prompt" aria-hidden="true" style={{ gridArea: "1 / 1", display: "inline-flex", alignItems: "center", gap: "10px", padding: "9px 16px 9px 12px", borderRadius: "999px", border: "1px solid rgba(20,19,18,.14)", background: "rgba(236,232,223,.86)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", color: "#141312", fontSize: "13px", fontWeight: "700", letterSpacing: ".04em", whiteSpace: "nowrap", pointerEvents: "auto", cursor: "default" }}>
+                <span style={{ position: "relative", display: "grid", placeItems: "center", width: "22px", height: "22px" }}>
+                  <span data-prompt-ring="" style={{ position: "absolute", left: "3px", top: "2px", width: "10px", height: "10px", borderRadius: "50%", border: `1.5px solid ${w.accent}` }}></span>
+                  <svg data-prompt-cursor="" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 3l14 7.2-6.1 1.6L10 18z" fill="#141312" stroke="#ECE8DF" strokeWidth="1.2" strokeLinejoin="round"></path></svg>
+                </span>
+                Hover over the planet to enter
+              </span>
+              <a href={w.href} aria-label={"Enter " + w.name} onMouseEnter={v.beep} className="world-cta-round" style={{ ["--cta-accent" as string]: w.accentL, gridArea: "1 / 1", position: "relative", placeItems: "center", width: "clamp(72px, 19vw, 88px)", aspectRatio: "1", borderRadius: "50%", textDecoration: "none", color: "#ECE8DF", background: "#141312", boxShadow: "0 0 0 1.5px rgba(236,232,223,.55)", WebkitTapHighlightColor: "transparent" }}>
+                <span data-cta-ping="" aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", border: `1.5px solid ${w.accentL}` }}></span>
+                <span aria-hidden="true" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: "700", letterSpacing: ".18em" }}>
+                  <span style={{ paddingLeft: ".18em" }}>ENTER</span>
+                  <svg width="18" height="10" viewBox="0 0 16 10"><path d="M11 1l4 4-4 4M15 5H0" fill="none" stroke={w.accentL} strokeWidth="1.6"></path></svg>
+                </span>
+              </a>
+              {/* Touch coach: a hand taps the round button three times, then fades out. Its fingertip (19,7 of the 44px icon) lands on the button's centre. */}
+              <svg className="cta-hand" viewBox="0 0 24 24" aria-hidden="true" style={{ position: "absolute", left: "calc(50% - 19px)", top: "calc(50% - 7px)", zIndex: "1", width: "44px", height: "44px", overflow: "visible", pointerEvents: "none" }}>
+                <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.8-2.4L4.4 15.6a1.5 1.5 0 0 1 2.3-1.9L9 16" fill="#ECE8DF" stroke="#141312" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"></path>
+              </svg>
+            </div>
+          </div>
           <div data-s-hero="" style={{ position: "absolute", left: "50%", top: "54%", width: "min(112vw, 150vh)", aspectRatio: "1", marginLeft: "calc(min(112vw, 150vh) / -2)" }}>
             <div data-s-rot="" onClick={w.onExplore} style={{ position: "absolute", inset: "0", cursor: "pointer" }}>
               <img data-spin="140" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+              {w.rover && <Rover />}
+              {w.uplink && <SignalLink accent={w.accent} />}
             </div>
             <div data-s-astro="" style={{ position: "absolute", left: "0", right: "0", bottom: w.astroBottom, height: w.astroH, display: "flex", justifyContent: "center", alignItems: "flex-end", pointerEvents: "none" }}>
               {w.astro && (wI === 0 ? (

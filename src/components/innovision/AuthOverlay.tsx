@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- parent class component passes untyped view-model */
+/* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
 // @ts-nocheck
 import type { V } from './types';
-import { Sparkle } from './icons';
 
 export default function AuthOverlay({ v }: { v: V }) {
   return (
@@ -13,7 +14,7 @@ export default function AuthOverlay({ v }: { v: V }) {
         <span style={{ position: "absolute", inset: "-16%", border: "1px solid rgba(236,232,223,.12)", borderRadius: "50%" }}></span>
         <span style={{ position: "absolute", inset: "-34%", border: "1px dashed rgba(236,232,223,.08)", borderRadius: "50%" }}></span>
         <div data-a-orbit="" style={{ position: "absolute", inset: "-16%" }}><span style={{ position: "absolute", left: "50%", top: "0", width: "10px", height: "10px", margin: "-5px 0 0 -5px", borderRadius: "50%", background: "oklch(0.8 0.12 85)" }}></span></div>
-        <img data-a-planet="" src="assets/moon.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" }} />
+        <img data-a-planet="" src="assets/planet-crescent.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" }} />
       </div>
       <div data-auth-scroll="" data-noscroll="" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", overscrollBehavior: "contain" }}>
         <div data-a-ui="" style={{ position: "relative", minHeight: "100%", display: "flex", flexDirection: "column" }}>
@@ -73,6 +74,12 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.s0, flexDirection: "column", gap: "20px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "Cinzel,serif", fontWeight: "900", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Your details</h3>
+                      {v.gNote ? (
+                        <p data-s-in="" role="status" style={{ display: "flex", alignItems: "flex-start", gap: "10px", margin: "-4px 0 0", padding: "12px 14px", border: "1px solid rgba(236,232,223,.18)", background: "rgba(236,232,223,.04)", fontSize: "14px", lineHeight: "1.45", color: "rgba(236,232,223,.86)", overflowWrap: "anywhere" }}>
+                          <svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", marginTop: "1px", color: "oklch(0.8 0.12 85)" }}><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2"></path></svg>
+                          <span>{v.gNote}</span>
+                        </p>
+                      ) : null}
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>FULL NAME</span>
 <input name="name" autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
@@ -161,7 +168,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       <ol data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "10px", margin: "0", padding: "18px 0 0", borderTop: "1px solid rgba(236,232,223,.14)", listStyle: "none", fontSize: "15px", lineHeight: "1.5", color: "rgba(236,232,223,.82)" }}>
                         <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.8 0.12 85)" }}>1</span><span>Scan the code with any UPI app.</span></li>
                         <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.8 0.12 85)" }}>2</span><span>Pay exactly ₹{v.fee}.</span></li>
-                        <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.8 0.12 85)" }}>3</span><span>Screenshot the success screen. You'll upload it next.</span></li>
+                        <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.8 0.12 85)" }}>3</span><span>Screenshot the success screen. You&apos;ll upload it next.</span></li>
                       </ol>
                     </div>
 
@@ -211,6 +218,20 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.login, flexDirection: "column", gap: "20px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "Cinzel,serif", fontWeight: "900", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Log in</h3>
+                      {/* Google's dark-theme sign-in button: their four-colour mark and sentence-case label, square to match the fields. */}
+                      <button data-s-in="" data-g-btn="" type="button" onClick={v.googleLogin} onMouseEnter={v.beep} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1px solid #8e918f", borderRadius: "0", background: "#131314", color: "#e3e3e3", cursor: v.gBusy ? "progress" : "pointer", fontSize: "16px", fontWeight: "500", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
+                        <span style={{ position: "relative", display: "grid", placeItems: "center", width: "30px", height: "30px" }}>
+                          <svg viewBox="0 0 48 48" aria-hidden="true" style={{ width: "20px", height: "20px" }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+                          {v.gBusy ? (<span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", border: "2px solid rgba(236,232,223,.14)", borderTopColor: "oklch(0.8 0.12 85)", animation: "iv-spin .9s linear infinite" }}></span>) : null}
+                        </span>
+                        <span>{v.gLbl}</span>
+                      </button>
+                      {v.gErr ? (<span role="alert" style={{ marginTop: "-8px", fontSize: "14px", lineHeight: "1.45", color: "oklch(0.76 0.14 35)" }}>{v.gErr}</span>) : null}
+                      <div data-s-in="" aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "13px", color: "rgba(236,232,223,.62)" }}>
+                        <span style={{ flex: "1", height: "1px", background: "rgba(236,232,223,.16)" }}></span>
+                        <span>or use your registration ID</span>
+                        <span style={{ flex: "1", height: "1px", background: "rgba(236,232,223,.16)" }}></span>
+                      </div>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL</span>
 <input name="lemail" type="email" autoComplete="email" placeholder="you@college.edu" aria-invalid={v.inv.lemail} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.lemail}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
@@ -219,7 +240,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>REGISTRATION ID</span>
 <input name="lid" autoComplete="off" placeholder="IV26-0000" aria-invalid={v.inv.lid} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.lid}`, letterSpacing: ".06em", textTransform: "uppercase" }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
-<span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>It's in your confirmation email.</span>
+<span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>It&apos;s in your confirmation email.</span>
 {v.err.lid ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.lid}</span>) : null}
 </label>
                     </div>

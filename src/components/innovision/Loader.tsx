@@ -6,7 +6,7 @@ import type { V } from './types';
 const MONO = "grayscale(1) contrast(1.35) brightness(1.05)";
 /** Orbiting planets that swing into alignment as loading progresses: [ring inset, ring border, orb index, start angle, size %, image]. */
 const ORBS: [string, string, number, number, number, string][] = [
-  ['0', '1px dotted rgba(20,19,18,.5)', 2, 236, 12, 'planet-green.webp'],
+  ['0', '1px dotted rgba(20,19,18,.5)', 2, 236, 12, 'planet-tide.webp'],
   ['14%', '1px dashed rgba(20,19,18,.45)', 1, -148, 13, 'planet-blue.webp'],
   ['26%', '1px solid rgba(20,19,18,.3)', 0, 128, 16, 'planet-yellow.webp'],
 ];
