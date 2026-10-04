@@ -134,11 +134,95 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 @media (prefers-reduced-motion:reduce){.sp-row{overflow-x:auto;scrollbar-width:none;-webkit-mask-image:none;mask-image:none}.sp-row::-webkit-scrollbar{display:none}.sp-strip{animation:none}}
 @media (max-width:719px){.sp-title{grid-template-columns:minmax(0,1fr) !important}.sp-title-art{display:none}}
 
+/* ---------- home hero ---------- */
+/* --d is the disc's diameter and --cy its centre. Rings, disc, orbiters, copy and astronaut all hang off the two,
+   so the composition holds together at any screen shape. Wide screens keep the copy centred over the disc. */
+.hero{--d:min(84vh,72vw);--cy:53%}
+.hero-ring{position:absolute;left:calc(50% - var(--d) * var(--r));top:calc(var(--cy) - var(--d) * var(--r));width:calc(var(--d) * var(--r) * 2);height:calc(var(--d) * var(--r) * 2);border-radius:50%}
+.hero-disc{position:absolute;left:calc(50% - var(--d) / 2);top:calc(var(--cy) - var(--d) / 2);width:var(--d);height:var(--d)}
+.hero-asteroid{width:calc(var(--d) * .131);margin:calc(var(--d) * -.0655) 0 0 calc(var(--d) * -.0655)}
+.hero-ringed{width:calc(var(--d) * .286);height:calc(var(--d) * .286);margin:calc(var(--d) * -.143) 0 0 calc(var(--d) * -.143)}
+.hero-planet{position:absolute;left:-14vh;bottom:-26vh;width:60vh;height:60vh}
+.hero-astro{position:absolute;right:clamp(12px,5vw,110px);bottom:max(7vh,48px);width:38vh;height:38vh}
+.hero-copy{position:absolute;inset:0;justify-content:center;padding:6vh 16px 0}
+.hero-copy-disc{display:contents}
+/* --ls is the tracking; the same amount of left padding balances the trailing letter-space so the text centres. */
+.hero-track{padding-left:var(--ls)}
+.hero-kicker{--ls:.42em;gap:14px;font-size:clamp(11px,1.05vw,16px);letter-spacing:var(--ls)}
+.hero-kicker-star{width:14px;height:14px;flex:none}
+.hero-title{margin:clamp(10px,2vh,22px) 0 clamp(8px,1.4vh,16px);font-size:clamp(36px,12.4vw,224px)}
+.hero-sub{--ls:.32em;gap:18px;font-size:clamp(12px,1.35vw,21px);letter-spacing:var(--ls)}
+.hero-sub-rule{width:clamp(24px,4vw,64px);flex:none}
+.hero-ctas{gap:14px;flex-wrap:wrap;margin:clamp(18px,3.6vh,46px) 0 clamp(96px,14vh,150px)}
+.hero-cta{display:inline-flex;align-items:center;justify-content:center;padding:17px 30px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:.06em;white-space:nowrap}
+.hero-cta-primary{min-width:184px;color:#141312;background:#ECE8DF}
+.hero-cta-secondary{min-width:168px;color:#ECE8DF;background:rgba(236,232,223,.85)}
+.hero-cta-fill{background:#141312}
+.hero-scroll{display:flex}
+.hero-cta:active{transform:translateY(1px)}
+/* Stacked screens (portrait, or narrower than 720px): the kicker, title and subtitle fit inside the disc, the buttons
+   sit on the paper below it, the astronaut drifts off the disc's upper right and the storm planet tucks into the
+   bottom-left corner. The disc + buttons group is centred between the top HUD bar (72px) and a 24px bottom margin. */
+@media (max-aspect-ratio:1/1),(max-width:719px) and (min-height:520px){
+  .hero{--cta-h:48px;--ctas:var(--cta-h);--d:min(80vw,100vh - 220px,640px);--cy:calc(50% + 12px - var(--ctas) / 2)}
+  .hero-copy{top:calc(var(--cy) - var(--d) / 2);bottom:auto;justify-content:flex-start;padding:0 16px}
+  .hero-copy-disc{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;height:var(--d)}
+  .hero-kicker{--ls:.26em;gap:8px;font-size:clamp(9.5px,calc(var(--d) * .033),15px)}
+  .hero-kicker-star{width:9px;height:9px}
+  .hero-title{margin:calc(var(--d) * .03) 0 calc(var(--d) * .026);font-size:calc(var(--d) * .122)}
+  .hero-sub{--ls:.18em;gap:10px;font-size:clamp(10px,calc(var(--d) * .034),17px)}
+  .hero-sub-rule{width:calc(var(--d) * .05)}
+  .hero-ctas{gap:10px;flex-wrap:nowrap;margin:24px 0 0}
+  .hero-cta{height:var(--cta-h);padding:0 26px;font-size:13.5px}
+  /* On paper the light primary would vanish, so the pair flips: ink fill first, ink outline second. */
+  .hero-cta-primary{min-width:0;color:#ECE8DF;background:#141312}
+  .hero-cta-secondary{min-width:0;color:#141312;background:#141312}
+  .hero-cta-fill{background:#ECE8DF}
+  .hero-cta-secondary.hv-gold:hover{color:#8a6a2a !important}
+  .hero-astro{top:calc(var(--cy) - var(--d) * .56);bottom:auto;right:max(4px,50% - var(--d) * .62);width:calc(var(--d) * .36);height:calc(var(--d) * .36)}
+  .hero-planet{--p:min(60vw,38vh);left:calc(var(--p) * -.32);bottom:calc(var(--p) * -.62);width:var(--p);height:var(--p)}
+  .hero-scroll,.hero-coords{display:none}
+}
+/* Phones: the buttons stack full width, so the disc gives up the extra height. */
+@media (max-width:459px) and (min-height:520px){
+  .hero{--cta-h:46px;--ctas:calc(var(--cta-h) * 2 + 10px);--d:min(86vw,100vh - 270px)}
+  .hero-ctas{flex-direction:column;align-items:stretch;width:min(100%,300px)}
+  .hero-cta{width:100%}
+  .hero-sub-rule{display:none}
+}
+
+/* ---------- compact menu ---------- */
+.menu-panel{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#141312;color:#ECE8DF}
+.menu-top{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;padding:clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)}
+.menu-brand{display:inline-flex;align-items:center;gap:10px;color:#ECE8DF;text-decoration:none}
+.menu-brand:hover{color:oklch(0.84 0.09 85)}
+.menu-close{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 0 0 12px;border:0;background:none;cursor:pointer;font-weight:500;font-size:13px;letter-spacing:.14em;color:#ECE8DF}
+.menu-close:hover{color:oklch(0.84 0.09 85)}
+/* The list scrolls on its own if a short landscape screen can't fit it. */
+.menu-body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,4vh,40px);width:100%;max-width:640px;margin:0 auto;padding:clamp(8px,2vh,24px) clamp(20px,6vw,48px) clamp(24px,5vh,48px);overflow-y:auto;scrollbar-width:none}
+.menu-body::-webkit-scrollbar{display:none}
+.menu-list{margin:0;padding:0;list-style:none;border-bottom:1px solid rgba(236,232,223,.16)}
+.menu-link{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:clamp(10px,1.9vh,16px) 4px;border-top:1px solid rgba(236,232,223,.16);text-decoration:none;font-family:var(--font-cinzel),serif;font-weight:700;font-size:clamp(20px,min(5.4vw,4.4vh),30px);line-height:1.1;letter-spacing:.03em;transition:color .3s,background-color .3s}
+.menu-link:hover,.menu-link:focus-visible{color:oklch(0.84 0.09 85) !important;background:rgba(236,232,223,.04)}
+.menu-link[aria-current="page"] .menu-label::before{content:'';display:inline-block;width:14px;height:1.5px;margin:0 12px 0 0;vertical-align:middle;background:currentColor}
+.menu-arrow{flex:none;opacity:.45;transition:transform .45s cubic-bezier(.25,1,.1,1),opacity .3s}
+.menu-link:hover .menu-arrow,.menu-link:focus-visible .menu-arrow,.menu-link[aria-current="page"] .menu-arrow{opacity:1}
+.menu-link:hover .menu-arrow,.menu-link:focus-visible .menu-arrow{transform:translateX(5px)}
+.menu-link:active{background:rgba(236,232,223,.08)}
+.menu-foot{display:flex;flex-direction:column}
+.menu-meta{display:flex;flex-wrap:wrap;column-gap:28px;row-gap:4px;font-weight:500;font-size:13px;letter-spacing:.14em}
+.menu-meta a{display:inline-flex;align-items:center;min-height:40px;color:rgba(236,232,223,.78);text-decoration:none}
+/* Rows rise in one after another as the circle opens, and simply vanish with it on close. */
+@media (prefers-reduced-motion:no-preference){
+  .menu-item{opacity:0;transform:translateY(14px)}
+  .menu[data-open] .menu-item{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s),transform .7s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s)}
+}
+
 /* ---------- hud on small phones ---------- */
-/* Keep REGISTER and MENU on screen: drop the wordmark beside BACK, then tighten spacing. */
-@media (max-width:519px){.hud-wordmark-detail{display:none}}
+/* Keep SOUND, REGISTER and MENU on screen: the sound label and the wordmark beside BACK go first, then spacing tightens. */
+@media (max-width:519px){.hud-wordmark-detail,.hud-sound-label{display:none}}
 @media (max-width:419px){.hud-bar,.hud-group{gap:12px !important}.hud-register{padding:10px 14px !important}}
-@media (max-width:359px){.hud-wordmark{display:none}}
+@media (max-width:419px){.hud-wordmark{display:none}}
 
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}

@@ -1,25 +1,52 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
+import type { CSSProperties } from 'react';
+import { Logo } from './icons';
 import type { V } from './types';
 
-/** Full-screen circular-reveal menu for narrow screens. */
+/**
+ * Full-screen circular-reveal menu for compact screens: a top bar mirroring the HUD (CLOSE sits where MENU was),
+ * a ruled list of destinations, then the secondary links. Layout and the staggered row entrance live in
+ * globals.css (.menu-*); data-open drives the entrance so it replays each time the menu opens.
+ */
 export default function MenuOverlay({ v }: { v: V }) {
   return (
-    <div aria-hidden={v.menuHidden} style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
-      <div style={{ position: "absolute", inset: "0", overflow: "hidden", background: "#141312", color: "#ECE8DF", clipPath: v.menuClip, transition: "clip-path .9s cubic-bezier(.25,1,.1,1)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "96px clamp(24px,6vw,64px) 64px" }}>
-        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
-        <button type="button" onClick={v.closeMenu} onMouseEnter={v.hover} style={{ position: "absolute", top: "clamp(16px,2.6vw,44px)", right: "clamp(16px,2.6vw,44px)", padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "13px", letterSpacing: ".18em", color: "#ECE8DF" }}>
-          <span data-scr="">CLOSE</span>
-        </button>
-        <p style={{ position: "relative", margin: "0 0 18px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.84 0.09 85)" }}>NAVIGATE THE ODYSSEY</p>
-        <nav aria-label="Menu" style={{ position: "relative", display: "flex", flexDirection: "column", gap: "4px" }}>
-          {v.topNav.map((t, tI) => (
-            <a key={tI} href={t.href} onClick={t.onClick} onMouseEnter={v.beep} style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(40px,11vw,84px)", lineHeight: "1.08", textDecoration: "none", color: t.menuColor }} className="hv-sand">{t.labelCap}</a>
-          ))}
-        </nav>
-        <div style={{ position: "relative", display: "flex", gap: "28px", marginTop: "36px", fontWeight: "500", fontSize: "14px", letterSpacing: ".14em" }}>
-          {!v.showLogin && <a href="#login" onClick={v.menuLogin} style={{ color: "#ECE8DF", textDecoration: "none" }}>{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
-          <a href="#about" onClick={v.openAbout} style={{ color: "#ECE8DF", textDecoration: "none" }}>ABOUT</a>
-          <a href="https://www.instagram.com/" target="_blank" rel="noopener" style={{ color: "#ECE8DF", textDecoration: "none" }}>INSTAGRAM</a>
+    <div aria-hidden={v.menuHidden} data-open={v.menuHidden ? undefined : ""} className="menu" style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
+      <div className="menu-panel" style={{ clipPath: v.menuClip, transition: "clip-path .9s cubic-bezier(.25,1,.1,1)" }}>
+        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
+        <div className="menu-top">
+          <a href="#/" onClick={(e) => { v.closeMenu(); v.goHome(e); }} aria-label="Innovision home" className="menu-brand">
+            <Logo style={{ width: "24px", height: "auto" }} />
+            <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "17px", letterSpacing: ".04em" }}>INNOVISION</span>
+          </a>
+          <button type="button" onClick={v.closeMenu} onMouseEnter={v.hover} className="menu-close">
+            <span data-scr="">CLOSE</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M1 1l10 10M11 1 1 11" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
+            </svg>
+          </button>
+        </div>
+        <div className="menu-body">
+          <nav aria-label="Menu">
+            <ul className="menu-list">
+              {v.topNav.map((t, tI) => (
+                <li key={tI} className="menu-item" style={{ "--i": tI } as CSSProperties}>
+                  <a href={t.href} onClick={t.onClick} onMouseEnter={v.beep} aria-current={t.cur ? "page" : undefined} className="menu-link" style={{ color: t.menuColor }}>
+                    <span className="menu-label">{t.labelCap}</span>
+                    <svg className="menu-arrow" width="18" height="10" viewBox="0 0 18 10" aria-hidden="true">
+                      <path d="M13 1l4 4-4 4M17 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
+                    </svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="menu-foot menu-item" style={{ "--i": v.topNav.length } as CSSProperties}>
+            <div className="menu-meta">
+              {!v.showLogin && <a href="#login" onClick={v.menuLogin} className="hv-sand">{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
+              <a href="#about" onClick={v.openAbout} className="hv-sand">ABOUT</a>
+              <a href="https://www.instagram.com/" target="_blank" rel="noopener" className="hv-sand">INSTAGRAM</a>
+            </div>
+          </div>
         </div>
       </div>
     </div>

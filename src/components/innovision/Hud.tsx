@@ -9,16 +9,14 @@ const FROST = "rgba(236,232,223,.86)";
 const EASE = "cubic-bezier(.25,1,.1,1)";
 
 /**
- * Fixed top bar (back, logo, nav, register, about/menu) and bottom bar (Instagram, sound).
+ * Fixed top bar: back, logo, nav, sound, register, log in / menu.
  * At the top of a page the bars float over the scene and invert against it (mix-blend difference).
  * Once the page scrolls under them (v.hudSolid) that would invert the content too, so the top bar
- * settles onto a frosted paper strip with ink text and the bottom items onto matching chips.
+ * settles onto a frosted paper strip with ink text.
  */
 export default function Hud({ v }: { v: V }) {
   const solid = v.hudSolid, fg = solid ? INK : "#fff";
   const blend = solid ? "normal" : "difference";
-  // The chips keep the bottom items' text where it always sat (6px inset): the negative margin cancels the extra padding.
-  const chip = { padding: "8px 14px", margin: "-2px -14px", borderRadius: "999px", border: `1px solid ${solid ? "rgba(20,19,18,.12)" : "transparent"}`, background: solid ? FROST : "transparent", backdropFilter: solid ? "blur(14px) saturate(1.2)" : "none", WebkitBackdropFilter: solid ? "blur(14px) saturate(1.2)" : "none", transition: "background-color .4s, border-color .4s" };
   return (
     <>
       <header data-hud="" data-hud-solid={solid ? "" : undefined} className="hud-bar" style={{ position: "fixed", left: "0", right: "0", top: "0", zIndex: "50", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", padding: solid ? "clamp(10px,1.05vw,16px) clamp(16px,2.6vw,44px)" : "clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)", pointerEvents: "none", color: fg, mixBlendMode: blend, transition: `padding .5s ${EASE}` }}>
@@ -51,6 +49,24 @@ export default function Hud({ v }: { v: V }) {
           </nav>
         )}
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "18px", pointerEvents: "auto" }}>
+          {/* Sound lives in the top bar so it is reachable on every screen; the label drops on phones, leaving the wave. */}
+          <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} title={v.soundLabel} className="hud-link hud-sound" style={{ display: "inline-flex", alignItems: "center", gap: "10px", minHeight: "40px", padding: "0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "inherit" }}>
+            <svg width="30" height="9" viewBox="0 0 73 9" aria-hidden="true" style={{ overflow: "visible" }}>
+              <g fill="none" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10">
+                {v.muted && (
+                  <path d="M0 4.5h73"></path>
+                )}
+                {v.soundOn && (
+                  <g data-wave="">
+                    <path d="M0 .5C3.33.5 3.33 8.5 6.66 8.5 9.99 8.5 10 .5 13.33.5c3.33 0 3.33 8 6.67 8"></path>
+                    <path d="M53 .5c3.33 0 3.33 8 6.66 8 3.33 0 3.34-8 6.67-8 3.33 0 3.33 8 6.67 8"></path>
+                    <path d="M20 8.5c2.5 0 3-6.5 6-7.5 3-1 3.33 5.5 6.66 5.5S36 3 39.33 3s3.33 5 6.67 5c3 0 3.8-7.5 7-7.5"></path>
+                  </g>
+                )}
+              </g>
+            </svg>
+            <span data-scr="" className="hud-sound-label">SOUND</span>
+          </button>
           <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} className="hud-register hud-cta" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: solid ? PAPER : "#000", background: solid ? INK : "#fff", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)", transition: "background-color .4s, color .4s" }}>
             <span data-scr="">{v.noUser ? "REGISTER" : "MY PASS"}</span>
           </a>
@@ -68,28 +84,6 @@ export default function Hud({ v }: { v: V }) {
           )}
         </div>
       </header>
-      <footer data-hud="" style={{ position: "fixed", left: "0", right: "0", bottom: "0", zIndex: "50", display: "flex", justifyContent: "space-between", alignItems: "end", padding: "clamp(16px,2.6vw,44px)", pointerEvents: "none", color: fg, mixBlendMode: blend }}>
-        <a href="https://www.instagram.com/" target="_blank" rel="noopener" onMouseEnter={v.hover} className="hud-link" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", fontWeight: "500", fontSize: "clamp(13px,1vw,15px)", letterSpacing: ".02em", color: "inherit", pointerEvents: "auto", ...chip }}>
-          <span data-scr="">INSTAGRAM</span>
-        </a>
-        <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: "500", fontSize: "clamp(13px,1vw,15px)", letterSpacing: ".02em", color: "inherit", pointerEvents: "auto", ...chip }}>
-          <svg width="40" height="9" viewBox="0 0 73 9" aria-hidden="true">
-            <g fill="none" stroke="currentColor" strokeMiterlimit="10">
-              {v.muted && (
-                <path d="M0 4.5h73"></path>
-              )}
-              {v.soundOn && (
-                <g data-wave="">
-                  <path d="M0 .5C3.33.5 3.33 8.5 6.66 8.5 9.99 8.5 10 .5 13.33.5c3.33 0 3.33 8 6.67 8"></path>
-                  <path d="M53 .5c3.33 0 3.33 8 6.66 8 3.33 0 3.34-8 6.67-8 3.33 0 3.33 8 6.67 8"></path>
-                  <path d="M20 8.5c2.5 0 3-6.5 6-7.5 3-1 3.33 5.5 6.66 5.5S36 3 39.33 3s3.33 5 6.67 5c3 0 3.8-7.5 7-7.5"></path>
-                </g>
-              )}
-            </g>
-          </svg>
-          <span data-scr="">SOUND</span>
-        </button>
-      </footer>
     </>
   );
 }

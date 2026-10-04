@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
+import type { CSSProperties } from 'react';
 import { Sparkle } from './icons';
 import { CornerFrame } from './decor';
 import Sponsors from './Sponsors';
@@ -11,28 +12,29 @@ export default function HomeView({ v }: { v: V }) {
   return (
     <main data-view="home" data-noscroll="" data-screen-label="Home" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden" }}>
       <div data-hero-wrap="" style={{ position: "relative", height: "calc(max(100vh, 620px) + 45vh)" }}>
-        <section data-hero="" style={{ position: "sticky", top: "0", height: "100vh", minHeight: "620px", overflow: "hidden" }}>
+        <section data-hero="" className="hero" style={{ position: "sticky", top: "0", height: "100vh", minHeight: "620px", overflow: "hidden" }}>
           {/* will-change keeps the scroll-scrubbed scale from re-rastering every layer inside the hero each frame. */}
           <div data-h-par="" style={{ position: "absolute", inset: "0", background: "#ECE8DF", willChange: "transform" }}>
+            {/* Disc size and centre come from .hero in globals.css, so rings, disc, copy and astronaut stay locked together on every screen shape. */}
             <div data-depth=".12" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
-              <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .58)", top: "calc(53% - min(84vh, 72vw) * .58)", width: "calc(min(84vh, 72vw) * 1.16)", height: "calc(min(84vh, 72vw) * 1.16)", border: "1px solid rgba(20,19,18,.26)", borderRadius: "50%" }}>
+              <div data-h-ring="" className="hero-ring" style={{ "--r": ".58", border: "1px solid rgba(20,19,18,.26)" } as CSSProperties}>
                 <div data-orbit="" data-dur="70" data-start="40" style={{ position: "absolute", inset: "0" }}>
                   <span style={{ position: "absolute", left: "50%", top: "0", width: "12px", height: "12px", margin: "-6px 0 0 -6px", borderRadius: "50%", background: "#141312" }}></span>
                 </div>
               </div>
-              <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .71)", top: "calc(53% - min(84vh, 72vw) * .71)", width: "calc(min(84vh, 72vw) * 1.42)", height: "calc(min(84vh, 72vw) * 1.42)", border: "1px dashed rgba(20,19,18,.4)", borderRadius: "50%" }}>
+              <div data-h-ring="" className="hero-ring" style={{ "--r": ".71", border: "1px dashed rgba(20,19,18,.4)" } as CSSProperties}>
                 <div data-orbit="" data-dur="120" data-start="232" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/asteroid.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "11vh", height: "auto", margin: "-5.5vh 0 0 -5.5vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img src="/assets/asteroid.webp" alt="" className="hero-asteroid" style={{ position: "absolute", left: "50%", top: "0", height: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
-              <div data-h-ring="" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) * .89)", top: "calc(53% - min(84vh, 72vw) * .89)", width: "calc(min(84vh, 72vw) * 1.78)", height: "calc(min(84vh, 72vw) * 1.78)", border: "1px dotted rgba(20,19,18,.5)", borderRadius: "50%" }}>
+              <div data-h-ring="" className="hero-ring" style={{ "--r": ".89", border: "1px dotted rgba(20,19,18,.5)" } as CSSProperties}>
                 <div data-orbit="" data-dur="200" data-start="318" data-rev="1" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/planet-ringed.webp" alt="" style={{ position: "absolute", left: "50%", top: "0", width: "24vh", height: "24vh", margin: "-12vh 0 0 -12vh", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img src="/assets/planet-ringed.webp" alt="" className="hero-ringed" style={{ position: "absolute", left: "50%", top: "0", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
             </div>
             {/* Own layer: the cursor pull nudges it every frame, which otherwise re-rasters the starfield. */}
-            <div data-hero-disc="" data-attract=".03" style={{ position: "absolute", left: "calc(50% - min(84vh, 72vw) / 2)", top: "calc(53% - min(84vh, 72vw) / 2)", width: "min(84vh, 72vw)", height: "min(84vh, 72vw)", borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
+            <div data-hero-disc="" data-attract=".03" className="hero-disc" style={{ borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
               <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
               <span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
@@ -51,52 +53,56 @@ export default function HomeView({ v }: { v: V }) {
                 <Sparkle data-twinkle="" style={{ display: "block", width: "100%", height: "100%" }} />
               </div>
             ))}
-            <div data-depth=".6" style={{ position: "absolute", left: "-14vh", bottom: "-26vh", width: "60vh", height: "60vh", pointerEvents: "none" }}>
+            <div data-depth=".6" className="hero-planet" style={{ pointerEvents: "none" }}>
               <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
                 {/* The storm texture is lit from one side, so it holds still instead of spinning. */}
                 <img src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
               </div>
             </div>
-            <div data-depth=".4" style={{ position: "absolute", right: "clamp(12px,5vw,110px)", bottom: "max(7vh, 48px)", width: "38vh", height: "38vh", display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
+            <div data-depth=".4" className="hero-astro" style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
               <div data-h-astro="" data-attract=".14" style={{ width: "100%", height: "100%" }}>
                 {/* Same box and tilt as the image, so the bob moves it exactly as before while the filter stays static. */}
-                <div data-bob="" style={{ width: "fit-content", height: "100%", transform: "rotate(-8deg)" }}>
+                <div data-bob="" style={{ width: "fit-content", height: "100%", marginLeft: "auto", transform: "rotate(-8deg)" }}>
                   <img src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
                 </div>
               </div>
             </div>
-            <div style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6vh 16px 0", textAlign: "center", pointerEvents: "none" }}>
-              <div data-h-kicker="" data-attract=".1" style={{ display: "flex", alignItems: "center", gap: "14px", color: "#ECE8DF", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", fontSize: "clamp(11px,1.05vw,16px)", letterSpacing: ".42em" }}>
-                <Sparkle style={{ width: "14px", height: "14px", color: "oklch(0.8 0.12 85)" }} />
-                <span style={{ paddingLeft: ".42em" }}>NIT ROURKELA PRESENTS</span>
-                <Sparkle style={{ width: "14px", height: "14px", color: "oklch(0.8 0.12 85)" }} />
+            <div className="hero-copy" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", pointerEvents: "none" }}>
+              {/* Wide screens: display contents, so copy and buttons share one centred column. Stacked screens: a box the size of the disc. */}
+              <div className="hero-copy-disc">
+                <div data-h-kicker="" data-attract=".1" className="hero-kicker" style={{ display: "flex", alignItems: "center", color: "#ECE8DF", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", whiteSpace: "nowrap" }}>
+                  <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
+                  <span className="hero-track">NIT ROURKELA PRESENTS</span>
+                  <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
+                </div>
+                <h1 aria-label="Innovision" className="hero-title" style={{ display: "flex", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
+                  {v.heroChars.map((c, cI) => (
+                    <span key={cI} data-h-ch="" data-attract=".22" style={{ display: "inline-block" }}>{c.ch}</span>
+                  ))}
+                </h1>
+                <div data-h-sub="" data-attract=".1" className="hero-sub" style={{ display: "flex", alignItems: "center", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", whiteSpace: "nowrap" }}>
+                  <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
+                  <span className="hero-track">2026 · THE CELESTIAL ODYSSEY</span>
+                  <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
+                </div>
               </div>
-              <h1 aria-label="Innovision" style={{ display: "flex", margin: "clamp(10px,2vh,22px) 0 clamp(8px,1.4vh,16px)", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(36px,12.4vw,224px)", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
-                {v.heroChars.map((c, cI) => (
-                  <span key={cI} data-h-ch="" data-attract=".22" style={{ display: "inline-block" }}>{c.ch}</span>
-                ))}
-              </h1>
-              <div data-h-sub="" data-attract=".1" style={{ display: "flex", alignItems: "center", gap: "18px", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", fontSize: "clamp(12px,1.35vw,21px)", letterSpacing: ".32em" }}>
-                <span style={{ width: "clamp(24px,4vw,64px)", height: "1px", background: "currentColor" }}></span>
-                <span style={{ paddingLeft: ".32em" }}>2026 · THE CELESTIAL ODYSSEY</span>
-                <span style={{ width: "clamp(24px,4vw,64px)", height: "1px", background: "currentColor" }}></span>
-              </div>
-              <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "clamp(18px,3.6vh,46px)", marginBottom: "clamp(96px,14vh,150px)", pointerEvents: "auto" }}>
-                <div data-h-cta="">
-                  <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "184px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-gold-fill">
+              <div className="hero-ctas" style={{ display: "flex", justifyContent: "center", pointerEvents: "auto" }}>
+                <div data-h-cta="" className="hero-cta-slot">
+                  <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} className="hero-cta hero-cta-primary hv-gold-fill" style={{ clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1), color .4s cubic-bezier(.25,1,.1,1)" }}>
                     <span data-scr="">BEGIN THE ODYSSEY</span>
                   </a>
                 </div>
-                <div data-h-cta="">
-                  <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "rgba(236,232,223,.85)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-gold">
-                    <span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#141312", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
+                <div data-h-cta="" className="hero-cta-slot">
+                  <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} className="hero-cta hero-cta-secondary hv-gold" style={{ position: "relative", isolation: "isolate", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
+                    <span className="hero-cta-fill" style={{ position: "absolute", inset: "1.5px", zIndex: "-1", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
                     <span data-scr="">REGISTER</span>
                   </a>
                 </div>
               </div>
             </div>
-            {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on. */}
-            <div style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", display: "flex", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
+            {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on.
+                Stacked screens drop it: there it would collide with INSTAGRAM and SOUND. */}
+            <div className="hero-scroll" style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
             <button data-h-scroll="" type="button" onClick={v.scrollNext} onMouseEnter={v.beep} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
               <svg viewBox="0 0 16 24" aria-hidden="true" style={{ width: "15px", height: "23px", overflow: "visible" }}>
                 <rect x="1" y="1" width="14" height="22" rx="7" fill="none" stroke="currentColor" strokeWidth="1.6"></rect>
@@ -106,7 +112,7 @@ export default function HomeView({ v }: { v: V }) {
             </button>
             </div>
             <CornerFrame color="rgba(20,19,18,.5)">
-              <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", fontSize: "11px", fontWeight: "700", letterSpacing: ".3em", color: "#141312" }}>22.2533° N · 84.9011° E · NIT ROURKELA</span>
+              <span className="hero-coords" style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", fontSize: "11px", fontWeight: "700", letterSpacing: ".3em", color: "#141312" }}>22.2533° N · 84.9011° E · NIT ROURKELA</span>
             </CornerFrame>
             {/* Scroll dimming: black at opacity a matches filter: brightness(1 - a) on the whole hero, but
                 fades on the compositor instead of re-filtering the full-screen scene every frame. */}

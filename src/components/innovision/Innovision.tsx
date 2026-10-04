@@ -1790,7 +1790,7 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       menuExpanded: s.menu,
       menuLogin: (e: MouseEvent<HTMLAnchorElement>) => { this.setState({ menu: false }); this.loginClick(e); },
       goHome: (e: MouseEvent) => { e.preventDefault(); this.goSection(null); },
-      topNav: navLinks.map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, onClick: l.onClick })),
+      topNav: navLinks.map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, cur: l.cur === 'true', onClick: l.onClick })),
       linkGo: this.linkGo,
       menuVis: (s.menu ? 'visible' : 'hidden') as 'visible' | 'hidden', menuDelay: s.menu ? '0s' : '.9s', menuClip: s.menu ? 'circle(150% at 100% 0%)' : 'circle(0% at 100% 0%)', menuHidden: !s.menu,
       closeMenu: () => this.setState({ menu: false }),
