@@ -171,8 +171,13 @@ WITH CHECK (auth.uid() = id OR public.is_admin(auth.uid()));
 -- Protect role column: regular users cannot alter their role
 CREATE OR REPLACE FUNCTION public.protect_profile_role() RETURNS TRIGGER AS $$
 BEGIN
-  IF (OLD.role IS DISTINCT FROM NEW.role) AND NOT public.is_admin(auth.uid()) THEN
-    NEW.role := OLD.role;
+  IF (OLD.role IS DISTINCT FROM NEW.role) THEN
+    -- If the update is executed by an authenticated client user who is not an admin, revert it.
+    -- Updates made directly via Supabase Dashboard, Table Editor, SQL Editor, or backend service_role
+    -- have auth.role() IS NULL or 'service_role' (not 'authenticated'), and are safely allowed.
+    IF auth.role() = 'authenticated' AND NOT public.is_admin(auth.uid()) THEN
+      NEW.role := OLD.role;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -221,3 +226,6 @@ UPDATE TO authenticated USING (user_id = auth.uid());
 DROP POLICY IF EXISTS "Users can delete own sessions" ON public.user_sessions;
 CREATE POLICY "Users can delete own sessions" ON public.user_sessions FOR
 DELETE TO authenticated USING (user_id = auth.uid());
+
+DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
+DROP FUNCTION IF EXISTS public.protect_profile_role();

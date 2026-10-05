@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Registration } from '@/lib/supabase';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase, fetchSessionFromDatabase } from '@/lib/supabase';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -55,9 +55,40 @@ export default function AdminDashboard({
   };
 
   const getAuthToken = async (): Promise<string | null> => {
-    const supabase = getSupabase();
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    try {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) return session.access_token;
+
+      // Fallback 1: Read inn_access_token from document cookies
+      if (typeof document !== 'undefined') {
+        const match = document.cookie.match(/(?:^|;\s*)inn_access_token=([^;]+)/);
+        if (match && match[1]) {
+          const decoded = decodeURIComponent(match[1]);
+          if (decoded && decoded !== 'null' && decoded !== 'undefined') {
+            return decoded;
+          }
+        }
+
+        // Fallback 2: Read any Supabase auth token cookie
+        const sbMatch = document.cookie.match(/(?:^|;\s*)sb-[^=]+-auth-token=([^;]+)/);
+        if (sbMatch && sbMatch[1]) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(sbMatch[1]));
+            if (parsed?.access_token) return parsed.access_token;
+          } catch {}
+        }
+      }
+
+      // Fallback 3: Query server session (auto-refreshes tokens if expired)
+      const dbAuth = await fetchSessionFromDatabase();
+      if (dbAuth.tokens?.access_token) {
+        return dbAuth.tokens.access_token;
+      }
+    } catch (e) {
+      console.warn('getAuthToken error:', e);
+    }
+    return null;
   };
 
   // Fetch registrations
@@ -66,15 +97,20 @@ export default function AdminDashboard({
       setLoadingRegs(true);
       setErrorMsg('');
       const token = await getAuthToken();
-      if (!token) throw new Error('Not authenticated');
 
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (typeFilter !== 'all') params.set('student_type', typeFilter);
       if (searchReg.trim()) params.set('q', searchReg.trim());
 
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/admin/registrations?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
+        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to fetch registrations');
@@ -87,17 +123,22 @@ export default function AdminDashboard({
     }
   }, [statusFilter, typeFilter, searchReg]);
 
-  // Fetch users (Staff: Admin & IT-Team)
+  // Fetch users (Admin only: IT-Team cannot access users)
   const fetchUsers = useCallback(async () => {
-    if (!isStaff) return;
+    if (!isAdmin) return;
     try {
       setLoadingUsers(true);
       setErrorMsg('');
       const token = await getAuthToken();
-      if (!token) throw new Error('Not authenticated');
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const res = await fetch('/api/admin/users', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
+        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to fetch users');
@@ -108,16 +149,19 @@ export default function AdminDashboard({
     } finally {
       setLoadingUsers(false);
     }
-  }, [isStaff]);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
       fetchRegistrations();
-      if (isStaff) fetchUsers();
+      if (isAdmin) fetchUsers();
     }, 0);
     return () => clearTimeout(timer);
-  }, [isOpen, fetchRegistrations, fetchUsers, isStaff]);
+  }, [isOpen, fetchRegistrations, fetchUsers, isAdmin]);
+
+  // Active tab: IT-Team is strictly confined to 'registrations' tab
+  const activeTab = isAdmin ? tab : 'registrations';
 
   if (!isOpen || !isStaff) return null;
 
@@ -145,14 +189,18 @@ export default function AdminDashboard({
     try {
       setActionBusyId(reg.id || reg.registration_id);
       const token = await getAuthToken();
-      if (!token) throw new Error('Not authenticated');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const res = await fetch('/api/admin/registrations', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           registrationId: reg.id,
           status: newStatus,
@@ -175,37 +223,41 @@ export default function AdminDashboard({
     }
   };
 
-  // Handle Role Change using Modal / Toast
-  const handleChangeRole = (userId: string, newRole: 'user' | 'it-team' | 'admin', userEmail: string) => {
+  // Handle Role Change using Modal / Toast (Only 'user' and 'it-team'; Admin role is DB only)
+  const handleChangeRole = (userId: string, newRole: 'user' | 'it-team', userEmail: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Update User Role',
-      message: `Are you sure you want to change the role of ${userEmail} to "${newRole.toUpperCase()}"?`,
+      message: `Are you sure you want to change the role of ${userEmail} to "${newRole === 'it-team' ? 'IT-TEAM' : 'USER'}"?`,
       actionText: 'CONFIRM ROLE CHANGE',
       actionType: 'role',
       onConfirm: () => executeChangeRole(userId, newRole, userEmail),
     });
   };
 
-  const executeChangeRole = async (userId: string, newRole: 'user' | 'it-team' | 'admin', userEmail: string) => {
+  const executeChangeRole = async (userId: string, newRole: 'user' | 'it-team', userEmail: string) => {
     try {
       setRoleBusyId(userId);
       const token = await getAuthToken();
-      if (!token) throw new Error('Not authenticated');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ userId, role: newRole }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to change role');
 
-      showToast(`Updated role for ${userEmail} to ${newRole.toUpperCase()}`, 'success');
+      showToast(`Updated role for ${userEmail} to ${newRole === 'it-team' ? 'IT-TEAM' : 'USER'}`, 'success');
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
@@ -520,9 +572,9 @@ export default function AdminDashboard({
               style={{
                 padding: '8px 18px',
                 border: 0,
-                borderBottom: tab === 'registrations' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
-                background: tab === 'registrations' ? 'rgba(236,232,223,0.06)' : 'transparent',
-                color: tab === 'registrations' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
+                borderBottom: activeTab === 'registrations' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
+                background: activeTab === 'registrations' ? 'rgba(236,232,223,0.06)' : 'transparent',
+                color: activeTab === 'registrations' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
                 fontWeight: 700,
                 fontSize: '12px',
                 letterSpacing: '.14em',
@@ -532,7 +584,7 @@ export default function AdminDashboard({
               REGISTRATIONS ({totalRegs})
             </button>
 
-            {isStaff && (
+            {isAdmin && (
               <button
                 id="tab-users"
                 type="button"
@@ -540,9 +592,9 @@ export default function AdminDashboard({
                 style={{
                   padding: '8px 18px',
                   border: 0,
-                  borderBottom: tab === 'users' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
-                  background: tab === 'users' ? 'rgba(236,232,223,0.06)' : 'transparent',
-                  color: tab === 'users' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
+                  borderBottom: activeTab === 'users' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
+                  background: activeTab === 'users' ? 'rgba(236,232,223,0.06)' : 'transparent',
+                  color: activeTab === 'users' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
                   fontWeight: 700,
                   fontSize: '12px',
                   letterSpacing: '.14em',
@@ -599,7 +651,7 @@ export default function AdminDashboard({
         )}
 
         {/* TAB 1: REGISTRATIONS */}
-        {tab === 'registrations' && (
+        {activeTab === 'registrations' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* Stat Cards */}
             <div
@@ -805,22 +857,24 @@ export default function AdminDashboard({
                         <div style={{ color: 'rgba(236,232,223,0.55)', fontSize: '13px', maxWidth: '540px', margin: '0 auto 18px', lineHeight: 1.5 }}>
                           Event registrations appear here once an attendee submits the Fest Registration form. To view all Google-authenticated user profiles and accounts, switch to the Users Directory tab.
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setTab('users')}
-                          style={{
-                            padding: '8px 18px',
-                            background: 'oklch(0.8 0.12 85)',
-                            color: '#141312',
-                            border: 0,
-                            fontWeight: 700,
-                            fontSize: '12px',
-                            letterSpacing: '.12em',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          VIEW USERS DIRECTORY ({users.length})
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setTab('users')}
+                            style={{
+                              padding: '8px 18px',
+                              background: 'oklch(0.8 0.12 85)',
+                              color: '#141312',
+                              border: 0,
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              letterSpacing: '.12em',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            VIEW USERS DIRECTORY ({users.length})
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -1025,8 +1079,8 @@ export default function AdminDashboard({
           </div>
         )}
 
-        {/* TAB 2: USERS DIRECTORY & ROLE MANAGEMENT */}
-        {tab === 'users' && isStaff && (
+        {/* TAB 2: USERS DIRECTORY & ROLE MANAGEMENT (Admin Only) */}
+        {activeTab === 'users' && isAdmin && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* Stat Cards */}
             <div
@@ -1255,22 +1309,47 @@ export default function AdminDashboard({
 
                           {/* Role Selector */}
                           <td style={{ padding: '14px 18px' }}>
-                            {isAdmin ? (
+                            {u.role === 'admin' ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    padding: '4px 10px',
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    letterSpacing: '.1em',
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    color: 'oklch(0.8 0.15 35)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  }}
+                                  title="Admin role is protected and can only be modified directly in the database."
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                  </svg>
+                                  ADMIN
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'rgba(236,232,223,0.4)', fontStyle: 'italic' }}>
+                                  (DB only)
+                                </span>
+                              </div>
+                            ) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <select
                                   value={u.role}
                                   disabled={isRoleBusy}
                                   onChange={(e) =>
-                                    handleChangeRole(u.id, e.target.value as 'user' | 'it-team' | 'admin', u.email)
+                                    handleChangeRole(u.id, e.target.value as 'user' | 'it-team', u.email)
                                   }
                                   style={{
                                     padding: '6px 10px',
                                     background: '#141312',
                                     border: '1px solid rgba(236,232,223,0.3)',
                                     color:
-                                      u.role === 'admin'
-                                        ? 'oklch(0.8 0.15 35)'
-                                        : u.role === 'it-team'
+                                      u.role === 'it-team'
                                         ? 'oklch(0.8 0.15 240)'
                                         : '#ECE8DF',
                                     fontSize: '12px',
@@ -1281,34 +1360,9 @@ export default function AdminDashboard({
                                 >
                                   <option value="user">User (Normal)</option>
                                   <option value="it-team">IT-Team</option>
-                                  <option value="admin">Admin</option>
                                 </select>
                                 {isRoleBusy && <span style={{ fontSize: '11px', color: 'oklch(0.8 0.12 85)' }}>Updating...</span>}
                               </div>
-                            ) : (
-                              <span
-                                style={{
-                                  padding: '4px 10px',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  letterSpacing: '.1em',
-                                  background:
-                                    u.role === 'admin'
-                                      ? 'rgba(239, 68, 68, 0.15)'
-                                      : u.role === 'it-team'
-                                      ? 'rgba(59, 130, 246, 0.15)'
-                                      : 'rgba(236,232,223,0.06)',
-                                  color:
-                                    u.role === 'admin'
-                                      ? 'oklch(0.8 0.15 35)'
-                                      : u.role === 'it-team'
-                                      ? 'oklch(0.8 0.15 240)'
-                                      : 'rgba(236,232,223,0.7)',
-                                  border: '1px solid rgba(236,232,223,0.12)',
-                                }}
-                              >
-                                {u.role.toUpperCase()}
-                              </span>
                             )}
                           </td>
 

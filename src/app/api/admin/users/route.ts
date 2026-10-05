@@ -5,33 +5,67 @@ export const runtime = 'nodejs';
 
 async function verifyStaff(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  let token = authHeader?.replace(/^Bearer\s+/i, '');
-  if (!token) {
-    token = req.cookies.get('inn_access_token')?.value;
+  let token = authHeader?.replace(/^Bearer\s+/i, '')?.trim();
+  if (!token || token === 'null' || token === 'undefined') {
+    token = req.cookies.get('inn_access_token')?.value?.trim();
   }
 
-  if (!token) {
-    return { error: 'Unauthorized: Missing auth token', status: 401 };
+  // Also check sb-*-auth-token cookies if inn_access_token is missing
+  if (!token || token === 'null' || token === 'undefined') {
+    const allCookies = req.cookies.getAll();
+    for (const c of allCookies) {
+      if (c.name.includes('-auth-token') || c.name.includes('supabase-auth')) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(c.value));
+          if (parsed?.access_token) {
+            token = parsed.access_token;
+            break;
+          }
+        } catch {}
+      }
+    }
   }
 
-  const supabase = getSupabaseAdmin(token);
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+  let supabase = getSupabaseAdmin(token || undefined);
+  let activeUser = null;
 
-  if (authErr || !user) {
-    return { error: 'Unauthorized: Invalid token', status: 401 };
+  if (token && token !== 'null' && token !== 'undefined') {
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (!authErr && user) {
+      activeUser = user;
+    }
+  }
+
+  // If token is expired or invalid, attempt refresh using inn_refresh_token cookie
+  if (!activeUser) {
+    const refreshToken = req.cookies.get('inn_refresh_token')?.value?.trim();
+    if (refreshToken && refreshToken !== 'null' && refreshToken !== 'undefined') {
+      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken,
+      });
+      if (!refreshErr && refreshed.user && refreshed.session?.access_token) {
+        activeUser = refreshed.user;
+        token = refreshed.session.access_token;
+        supabase = getSupabaseAdmin(token);
+      }
+    }
+  }
+
+  if (!activeUser) {
+    return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
   }
 
   const { data: profile, error: profErr } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('id', activeUser.id)
     .maybeSingle();
 
   if (profErr || !profile || !['admin', 'it-team'].includes(profile.role)) {
     return { error: 'Forbidden: Admin or IT-Team access required', status: 403 };
   }
 
-  return { user, role: profile.role, supabase };
+  return { user: activeUser, role: profile.role, supabase };
 }
 
 async function verifyAdmin(req: NextRequest) {
@@ -45,10 +79,10 @@ async function verifyAdmin(req: NextRequest) {
   return staff;
 }
 
-// GET all users (Staff: Admin & IT-Team)
+// GET all users (Admin only: IT Team cannot access user directory)
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyAdmin(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -74,6 +108,9 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH change user role (Admin only)
+// Rules:
+// 1. One admin cannot change the role of another admin.
+// 2. Admin role can only be changed from the database only (cannot assign 'admin' role via API).
 export async function PATCH(req: NextRequest) {
   try {
     const auth = await verifyAdmin(req);
@@ -88,9 +125,21 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Missing userId or role' }, { status: 400 });
     }
 
-    const validRoles = ['user', 'it-team', 'admin'];
-    if (!validRoles.includes(role)) {
-      return NextResponse.json({ error: 'Invalid role specified' }, { status: 400 });
+    // Rule: Admin role can only be changed from the database only!
+    if (role === 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin role can only be assigned directly in the database.' },
+        { status: 403 }
+      );
+    }
+
+    // Allowed roles to be assigned via the web dashboard: only 'user' or 'it-team'
+    const assignableRoles = ['user', 'it-team'];
+    if (!assignableRoles.includes(role)) {
+      return NextResponse.json(
+        { error: 'Invalid role. Only "user" and "it-team" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
+        { status: 400 }
+      );
     }
 
     const { supabase } = auth;
@@ -106,7 +155,15 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Target user profile not found' }, { status: 404 });
     }
 
-    // Target user profile verified
+    // Rule: One admin cannot change the role of another admin. Admin role can only be changed from the database only.
+    if (targetProfile.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot change the role of an Administrator. Admin roles can only be modified directly in the database.' },
+        { status: 403 }
+      );
+    }
+
+    // Target user profile verified as non-admin -> execute role change to 'user' or 'it-team'
     const { data: updated, error } = await supabase
       .from('profiles')
       .update({ role, updated_at: new Date().toISOString() })
