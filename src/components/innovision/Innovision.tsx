@@ -1,8 +1,9 @@
+// @ts-nocheck
+"use client";
+import { IS_CLICKABLE, preloadClick, unlockClick, playClick, setClickMuted } from './clickSound';
 /* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
 /* eslint-disable @typescript-eslint/no-explicit-any -- view-model is dynamically constructed and consumed across many child views */
 /* eslint-disable @typescript-eslint/no-unused-vars -- some destructured vars are kept for future use */
-// @ts-nocheck
-'use client';
 
 import { Component, createRef, memo, type ComponentType, type FormEvent, type MouseEvent, type TouchEvent, type WheelEvent } from 'react';
 import dynamic from 'next/dynamic';
@@ -13,7 +14,6 @@ import {
   A, WORLDS, PRELOAD_CRITICAL, PRELOAD_DEFERRED, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
   LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SCHED_BLOCKS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
 } from './data';
-import { CLICKABLE, preloadClick, unlockClick, playClick, setClickMuted } from './clickSound';
 import HomeView from './HomeView';
 import WorldsView from './WorldsView';
 import Hud from './Hud';
@@ -44,7 +44,10 @@ import {
   purgeLocalStorageTokens,
   type UserProfile,
   type Registration,
+  type EventItem,
+  type GalleryPhoto,
 } from '@/lib/supabase';
+import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
 
@@ -140,8 +143,9 @@ interface State {
   phoneModalOpen: boolean;
   registration: Registration | null;
   user: UserProfile | null;
-  /** The first session check has finished (signed in or not); until then the HUD holds the account slot empty. */
-  authReady: boolean;
+  authReady: boolean; auth: boolean; authMode: string; step: number; err: any; busyLbl: string; files: any; drag: string; copied: boolean; schedFilter: string;
+  dbGallery: GalleryPhoto[];
+  dbEvents: EventItem[];
 }
 
 /** Bag lines read back from storage, minus anything malformed (unknown shape, bad quantity, unknown product). */
@@ -166,8 +170,8 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
-    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false };
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
@@ -256,6 +260,7 @@ export default class Innovision extends Component<Props, State> {
     this.boot();
     this.watchFrames();
     this.initSupabaseAuth();
+    this.fetchPublicData();
   }
 
   componentWillUnmount() {
@@ -328,6 +333,8 @@ export default class Innovision extends Component<Props, State> {
             sessionStorage.setItem('inv_pending_action', 'register');
             this.openAuth('login');
             this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+          } else if (this.state.registration || this.pass) {
+            this.openAuth('pass');
           } else {
             this.openAuth('register');
           }
@@ -405,7 +412,19 @@ export default class Innovision extends Component<Props, State> {
     this.syncLoops();
     this.warmDeferred();
   }
-  componentDidUpdate(pp: Props) { if (pp.roverPauses !== this.props.roverPauses) this._rvReseq = true; }
+
+  waveLoop() {
+    const w = this.$('[data-wave]') as El | null;
+    if (w && !w._tw) { w._tw = gsap.to(w, { scaleY: .35, transformOrigin: 'center', duration: 1.1, ease: 'sine.inOut', repeat: -1, yoyo: true }); }
+  }
+  componentDidUpdate(pp: Props, ps: State) {
+    if (this.ctx) this.waveLoop();
+    if (pp.roverPauses !== this.props.roverPauses) this._rvReseq = true;
+    if (ps.dbGallery !== this.state.dbGallery) {
+      this.gEls = this.$$('[data-g-item]');
+    }
+  }
+
 
   /* ---------- flagship rover ---------- */
   /**
@@ -789,10 +808,13 @@ export default class Innovision extends Component<Props, State> {
     return true;
   }
   enterView(to: Route): gsap.core.Timeline {
+    if (to.view === 'gallery' || to.view === 'detail' || to.view === 'worlds') {
+      this.fetchPublicData();
+    }
     if (to.view === 'home') return this.homeEnter();
     if (to.view === 'gallery') return this.galleryEnter();
     if (to.view === 'schedule') return this.schedEnter();
-    if (to.view === 'merch') return gsap.timeline().fromTo(this.$$('[data-view="merch"] [data-m-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .06 }, .1);
+    if (to.view === 'merch') return gsap.timeline().fromTo(this.$('[data-view="merch"] [data-m-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .06 }, .1);
     if (to.view === 'worlds') this.queueHint();
     return to.view === 'detail' ? this.detailEnter() : this.worldsEnter(to.index);
   }
@@ -835,7 +857,9 @@ export default class Innovision extends Component<Props, State> {
       el.style.transform = 'translate3d(' + (d.x * W).toFixed(1) + 'px,' + (d.y * H).toFixed(1) + 'px,' + z.toFixed(1) + 'px)';
       el.style.opacity = z > 500 ? '0' : Math.min(.9, Math.max(0, (z + 5200) / 2000)).toFixed(3);
     });
-    const p = Math.max(0, Math.min(1, this.gZ / G_MAX));
+    const gLen = this.gEls.length || (this.state.dbGallery && this.state.dbGallery.length > 0 ? this.state.dbGallery.length : GALLERY.length);
+    const maxZ = Math.max(1200, (gLen - 1) * GAP + 900);
+    const p = Math.max(0, Math.min(1, this.gZ / maxZ));
     this.gBar!.style.transform = 'scaleY(' + p.toFixed(4) + ')';
     this.gGlow!.style.transform = 'scale(' + (1 + Math.pow(p, 3) * 14).toFixed(3) + ')';
     this.gGlow!.style.opacity = p.toFixed(3);
@@ -844,19 +868,34 @@ export default class Innovision extends Component<Props, State> {
     this.gEnd!.style.opacity = end ? '1' : '0';
     this.gEnd!.style.pointerEvents = end ? 'auto' : 'none';
     this.gHint!.style.opacity = this.gTarget > 300 ? '0' : '1';
-    const idx = Math.max(0, Math.min(GALLERY.length - 1, Math.round((this.gZ - 200) / GAP)));
+    const idx = Math.max(0, Math.min(gLen - 1, Math.round((this.gZ - 200) / GAP)));
     if (idx !== this.state.gIdx) this.setState({ gIdx: idx });
   }
   galleryEnter() {
+    this.gEls = this.$$('[data-g-item]');
     return gsap.timeline()
       .call(() => { this.gZ = -2600; this.gTarget = 0; }, undefined, .01)
       .fromTo(this.$$('[data-g-ui]'), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .1 }, .4)
       .to(this.$$('[data-hud]'), { autoAlpha: 1, duration: .8 }, .2);
   }
-  gStep(d: number) { const i = Math.max(0, Math.min(GALLERY.length - 1, Math.round((this.gTarget - 200) / GAP) + d)); this.gTarget = i * GAP + 200; }
-  gWheel = (e: WheelEvent) => { this.gTarget = Math.max(0, Math.min(G_MAX, this.gTarget + (e.deltaY + e.deltaX) * 1.6)); };
+  getGMax() {
+    const gLen = this.gEls?.length || (this.state.dbGallery && this.state.dbGallery.length > 0 ? this.state.dbGallery.length : GALLERY.length);
+    return Math.max(1200, (gLen - 1) * GAP + 900);
+  }
+  gStep(d: number) {
+    const gLen = this.gEls?.length || (this.state.dbGallery && this.state.dbGallery.length > 0 ? this.state.dbGallery.length : GALLERY.length);
+    const i = Math.max(0, Math.min(gLen - 1, Math.round((this.gTarget - 200) / GAP) + d));
+    this.gTarget = i * GAP + 200;
+  }
+  gWheel = (e: WheelEvent) => {
+    this.gTarget = Math.max(0, Math.min(this.getGMax(), this.gTarget + (e.deltaY + e.deltaX) * 1.6));
+  };
   gTouchStart = (e: TouchEvent) => { this.gTy = e.touches[0].clientY; };
-  gTouchMove = (e: TouchEvent) => { const y = e.touches[0].clientY; this.gTarget = Math.max(0, Math.min(G_MAX, this.gTarget + (this.gTy - y) * 4)); this.gTy = y; };
+  gTouchMove = (e: TouchEvent) => {
+    const y = e.touches[0].clientY;
+    this.gTarget = Math.max(0, Math.min(this.getGMax(), this.gTarget + (this.gTy - y) * 4));
+    this.gTy = y;
+  };
 
   /* ---------- store / bag ---------- */
   toast(msg: string) {
@@ -1430,7 +1469,7 @@ export default class Innovision extends Component<Props, State> {
       this.toast('🔒 Authentication required: Please log in or sign up before registering.');
       return;
     }
-    if (this.state.registration) {
+    if (this.state.registration || this.pass) {
       this.openAuth('pass');
       return;
     }
@@ -1468,6 +1507,24 @@ export default class Innovision extends Component<Props, State> {
       menuLogout: (e: MouseEvent) => { e.preventDefault(); this.setState({ menu: false }); this.logout(); },
     };
   }
+
+  /* ---------- Public Events & Gallery Data Fetching ---------- */
+  fetchPublicData = async () => {
+    try {
+      const [gRes, eRes] = await Promise.all([
+        fetch('/api/gallery').then((r) => r.json()).catch(() => null),
+        fetch('/api/events').then((r) => r.json()).catch(() => null),
+      ]);
+      if (gRes?.success && Array.isArray(gRes.gallery) && gRes.gallery.length > 0) {
+        this.setState({ dbGallery: gRes.gallery });
+      }
+      if (eRes?.success && Array.isArray(eRes.events) && eRes.events.length > 0) {
+        this.setState({ dbEvents: eRes.events });
+      }
+    } catch (e) {
+      console.warn('Error fetching public fest data:', e);
+    }
+  };
 
   /* ---------- Supabase Auth & Google OAuth (Cookie-Backed Sessions) ---------- */
   /** The first session check is over: show LOG IN or the profile, and release clicks waiting on it. */
@@ -1586,7 +1643,7 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    const registration = await fetchUserRegistration(authUser.id);
+    const registration = await fetchUserRegistration(authUser.id, authUser.email);
 
     if (registration) {
       this.pass = {
@@ -1594,7 +1651,7 @@ export default class Innovision extends Component<Props, State> {
         college: registration.college,
         id: registration.registration_id,
         email: registration.email,
-        status: registration.status.toUpperCase(),
+        status: (registration.status || 'CONFIRMED').toUpperCase(),
         utr: registration.utr,
       };
     }
@@ -1613,7 +1670,8 @@ export default class Innovision extends Component<Props, State> {
     if (pendingAction === 'register') {
       if (typeof window !== 'undefined') sessionStorage.removeItem('inv_pending_action');
       if (registration) {
-        this.closeAuth(() => this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}! You are already registered.`));
+        this.openAuth('pass');
+        this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}! Here is your boarding pass.`);
       } else {
         this.toast(`Authenticated as ${profile.email}. Let's complete your registration.`);
         setTimeout(() => this.openAuth('register'), 300);
@@ -1621,10 +1679,11 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    if (this.state.auth && this.state.authMode === 'login') {
+    if (this.state.auth) {
       if (registration) {
-        this.closeAuth(() => this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}.`));
-      } else {
+        this.openAuth('pass');
+        this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}! Here is your boarding pass.`);
+      } else if (this.state.authMode === 'login') {
         this.setState({ authMode: 'register', step: 0 });
       }
     }
@@ -1799,6 +1858,15 @@ export default class Innovision extends Component<Props, State> {
       this.toast('🔒 Authentication required: Please log in or sign up before registering.');
     }
 
+    // If user is already registered, always show their pass - never show registration
+    if (mode === 'register' && (this.state.registration || this.pass)) {
+      mode = 'pass';
+    }
+
+    if (mode === 'pass') {
+      this.setState({ step: 4 });
+    }
+
     if (this.state.auth) { this.switchMode(mode); return; }
     this.authBusy = true;
     // The overlay is a lazy chunk (LAZY.auth): mount it before animating it. The rift opens from the button as it
@@ -1906,7 +1974,14 @@ export default class Innovision extends Component<Props, State> {
   }
   // @ts-ignore
   switchMode = (mode) => {
-    const s = this.state, m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
+    const s = this.state;
+    let m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
+
+    // Never switch to register if user is already registered - show their pass
+    if (m === 'register' && (s.registration || this.pass)) {
+      m = 'pass';
+    }
+
     if (m === s.authMode || s.busyLbl) return;
 
     // Strict Auth Middleware: Intercept switching to register without login
@@ -1918,7 +1993,17 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    this.setState({ authMode: m, err: {}, gErr: '' }, () => { this.animPane(1, true); this.focusAuth(); });
+
+    playClick();
+    this.setState({ authMode: m, step: m === 'pass' ? 4 : s.step, err: {}, gErr: '' }, () => {
+      if (m === 'pass') {
+        this.passReveal();
+      } else {
+        this.animPane(1, true);
+        this.focusAuth();
+      }
+    });
+
   };
   // @ts-ignore
   toStep(n) {
@@ -2115,6 +2200,12 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
+    if (!isInternal && isIterSoaEmail(user.email)) {
+      this.toast(ITER_SOA_ERROR_MESSAGE);
+      this.fail({ college: ITER_SOA_ERROR_MESSAGE });
+      return;
+    }
+
     if (s.step === 0) {
       const name = v('name').replace(/\s+/g, ' ');
       const college = isInternal ? 'National Institute of Technology, Rourkela' : v('college').replace(/\s+/g, ' ');
@@ -2123,7 +2214,11 @@ export default class Innovision extends Component<Props, State> {
       const enrollment_no = v('enrollment_no');
 
       if (name.length < 2) err.name = 'Tell us your full name.';
-      if (!isInternal && college.length < 3) err.college = 'Which college are you from?';
+      if (!isInternal && college.length < 3) {
+        err.college = 'Which college are you from?';
+      } else if (!isInternal && (isIterSoaCollege(college) || isIterSoaEmail(email))) {
+        err.college = ITER_SOA_ERROR_MESSAGE;
+      }
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
       if (isInternal && !enrollment_no) err.enrollment_no = 'Enter your NIT Rourkela Roll / Enrollment number.';
 
@@ -2149,21 +2244,30 @@ export default class Innovision extends Component<Props, State> {
           };
 
           const saveRes = await createRegistration(regPayload);
-          const savedReg = saveRes.registration || regPayload;
+          const savedReg = saveRes.registration || (saveRes.success ? regPayload : null);
+          if (!savedReg) {
+            this.toast(saveRes.error || 'Registration failed');
+            this.setState({ busyLbl: '' });
+            return;
+          }
 
           this.pass = {
-            name,
+            name: savedReg.name || name,
             college: 'National Institute of Technology, Rourkela',
-            id: regId,
+            id: savedReg.registration_id || regId,
             email: user.email,
             status: 'CONFIRMED',
           };
-          this.toast('🎉 Registration confirmed! Welcome to Innovision 2026.');
+
+          playClick();
+          this.toast(saveRes.alreadyRegistered ? 'You are already registered! Here is your pass.' : '🎉 Registration confirmed! Welcome to Innovision 2026.');
+
           this.setState(
             {
               authMode: 'pass',
               step: 4,
               registration: savedReg as Registration,
+              busyLbl: '',
             },
             () => this.passReveal()
           );
@@ -2209,15 +2313,30 @@ export default class Innovision extends Component<Props, State> {
           status: 'pending' as const, // PENDING FOR EXTERNAL
         };
 
+        if (!isInternal && (isIterSoaCollege(r.college) || isIterSoaEmail(user.email))) {
+          this.toast(ITER_SOA_ERROR_MESSAGE);
+          this.setState({ err: { college: ITER_SOA_ERROR_MESSAGE }, step: 0, busyLbl: '' });
+          return;
+        }
+
         const saveRes = await createRegistration(regPayload);
-        const savedReg = saveRes.registration || regPayload;
+        const savedReg = saveRes.registration || (saveRes.success ? regPayload : null);
+        if (!savedReg) {
+          this.toast(saveRes.error || 'Registration failed');
+          this.setState({
+            busyLbl: '',
+            step: 0,
+            err: { college: saveRes.error || 'Registration failed' },
+          });
+          return;
+        }
 
         this.pass = {
-          name: r.name,
-          college: r.college,
-          id: regId,
+          name: savedReg.name || r.name,
+          college: savedReg.college || r.college,
+          id: savedReg.registration_id || regId,
           email: user.email,
-          status: 'PAYMENT UNDER REVIEW',
+          status: (savedReg.status || 'PAYMENT UNDER REVIEW').toUpperCase(),
           utr,
         };
         this.setState(
@@ -2225,6 +2344,7 @@ export default class Innovision extends Component<Props, State> {
             authMode: 'pass',
             step: 4,
             registration: savedReg as Registration,
+            busyLbl: '',
           },
           () => this.passReveal()
         );
@@ -2312,9 +2432,9 @@ export default class Innovision extends Component<Props, State> {
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
       authSubmit: this.authSubmit, clearErr: this.clearErr, switchMode: this.switchMode, closeAuthH: () => this.closeAuth(),
-      showSwitch: am !== 'pass' && !!s.user,
-      switchQ: !s.user ? 'Authentication required' : (reg ? 'Already registered?' : 'Need to register?'),
-      switchLbl: !s.user ? 'SIGN IN' : (reg ? 'LOG IN' : 'REGISTER'),
+      showSwitch: am !== 'pass' && !reg && !!s.user,
+      switchQ: !s.user ? 'Authentication required' : 'Need to register?',
+      switchLbl: !s.user ? 'SIGN IN' : 'REGISTER',
       switchQD: s.narrow ? 'none' : 'inline',
       canBack: reg && st > 0 && !isInternal, stepBack: this.stepBack,
       submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE', 'CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
@@ -2389,7 +2509,24 @@ export default class Innovision extends Component<Props, State> {
       linkGo: this.linkGo,
       menuVis: (s.menu ? 'visible' : 'hidden') as 'visible' | 'hidden', menuDelay: s.menu ? '0s' : '.9s', menuClip: s.menu ? 'circle(150% at 100% 0%)' : 'circle(0% at 100% 0%)', menuHidden: !s.menu,
       closeMenu: () => this.setState({ menu: false }),
-      tunnel: TUNNEL.map(([cap, x, y, ar], k) => ({ id: 'gallery-' + (k + 1), ph: cap + ' photo', capU: cap.toUpperCase(), no: String(k + 1).padStart(2, '0'), x, y, ar, c: TUNNEL_C[k % 3] })),
+      tunnel: (() => {
+        const dbPhotos = s.dbGallery && s.dbGallery.length > 0 ? s.dbGallery : null;
+        return TUNNEL.map(([cap, x, y, ar], k) => {
+          const photo = dbPhotos ? dbPhotos[k % dbPhotos.length] : null;
+          const caption = photo?.title || cap;
+          return {
+            id: 'gallery-' + (k + 1),
+            ph: caption + ' photo',
+            capU: caption.toUpperCase(),
+            no: String(k + 1).padStart(2, '0'),
+            x,
+            y,
+            ar,
+            c: TUNNEL_C[k % 3],
+            imageUrl: photo ? photo.image_url : undefined,
+          };
+        });
+      })(),
       tunnelTotal: String(TUNNEL.length).padStart(2, '0'),
       titleSponsor: TITLE_SPONSOR,
       sponsorTiers: SPONSOR_TIERS.map((t) => ({
@@ -2442,16 +2579,63 @@ export default class Innovision extends Component<Props, State> {
         onExplore: () => this.go('#/world/' + x.slug),
         onEnter: () => this.openMap(k),
       })),
-      cw: {
-        ...dw, categoryU: dw.category.toUpperCase(), statLU: dw.statL.toUpperCase(), serial: 'IV26-0' + (s.dIndex + 1),
-        stampText: 'BOARDING SOON · ' + dw.statL.toUpperCase() + ' · ', frame: 'color-mix(in oklab, ' + dw.ink + ' 50%, transparent)',
-        ticker: [0, 1, 2, 3].flatMap(() => ['Now boarding · ' + dw.name, ...dw.missions.map((m) => m[0])]).map((t) => ({ t })),
-        chars: [...dw.name].map((ch) => ({ ch: ch === ' ' ? ' ' : ch })),
-        words: dw.tagline.split(' ').map((t) => ({ t })),
-        specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })), missionCount: String(dw.missions.length).padStart(2, '0'),
-        missions: dw.missions.map(([name, text, format, dur], k) => ({ no: String(k + 1).padStart(2, '0'), name, text, format, dur, img: A + dw.gates[k % dw.gates.length] })),
-      },
-      nw: { href: '#/world/' + nx.slug, name: nx.name, planet: nx.planet },
+
+      cw: (() => {
+        const catEvents = (s.dbEvents || []).filter((ev) => {
+          if (!ev.category) return true;
+          const cat = ev.category.toLowerCase().trim();
+          if (dw.key === 'takeoff') {
+            return cat === 'flagship events' || cat.includes('flagship') || cat.includes('tech');
+          }
+          if (dw.key === 'touchdown') {
+            return cat === 'main events' || cat.includes('main') || cat.includes('workshop');
+          }
+          if (dw.key === 'highpoint') {
+            return cat === 'fun events' || cat === 'dts events' || cat.includes('fun') || cat.includes('dts');
+          }
+          return true;
+        });
+
+        const useDynamic = catEvents.length > 0;
+        const missions = useDynamic
+          ? catEvents.map((ev, k) => ({
+              no: String(k + 1).padStart(2, '0'),
+              name: ev.title,
+              text: ev.description,
+              format: '',
+              dur: '',
+              img: A + dw.gates[k % dw.gates.length],
+              posterUrl: ev.poster_url || '',
+              brochureUrl: ev.brochure_url || '',
+            }))
+          : dw.missions.map(([name, text], k) => ({
+              no: String(k + 1).padStart(2, '0'),
+              name,
+              text,
+              format: '',
+              dur: '',
+              img: A + dw.gates[k % dw.gates.length],
+              posterUrl: '',
+              brochureUrl: '',
+            }));
+
+        return {
+          ...dw,
+          categoryU: dw.category.toUpperCase(),
+          statLU: dw.statL.toUpperCase(),
+          serial: 'IV26-0' + (s.dIndex + 1),
+          stampText: 'BOARDING SOON · ' + dw.statL.toUpperCase() + ' · ',
+          frame: 'color-mix(in oklab, ' + dw.ink + ' 50%, transparent)',
+          ticker: [0, 1, 2, 3].flatMap(() => ['Now boarding · ' + dw.name, ...missions.map((m) => m.name)]).map((t) => ({ t })),
+          chars: [...dw.name.toUpperCase()].map((ch) => ({ ch: ch === ' ' ? ' ' : ch })),
+          words: dw.tagline.split(' ').map((t) => ({ t })),
+          specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })),
+          missionCount: String(missions.length).padStart(2, '0'),
+          missions,
+        };
+      })(),
+      nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
+
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
       isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
@@ -2491,16 +2675,45 @@ export default class Innovision extends Component<Props, State> {
         this.setState({ adminOpen: true, profileOpen: false });
       },
       isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team')),
-      hasRegistered: !!s.registration,
+      hasRegistered: !!(s.registration || this.pass),
+      openPass: () => this.openAuth('pass'),
       // @ts-ignore
       ...this.authVals(s),
       curtainLabel: s.curtainLabel, curtainKicker: s.curtainKicker,
       prevSlide: () => this.stepSlide(-1), nextSlide: () => this.stepSlide(1),
       onWheel: this.onWheel, onTouchStart: this.onTouchStart, onTouchEnd: this.onTouchEnd,
       // gallery page
-      gallery: GALLERY.map((g, k) => ({ ...g, onFocus: () => { this.gTarget = k * GAP + 200; } })),
-      gDust: Array.from({ length: 46 }, (_, k) => ({ s: (k % 3 === 0 ? 3 : 2) + 'px' })),
-      gCur: GALLERY[s.gIdx], gTotal: String(GALLERY.length).padStart(2, '0'),
+
+      ...(() => {
+        const galleryList =
+          s.dbGallery && s.dbGallery.length > 0
+            ? s.dbGallery.map((item, i) => {
+                const t = item.title || `Memory ${i + 1}`;
+                return {
+                  id: `gallery-db-${item.id || i}`,
+                  no: String(i + 1).padStart(2, '0'),
+                  title: t,
+                  titleU: t.toUpperCase(),
+                  imageUrl: item.image_url,
+                  w: i % 3 === 1 ? 'min(22vw, 300px)' : 'min(32vw, 440px)',
+                  h: i % 3 === 1 ? 'min(29vw, 400px)' : 'min(21vw, 290px)',
+                };
+              })
+            : GALLERY;
+        return {
+          gallery: galleryList.map((g, k) => ({
+            ...g,
+            onFocus: () => {
+              playClick();
+              this.gTarget = k * GAP + 200;
+            },
+          })),
+          gDust: Array.from({ length: 46 }, (_, k) => ({ s: (k % 3 === 0 ? 3 : 2) + 'px' })),
+          gCur: galleryList[s.gIdx] || galleryList[0] || GALLERY[0],
+          gTotal: String(galleryList.length).padStart(2, '0'),
+        };
+      })(),
+
       gRestart: () => { this.gTarget = 0; },
       gWheel: this.gWheel, gTouchStart: this.gTouchStart, gTouchMove: this.gTouchMove,
       ...this.schedVals(s),
@@ -2514,12 +2727,12 @@ export default class Innovision extends Component<Props, State> {
     return (
       <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-sans)" }}>
         <LiveV value={v}>
-        <HomeV v={v} deps={[]} />
-        <WorldsV v={v} deps={[s.narrow, s.compact]} />
-        {s.lazy.detail && <DetailV v={v} deps={[s.dIndex, s.compact]} />}
-        {s.lazy.gallery && <GalleryV v={v} deps={[s.gIdx]} />}
+        <HomeV v={v} deps={[s.dbGallery]} />
+        <WorldsV v={v} deps={[s.narrow, s.compact, s.dbEvents]} />
+        {s.lazy.detail && <DetailV v={v} deps={[s.dIndex, s.compact, s.dbEvents]} />}
+        {s.lazy.gallery && <GalleryV v={v} deps={[s.gIdx, s.dbGallery]} />}
         {s.lazy.merch && <MerchV v={v} deps={[s.sel, s.added]} />}
-        {s.lazy.schedule && <ScheduleV v={v} deps={[s.schedDay, s.saved, s.narrow]} />}
+        {s.lazy.schedule && <ScheduleV v={v} deps={[s.schedDay, s.schedFilter, s.saved, s.narrow]} />}
         <Hud v={v} />
         <WorldNav v={v} />
         <WorldHint v={v} />

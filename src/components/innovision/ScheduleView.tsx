@@ -1,3 +1,6 @@
+// @ts-nocheck
+"use client";
+
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { Sparkle } from './icons';

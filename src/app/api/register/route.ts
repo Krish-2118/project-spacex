@@ -1,5 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin, getSupabase } from '@/lib/supabase';
+import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+
+/**
+ * Helper to authenticate user from Bearer header or cookie tokens
+ */
+async function getAuthenticatedUser(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.substring(7)
+    : req.cookies.get('inn_access_token')?.value || null;
+
+  let user = null;
+  let authToken = token;
+
+  if (token) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) {
+      user = data.user;
+    }
+  }
+
+  // Fallback: check session from cookie if available
+  if (!user) {
+    const allCookies = req.cookies.getAll();
+    for (const cookie of allCookies) {
+      if (cookie.name.includes('-auth-token') || cookie.name === 'sb-access-token') {
+        try {
+          let parsedToken = cookie.value;
+          if (cookie.value.startsWith('{') || cookie.value.startsWith('base64-')) {
+            const decoded = cookie.value.startsWith('base64-')
+              ? Buffer.from(cookie.value.slice(7), 'base64').toString('utf-8')
+              : cookie.value;
+            const json = JSON.parse(decoded);
+            parsedToken = json.access_token || json[0]?.access_token || parsedToken;
+          }
+          if (parsedToken) {
+            const supabase = getSupabase();
+            const { data } = await supabase.auth.getUser(parsedToken);
+            if (data?.user) {
+              user = data.user;
+              authToken = parsedToken;
+              break;
+            }
+          }
+        } catch {
+          // Ignore parse errors and keep trying
+        }
+      }
+    }
+  }
+
+  return { user, authToken };
+}
+
+/**
+ * GET /api/register
+ * Fetch the authenticated user's registration securely via admin client (bypasses client RLS)
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { user, authToken } = await getAuthenticatedUser(req);
+
+    if (!user || !user.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const adminClient = getSupabaseAdmin(authToken || undefined);
+    const verifiedEmail = user.email.toLowerCase().trim();
+
+    const { data: registration, error } = await adminClient
+      .from('registrations')
+      .select('*')
+      .or(`user_id.eq.${user.id},email.eq.${verifiedEmail}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Error fetching registration in /api/register GET:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      registration: registration || null,
+    });
+  } catch (err: unknown) {
+    console.error('API /api/register GET error:', err);
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
 
 /**
  * POST /api/register
@@ -9,52 +105,7 @@ import { getSupabaseAdmin, getSupabase } from '@/lib/supabase';
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate Request
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : req.cookies.get('inn_access_token')?.value || null;
-
-    let user = null;
-    let authToken = token;
-
-    if (token) {
-      const supabase = getSupabase();
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data?.user) {
-        user = data.user;
-      }
-    }
-
-    // Fallback: check session from cookie if available
-    if (!user) {
-      const allCookies = req.cookies.getAll();
-      for (const cookie of allCookies) {
-        if (cookie.name.includes('-auth-token') || cookie.name === 'sb-access-token') {
-          try {
-            // Some supabase cookies store JSON with access_token
-            let parsedToken = cookie.value;
-            if (cookie.value.startsWith('{') || cookie.value.startsWith('base64-')) {
-              const decoded = cookie.value.startsWith('base64-')
-                ? Buffer.from(cookie.value.slice(7), 'base64').toString('utf-8')
-                : cookie.value;
-              const json = JSON.parse(decoded);
-              parsedToken = json.access_token || json[0]?.access_token || parsedToken;
-            }
-            if (parsedToken) {
-              const supabase = getSupabase();
-              const { data } = await supabase.auth.getUser(parsedToken);
-              if (data?.user) {
-                user = data.user;
-                authToken = parsedToken;
-                break;
-              }
-            }
-          } catch {
-            // Ignore parse errors and keep trying
-          }
-        }
-      }
-    }
+    const { user, authToken } = await getAuthenticatedUser(req);
 
     // STRICT AUTH GUARD
     if (!user || !user.email) {
@@ -92,6 +143,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Exclusion rule: Students from ITER - SOA are not allowed to register
+    if (!isInternal && (isIterSoaCollege(college) || isIterSoaEmail(verifiedEmail))) {
+      return NextResponse.json(
+        { error: ITER_SOA_ERROR_MESSAGE },
+        { status: 403 }
+      );
+    }
+
     // External students require college ID card and payment proof
     if (!isInternal) {
       if (!id_card_url) {
@@ -120,17 +179,20 @@ export async function POST(req: NextRequest) {
     const { data: existingReg } = await adminClient
       .from('registrations')
       .select('*')
-      .eq('user_id', user.id)
+      .or(`user_id.eq.${user.id},email.eq.${verifiedEmail}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingReg) {
       return NextResponse.json(
         {
-          error: 'Already Registered',
+          success: true,
+          alreadyRegistered: true,
           message: 'You have already registered for Innovision 2026.',
           registration: existingReg,
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 

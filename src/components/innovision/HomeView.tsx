@@ -1,3 +1,5 @@
+// @ts-nocheck
+"use client";
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
 import type { CSSProperties } from 'react';
 import { Sparkle } from './icons';
@@ -84,10 +86,12 @@ export default function HomeView({ v }: { v: V }) {
                     <span data-scr="">BEGIN THE ODYSSEY</span>
                   </a>
                 </div>
-                <div data-h-cta="" className="hero-cta-slot">
-                  <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} className="hero-cta hero-cta-secondary hv-gold" style={{ position: "relative", isolation: "isolate", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
-                    <span className="hero-cta-fill" style={{ position: "absolute", inset: "1.5px", zIndex: "-1", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
-                    <span data-scr="">REGISTER</span>
+
+                <div data-h-cta="">
+                  <a data-magnet="" href={v.noUser || !v.hasRegistered ? "#register" : "#pass"} onClick={v.register} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "rgba(236,232,223,.85)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-gold">
+                    <span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#141312", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
+                    <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
+
                   </a>
                 </div>
               </div>
@@ -206,8 +210,12 @@ export default function HomeView({ v }: { v: V }) {
             <div style={{ position: "absolute", inset: "0", transformStyle: "preserve-3d" }}>
               {v.tunnel.map((g, gI) => (
                 <figure key={gI} data-t-frame="" style={{ position: "absolute", left: `calc(50% + ${g.x})`, top: `calc(50% + ${g.y})`, width: "clamp(220px,30vw,460px)", margin: "0", transform: "translate(-50%,-50%) translate3d(0,0,-6000px)", willChange: "transform,opacity" }}>
-                  <div style={{ position: "relative", aspectRatio: g.ar, background: "#1b1a18", border: "1px solid rgba(236,232,223,.18)" }}>
-                    <ImageSlot id={g.id} shape="rect" placeholder={g.ph} style={{ position: "absolute", inset: "0", width: "100%", height: "100%" }} />
+                  <div style={{ position: "relative", aspectRatio: g.ar, background: "#1b1a18", border: "1px solid rgba(236,232,223,.18)", overflow: "hidden" }}>
+                    {g.imageUrl ? (
+                      <img decoding="async" src={g.imageUrl} alt={g.capU} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <ImageSlot id={g.id} shape="rect" placeholder={g.ph} style={{ position: "absolute", inset: "0", width: "100%", height: "100%" }} />
+                    )}
                   </div>
                   <figcaption style={{ display: "flex", justifyContent: "space-between", gap: "12px", marginTop: "12px", fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>
                     <span style={{ color: g.c }}>{g.no}</span>
@@ -285,8 +293,10 @@ export default function HomeView({ v }: { v: V }) {
           <h2 data-attract=".05" style={{ margin: "22px 0 22px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
           <p style={{ margin: "0 auto 36px", maxWidth: "520px", fontSize: "18px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>Innovision 2026 is boarding soon at NIT Rourkela. Claim your seat on the voyage.</p>
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
-            <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
-              <span data-scr="">REGISTER</span>
+
+            <a data-magnet="" href={v.noUser || !v.hasRegistered ? "#register" : "#pass"} onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
+              <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
+
             </a>
             <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-bronze">
               <span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#ECE8DF", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>

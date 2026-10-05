@@ -121,7 +121,7 @@ export const SCRAMBLE = 'XYZXYZABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** Z-distance between consecutive gallery frames. */
 export const GAP = 1100;
 
-export interface GalleryItem { id: string; no: string; title: string; titleU: string; w: string; h: string }
+export interface GalleryItem { id: string; no: string; title: string; titleU: string; w: string; h: string; imageUrl?: string }
 
 export const GALLERY: GalleryItem[] = ['Hackathon', 'Robo Wars', 'Code Sprint', 'Guest Lectures', 'Maker Labs', 'Startup Talks', 'Gaming Arena', 'Quiz Night', 'Treasure Hunt', 'Project Expo', 'Circuit Lab', 'Closing Night'].map((t, i) => ({
   id: 'gallery-' + (i + 1), no: String(i + 1).padStart(2, '0'), title: t, titleU: t.toUpperCase(),

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Registration } from '@/lib/supabase';
 import { getSupabase, fetchSessionFromDatabase } from '@/lib/supabase';
+import EventsManager from './admin/EventsManager';
+import GalleryManager from './admin/GalleryManager';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -18,7 +20,7 @@ export default function AdminDashboard({
   const isAdmin = currentUser.role === 'admin';
   const isStaff = isAdmin || currentUser.role === 'it-team';
 
-  const [tab, setTab] = useState<'registrations' | 'users'>('registrations');
+  const [tab, setTab] = useState<'registrations' | 'events' | 'gallery' | 'users'>('registrations');
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(false);
@@ -41,6 +43,10 @@ export default function AdminDashboard({
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchReg, setSearchReg] = useState<string>('');
   const [searchUser, setSearchUser] = useState<string>('');
+
+  // Pagination states (30 items per page)
+  const [regPage, setRegPage] = useState<number>(1);
+  const [userPage, setUserPage] = useState<number>(1);
 
   // Image Preview Modal
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
@@ -160,8 +166,8 @@ export default function AdminDashboard({
     return () => clearTimeout(timer);
   }, [isOpen, fetchRegistrations, fetchUsers, isAdmin]);
 
-  // Active tab: IT-Team is strictly confined to 'registrations' tab
-  const activeTab = isAdmin ? tab : 'registrations';
+  // Active tab: 'users' is strictly admin-only; staff (admin & it-team) can access registrations, events, gallery
+  const activeTab = tab === 'users' && !isAdmin ? 'registrations' : tab;
 
   if (!isOpen || !isStaff) return null;
 
@@ -320,15 +326,26 @@ export default function AdminDashboard({
     URL.revokeObjectURL(url);
   };
 
-  // Export Users CSV
+  // Filtered users for search
+  const filteredUsers = users.filter((u) => {
+    if (!searchUser.trim()) return true;
+    const q = searchUser.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.phone?.includes(q)
+    );
+  });
+
+  // Export Users CSV (exports ALL filtered records, without pagination)
   const exportUsersCSV = () => {
-    if (!users.length) {
+    if (!filteredUsers.length) {
       showToast('No users available to export.', 'info');
       return;
     }
 
     const headers = ['User ID', 'Full Name', 'Email', 'Phone', 'Student Type', 'Role', 'Registered At'];
-    const rows = users.map((u) => [
+    const rows = filteredUsers.map((u) => [
       `"${u.id}"`,
       `"${(u.full_name || '').replace(/"/g, '""')}"`,
       `"${u.email}"`,
@@ -350,16 +367,186 @@ export default function AdminDashboard({
     URL.revokeObjectURL(url);
   };
 
-  // Filtered users for search
-  const filteredUsers = users.filter((u) => {
-    if (!searchUser.trim()) return true;
-    const q = searchUser.toLowerCase();
+  // Pagination Config
+  const ITEMS_PER_PAGE = 30;
+
+  // Registrations pagination (strictly UI-only; CSV exports all filtered registrations)
+  const totalRegPages = Math.max(1, Math.ceil(registrations.length / ITEMS_PER_PAGE));
+  const currentRegPage = Math.min(regPage, totalRegPages);
+  const paginatedRegistrations = registrations.slice(
+    (currentRegPage - 1) * ITEMS_PER_PAGE,
+    currentRegPage * ITEMS_PER_PAGE
+  );
+  const regStart = registrations.length === 0 ? 0 : (currentRegPage - 1) * ITEMS_PER_PAGE + 1;
+  const regEnd = Math.min(currentRegPage * ITEMS_PER_PAGE, registrations.length);
+
+  // Users pagination (strictly UI-only; CSV exports all filtered users)
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const currentUserPage = Math.min(userPage, totalUserPages);
+  const paginatedUsers = filteredUsers.slice(
+    (currentUserPage - 1) * ITEMS_PER_PAGE,
+    currentUserPage * ITEMS_PER_PAGE
+  );
+  const userStart = filteredUsers.length === 0 ? 0 : (currentUserPage - 1) * ITEMS_PER_PAGE + 1;
+  const userEnd = Math.min(currentUserPage * ITEMS_PER_PAGE, filteredUsers.length);
+
+  const getPageNumbers = (current: number, total: number): (number | 'ellipsis')[] => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages: (number | 'ellipsis')[] = [];
+    pages.push(1);
+    if (current > 3) pages.push('ellipsis');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (current < total - 2) pages.push('ellipsis');
+    pages.push(total);
+    return pages;
+  };
+
+  const renderPaginationBar = (
+    currentPage: number,
+    totalPages: number,
+    startIndex: number,
+    endIndex: number,
+    totalItems: number,
+    itemLabel: string,
+    onPageChange: (page: number) => void
+  ) => {
+    if (totalItems === 0) return null;
+    const pageNumbers = getPageNumbers(currentPage, totalPages);
+
     return (
-      u.full_name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q) ||
-      u.phone?.includes(q)
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          padding: '14px 18px',
+          background: 'rgba(236,232,223,0.03)',
+          border: '1px solid rgba(236,232,223,0.12)',
+          borderTop: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(236,232,223,0.65)' }}>
+          <span>SHOWING</span>
+          <span style={{ color: 'oklch(0.8 0.12 85)', fontWeight: 800, fontFamily: 'monospace' }}>
+            {startIndex}–{endIndex}
+          </span>
+          <span>OF</span>
+          <span style={{ color: '#ECE8DF', fontWeight: 800, fontFamily: 'monospace' }}>
+            {totalItems}
+          </span>
+          <span>{itemLabel.toUpperCase()}</span>
+          {totalItems > ITEMS_PER_PAGE && (
+            <span style={{ color: 'rgba(236,232,223,0.4)', fontSize: '11px', marginLeft: '2px' }}>
+              (30 / page)
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            aria-label="Previous page"
+            style={{
+              height: '32px',
+              padding: '0 12px',
+              background: currentPage <= 1 ? 'rgba(236,232,223,0.03)' : 'rgba(236,232,223,0.08)',
+              border: '1px solid rgba(236,232,223,0.2)',
+              color: currentPage <= 1 ? 'rgba(236,232,223,0.25)' : '#ECE8DF',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '.08em',
+              cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+              clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>PREV</span>
+          </button>
+
+          {pageNumbers.map((p, idx) =>
+            p === 'ellipsis' ? (
+              <span
+                key={`ellipsis-${idx}`}
+                style={{
+                  width: '28px',
+                  height: '32px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: 'rgba(236,232,223,0.4)',
+                  fontSize: '12px',
+                }}
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={`page-${p}`}
+                type="button"
+                onClick={() => onPageChange(p)}
+                style={{
+                  minWidth: '32px',
+                  height: '32px',
+                  padding: '0 8px',
+                  background: p === currentPage ? 'oklch(0.8 0.12 85)' : 'rgba(236,232,223,0.06)',
+                  color: p === currentPage ? '#141312' : '#ECE8DF',
+                  border: p === currentPage ? 'none' : '1px solid rgba(236,232,223,0.15)',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  clipPath: 'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)',
+                }}
+              >
+                {p}
+              </button>
+            )
+          )}
+
+          <button
+            type="button"
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            aria-label="Next page"
+            style={{
+              height: '32px',
+              padding: '0 12px',
+              background: currentPage >= totalPages ? 'rgba(236,232,223,0.03)' : 'rgba(236,232,223,0.08)',
+              border: '1px solid rgba(236,232,223,0.2)',
+              color: currentPage >= totalPages ? 'rgba(236,232,223,0.25)' : '#ECE8DF',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '.08em',
+              cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+              clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span>NEXT</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
     );
-  });
+  };
 
   // Metrics
   const totalRegs = registrations.length;
@@ -584,6 +771,44 @@ export default function AdminDashboard({
               REGISTRATIONS ({totalRegs})
             </button>
 
+            <button
+              id="tab-events"
+              type="button"
+              onClick={() => setTab('events')}
+              style={{
+                padding: '8px 18px',
+                border: 0,
+                borderBottom: activeTab === 'events' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
+                background: activeTab === 'events' ? 'rgba(236,232,223,0.06)' : 'transparent',
+                color: activeTab === 'events' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
+                fontWeight: 700,
+                fontSize: '12px',
+                letterSpacing: '.14em',
+                cursor: 'pointer',
+              }}
+            >
+              EVENTS
+            </button>
+
+            <button
+              id="tab-gallery"
+              type="button"
+              onClick={() => setTab('gallery')}
+              style={{
+                padding: '8px 18px',
+                border: 0,
+                borderBottom: activeTab === 'gallery' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
+                background: activeTab === 'gallery' ? 'rgba(236,232,223,0.06)' : 'transparent',
+                color: activeTab === 'gallery' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
+                fontWeight: 700,
+                fontSize: '12px',
+                letterSpacing: '.14em',
+                cursor: 'pointer',
+              }}
+            >
+              GALLERY
+            </button>
+
             {isAdmin && (
               <button
                 id="tab-users"
@@ -716,7 +941,10 @@ export default function AdminDashboard({
                   type="text"
                   placeholder="Search name, ID, college, UTR..."
                   value={searchReg}
-                  onChange={(e) => setSearchReg(e.target.value)}
+                  onChange={(e) => {
+                    setSearchReg(e.target.value);
+                    setRegPage(1);
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && fetchRegistrations()}
                   style={{
                     width: '260px',
@@ -734,7 +962,10 @@ export default function AdminDashboard({
                 <select
                   id="filter-reg-status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setRegPage(1);
+                  }}
                   style={{
                     height: '40px',
                     padding: '0 14px',
@@ -755,7 +986,10 @@ export default function AdminDashboard({
                 <select
                   id="filter-reg-type"
                   value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setRegPage(1);
+                  }}
                   style={{
                     height: '40px',
                     padding: '0 14px',
@@ -878,7 +1112,7 @@ export default function AdminDashboard({
                       </td>
                     </tr>
                   ) : (
-                    registrations.map((reg) => {
+                    paginatedRegistrations.map((reg) => {
                       const isPending = reg.status === 'pending';
                       const isBusy = actionBusyId === (reg.id || reg.registration_id);
 
@@ -1076,10 +1310,43 @@ export default function AdminDashboard({
                 </tbody>
               </table>
             </div>
+
+            {/* Registrations Pagination */}
+            {renderPaginationBar(
+              currentRegPage,
+              totalRegPages,
+              regStart,
+              regEnd,
+              registrations.length,
+              'registrations',
+              setRegPage
+            )}
           </div>
         )}
 
-        {/* TAB 2: USERS DIRECTORY & ROLE MANAGEMENT (Admin Only) */}
+        {/* TAB 2: EVENTS (Authorized IT Team & Admin) */}
+        {activeTab === 'events' && (
+          <EventsManager
+            currentUser={currentUser}
+            getAuthToken={getAuthToken}
+            showToast={showToast}
+            setConfirmModal={setConfirmModal}
+            setPreviewImage={setPreviewImage}
+          />
+        )}
+
+        {/* TAB 3: GALLERY (Authorized IT Team & Admin) */}
+        {activeTab === 'gallery' && (
+          <GalleryManager
+            currentUser={currentUser}
+            getAuthToken={getAuthToken}
+            showToast={showToast}
+            setConfirmModal={setConfirmModal}
+            setPreviewImage={setPreviewImage}
+          />
+        )}
+
+        {/* TAB 4: USERS DIRECTORY & ROLE MANAGEMENT (Admin Only) */}
         {activeTab === 'users' && isAdmin && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* Stat Cards */}
@@ -1143,7 +1410,10 @@ export default function AdminDashboard({
                   type="text"
                   placeholder="Search user by name, email, phone..."
                   value={searchUser}
-                  onChange={(e) => setSearchUser(e.target.value)}
+                  onChange={(e) => {
+                    setSearchUser(e.target.value);
+                    setUserPage(1);
+                  }}
                   style={{
                     width: '300px',
                     height: '40px',
@@ -1237,7 +1507,7 @@ export default function AdminDashboard({
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map((u) => {
+                    paginatedUsers.map((u) => {
                       const isRoleBusy = roleBusyId === u.id;
 
                       return (
@@ -1377,6 +1647,17 @@ export default function AdminDashboard({
                 </tbody>
               </table>
             </div>
+
+            {/* Users Directory Pagination */}
+            {renderPaginationBar(
+              currentUserPage,
+              totalUserPages,
+              userStart,
+              userEnd,
+              filteredUsers.length,
+              'users',
+              setUserPage
+            )}
           </div>
         )}
       </main>
@@ -1406,36 +1687,51 @@ export default function AdminDashboard({
               maxHeight: '85vh',
               background: '#100f0e',
               border: '1px solid rgba(236,232,223,0.25)',
-              padding: '20px',
+              clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
+              padding: '22px',
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.9)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '.08em', color: 'oklch(0.8 0.12 85)' }}>
+              <span style={{ fontWeight: 800, fontSize: '14px', letterSpacing: '.08em', color: 'oklch(0.8 0.12 85)' }}>
                 {previewImage.title}
               </span>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <a
                   href={previewImage.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    background: 'rgba(236,232,223,0.06)',
+                    border: '1px solid rgba(236,232,223,0.2)',
+                    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
                     color: '#ECE8DF',
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 700,
-                    textDecoration: 'underline',
+                    letterSpacing: '.06em',
+                    textDecoration: 'none',
                   }}
                 >
-                  Open in New Tab ↗
+                  <span>Open Original ↗</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setPreviewImage(null)}
                   style={{
-                    background: 'transparent',
-                    border: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    width: '32px',
+                    height: '32px',
+                    background: 'rgba(236,232,223,0.08)',
+                    border: '1px solid rgba(236,232,223,0.2)',
+                    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
                     color: '#ECE8DF',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -1453,7 +1749,8 @@ export default function AdminDashboard({
                 maxWidth: '100%',
                 maxHeight: '70vh',
                 objectFit: 'contain',
-                border: '1px solid rgba(236,232,223,0.1)',
+                border: '1px solid rgba(236,232,223,0.15)',
+                clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
               }}
             />
           </div>

@@ -17,7 +17,11 @@ export default function GalleryView({ v }: { v: V }) {
           {v.gallery.map((g, gI) => (
             <figure key={gI} data-g-item={gI} onClick={g.onFocus} style={{ position: "absolute", left: "50%", top: "50%", width: g.w, height: g.h, margin: "0", cursor: "pointer", opacity: "0" }}>
               <div style={{ position: "absolute", inset: "0", padding: "10px", background: "#1b1a18", border: "1px solid rgba(236,232,223,.4)", boxShadow: "0 30px 60px rgba(0,0,0,.5)" }}>
-                <ImageSlot id={g.id} shape="rect" placeholder="Drop a fest photo" />
+                {g.imageUrl ? (
+                  <img src={g.imageUrl} alt={g.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <ImageSlot id={g.id} shape="rect" placeholder="Drop a fest photo" />
+                )}
               </div>
               <figcaption style={{ position: "absolute", left: "0", top: "calc(100% + 12px)", display: "flex", gap: "12px", fontSize: "12px", fontWeight: "500", letterSpacing: ".2em", whiteSpace: "nowrap" }}>
                 <span style={{ color: "oklch(0.84 0.09 85)" }}>{g.no}</span>
