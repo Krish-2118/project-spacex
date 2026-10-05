@@ -73,7 +73,7 @@ export const WORLDS: World[] = [
  * (HomeView hero: starfield, orbiting asteroid and ringed planet, rocks, storm planet, astronaut).
  */
 export const PRELOAD_CRITICAL = ['planet-tide.webp', 'planet-yellow.webp', 'planet-blue.webp', 'stars.webp',
-  'asteroid.webp', 'planet-ringed.webp', 'home-rocks.webp', 'planet-storm.webp', 'indian-astronaut.webp'];
+  'asteroid.webp', 'planet-ringed.webp', 'planet-storm.webp', 'indian-astronaut.webp'];
 /**
  * Art for the other views, warmed a few files at a time once the loader is gone (Innovision#warmDeferred),
  * roughly in the order a visitor meets it: transition curtain, worlds slider, the flagship world, the rest.

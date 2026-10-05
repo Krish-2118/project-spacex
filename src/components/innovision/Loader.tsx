@@ -53,7 +53,7 @@ export default function Loader({ v }: { v: V }) {
           <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
           <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
           <div data-l-fade="" style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ECE8DF" }}>
-            <span data-l-count="" style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "min(6.2vmin, 54px)", lineHeight: "1", fontVariantNumeric: "tabular-nums" }}>000</span>
+            <span data-l-count="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "min(6.2vmin, 54px)", lineHeight: "1", fontVariantNumeric: "tabular-nums" }}>000</span>
             <span style={{ marginTop: "6px", fontSize: "min(1.3vmin, 11px)", letterSpacing: ".3em", opacity: ".75" }}>PERCENT</span>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Loader({ v }: { v: V }) {
           <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>NIT ROURKELA PRESENTS</div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
-          <div data-l-line="" style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>
+          <div data-l-line="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
           <div data-l-line="" style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}>

@@ -477,7 +477,7 @@ export default function AdminDashboard({
               >
                 {confirmModal.actionType === 'reject' ? '✕' : '✓'}
               </span>
-              <h4 style={{ margin: 0, fontFamily: 'var(--font-cinzel), serif', fontWeight: 900, fontSize: '19px', letterSpacing: '.04em' }}>
+              <h4 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '19px', letterSpacing: '.04em' }}>
                 {confirmModal.title}
               </h4>
             </div>
@@ -553,8 +553,8 @@ export default function AdminDashboard({
             />
             <span
               style={{
-                fontFamily: 'var(--font-cinzel), serif',
-                fontWeight: 900,
+                fontFamily: 'var(--font-display)',
+                fontWeight: 400,
                 fontSize: 'clamp(18px, 1.8vw, 22px)',
                 letterSpacing: '.06em',
               }}
@@ -683,8 +683,8 @@ export default function AdminDashboard({
                   <div
                     style={{
                       marginTop: '8px',
-                      fontFamily: 'var(--font-cinzel), serif',
-                      fontWeight: 900,
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 400,
                       fontSize: '32px',
                       lineHeight: 1,
                       color: stat.color,
@@ -851,7 +851,7 @@ export default function AdminDashboard({
                   ) : registrations.length === 0 ? (
                     <tr>
                       <td colSpan={8} style={{ padding: '48px 24px', textAlign: 'center' }}>
-                        <div style={{ color: '#ECE8DF', fontSize: '15px', fontWeight: 600, marginBottom: '8px' }}>
+                        <div style={{ color: '#ECE8DF', fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>
                           No event registrations submitted yet.
                         </div>
                         <div style={{ color: 'rgba(236,232,223,0.55)', fontSize: '13px', maxWidth: '540px', margin: '0 auto 18px', lineHeight: 1.5 }}>
@@ -892,7 +892,7 @@ export default function AdminDashboard({
                         >
                           {/* Reg ID */}
                           <td style={{ padding: '14px 18px' }}>
-                            <span style={{ fontFamily: 'var(--font-cinzel), serif', fontWeight: 900, fontSize: '15px', color: 'oklch(0.8 0.12 85)' }}>
+                            <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '15px', color: 'oklch(0.8 0.12 85)' }}>
                               {reg.registration_id}
                             </span>
                           </td>
@@ -906,7 +906,7 @@ export default function AdminDashboard({
 
                           {/* College & Enrollment */}
                           <td style={{ padding: '14px 18px' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600 }}>{reg.college}</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700 }}>{reg.college}</div>
                             {reg.enrollment_no && (
                               <div style={{ fontSize: '11px', color: 'oklch(0.8 0.12 85)', marginTop: '2px' }}>
                                 Roll: {reg.enrollment_no}
@@ -947,7 +947,7 @@ export default function AdminDashboard({
                                     color: '#ECE8DF',
                                     padding: '3px 8px',
                                     fontSize: '11px',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     cursor: 'pointer',
                                   }}
                                 >
@@ -967,7 +967,7 @@ export default function AdminDashboard({
                                     color: 'oklch(0.8 0.12 85)',
                                     padding: '3px 8px',
                                     fontSize: '11px',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     cursor: 'pointer',
                                   }}
                                 >
@@ -1060,7 +1060,7 @@ export default function AdminDashboard({
                                 </button>
                               </div>
                             ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(236,232,223,0.4)', fontSize: '11px', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(236,232,223,0.4)', fontSize: '11px', fontWeight: 700 }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -1111,8 +1111,8 @@ export default function AdminDashboard({
                   <div
                     style={{
                       marginTop: '8px',
-                      fontFamily: 'var(--font-cinzel), serif',
-                      fontWeight: 900,
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 400,
                       fontSize: '32px',
                       lineHeight: 1,
                       color: stat.color,
@@ -1424,7 +1424,7 @@ export default function AdminDashboard({
                   style={{
                     color: '#ECE8DF',
                     fontSize: '12px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textDecoration: 'underline',
                   }}
                 >

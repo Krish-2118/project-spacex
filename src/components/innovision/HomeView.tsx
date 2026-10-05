@@ -5,7 +5,6 @@ import { CornerFrame } from './decor';
 import Sponsors from './Sponsors';
 import ImageSlot from './ImageSlot';
 import { LiveFooter } from './SiteFooter';
-import { imgSize } from './data';
 import type { V } from './types';
 
 /** Landing page: sticky hero, marquee bands, briefing, odyssey map, gallery tunnel, sponsors, merch teaser and closing call to action. */
@@ -41,14 +40,6 @@ export default function HomeView({ v }: { v: V }) {
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
               <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
             </div>
-            <div data-depth=".8" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
-              <div data-float="" data-attract=".05" style={{ position: "absolute", left: "-4%", top: "-10%", width: "108%", height: "106%", clipPath: "inset(0 0 58% 0)" }}>
-                <img decoding="async" src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
-              </div>
-              <div data-float="" data-attract=".05" style={{ position: "absolute", left: "-9%", top: "31%", width: "108%", height: "106%", clipPath: "inset(40% 0 0 0)" }}>
-                <img decoding="async" src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
-              </div>
-            </div>
             {v.heroSparks.map((s, sI) => (
               <div key={sI} data-h-spark="" data-attract=".45" style={{ position: "absolute", left: s.x, top: s.y, width: s.s, height: s.s, color: s.c, pointerEvents: "none" }}>
                 <Sparkle data-twinkle="" style={{ display: "block", width: "100%", height: "100%" }} />
@@ -71,17 +62,17 @@ export default function HomeView({ v }: { v: V }) {
             <div className="hero-copy" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", pointerEvents: "none" }}>
               {/* Wide screens: display contents, so copy and buttons share one centred column. Stacked screens: a box the size of the disc. */}
               <div className="hero-copy-disc">
-                <div data-h-kicker="" data-attract=".1" className="hero-kicker" style={{ display: "flex", alignItems: "center", color: "#ECE8DF", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", whiteSpace: "nowrap" }}>
+                <div data-h-kicker="" data-attract=".1" className="hero-kicker" style={{ display: "flex", alignItems: "center", color: "#ECE8DF", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
                   <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
                   <span className="hero-track">NIT ROURKELA PRESENTS</span>
                   <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
                 </div>
-                <h1 aria-label="Innovision" className="hero-title" style={{ display: "flex", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
+                <h1 aria-label="Innovision" className="hero-title" style={{ display: "flex", fontFamily: "var(--font-display)", fontWeight: "400", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
                   {v.heroChars.map((c, cI) => (
                     <span key={cI} data-h-ch="" data-attract=".22" style={{ display: "inline-block" }}>{c.ch}</span>
                   ))}
                 </h1>
-                <div data-h-sub="" data-attract=".1" className="hero-sub" style={{ display: "flex", alignItems: "center", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-cinzel),serif", fontWeight: "700", whiteSpace: "nowrap" }}>
+                <div data-h-sub="" data-attract=".1" className="hero-sub" style={{ display: "flex", alignItems: "center", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
                   <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
                   <span className="hero-track">2026 · THE CELESTIAL ODYSSEY</span>
                   <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
@@ -145,7 +136,7 @@ export default function HomeView({ v }: { v: V }) {
       </div>
       <section style={{ position: "relative", zIndex: "2", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(96px,14vh,160px)", background: "#ECE8DF", boxShadow: "0 -40px 80px rgba(20,19,18,.28)" }}>
         <div style={{ maxWidth: "1240px", margin: "0 auto" }}>
-          <h2 aria-label="For a few days, NIT Rourkela turns into a launch pad for builders, thinkers and makers from across the country." style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: ".14em", margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(34px,5.2vw,84px)", lineHeight: "1.08", letterSpacing: "-.01em" }}>
+          <h2 aria-label="For a few days, NIT Rourkela turns into a launch pad for builders, thinkers and makers from across the country." style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: ".14em", margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,5.2vw,84px)", lineHeight: "1.08", letterSpacing: "-.01em" }}>
             {v.briefWords.map((bw, bwI) => (
               <span key={bwI} data-fill="" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", marginRight: ".26em" }}>
                 {bw.isImg ? (
@@ -173,7 +164,7 @@ export default function HomeView({ v }: { v: V }) {
         <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto" }}>
           <header data-reveal="" style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "48px" }}>
-            <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>The Odyssey Map</h2>
+            <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>The Odyssey Map</h2>
             <p style={{ maxWidth: "52ch", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "rgba(236,232,223,.8)", textWrap: "pretty" }}>Three worlds, three kinds of mission. Each one opens into its own line-up of events.</p>
           </header>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "14px" }}>
@@ -187,12 +178,12 @@ export default function HomeView({ v }: { v: V }) {
                 </div>
                 <span style={{ position: "absolute", inset: "36% 0 0", zIndex: "-1", background: "linear-gradient(180deg,rgba(20,19,18,0),rgba(20,19,18,.94) 68%)" }}></span>
                 <div style={{ position: "absolute", left: "28px", right: "28px", top: "26px", display: "flex", justifyContent: "space-between", alignItems: "start", gap: "16px" }}>
-                  <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,5vw,72px)", lineHeight: ".9", color: "transparent", WebkitTextStroke: `1.5px ${w.accentL}` }}>{w.secNo}</span>
+                  <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,5vw,72px)", lineHeight: ".9", color: "transparent", WebkitTextStroke: `1.5px ${w.accentL}` }}>{w.secNo}</span>
                   <span style={{ paddingTop: "8px", fontSize: "12px", fontWeight: "700", letterSpacing: ".28em", textAlign: "right", color: w.accentL }}>{w.statLU}</span>
                 </div>
                 <div style={{ position: "absolute", left: "28px", right: "28px", bottom: "44px", display: "flex", flexDirection: "column", gap: "12px" }}>
                   <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".28em", color: w.accentL }}>{w.categoryU}</span>
-                  <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(28px,2.8vw,42px)", lineHeight: "1.05", textWrap: "balance" }}>{w.name}</h3>
+                  <h3 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(28px,2.8vw,42px)", lineHeight: "1.05", textWrap: "balance" }}>{w.name}</h3>
                   <div data-map-more="" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "20px", maxWidth: "380px" }}>
                     <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.85)", textWrap: "pretty" }}>{w.tagline}</p>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "13px 22px", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)" }}>
@@ -228,10 +219,10 @@ export default function HomeView({ v }: { v: V }) {
           </div>
           <header style={{ position: "absolute", left: "clamp(20px,4vw,64px)", top: "calc(72px + 4vh)", maxWidth: "440px", pointerEvents: "none" }}>
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />GALLERY</p>
-            <h2 data-attract=".05" style={{ margin: "0 0 14px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(34px,4.4vw,68px)", lineHeight: "1" }}>Into the archive</h2>
+            <h2 data-attract=".05" style={{ margin: "0 0 14px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,4.4vw,68px)", lineHeight: "1" }}>Into the archive</h2>
             <p style={{ margin: "0", fontSize: "16px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Keep scrolling to fly through moments from Innovision past.</p>
           </header>
-          <div style={{ position: "absolute", left: "clamp(20px,4vw,64px)", bottom: "calc(clamp(16px,2.6vw,44px) + 64px)", display: "flex", alignItems: "baseline", gap: "10px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", left: "clamp(20px,4vw,64px)", bottom: "calc(clamp(16px,2.6vw,44px) + 64px)", display: "flex", alignItems: "baseline", gap: "10px", fontFamily: "var(--font-display)", fontWeight: "400", pointerEvents: "none" }}>
             <span data-t-count="" style={{ fontSize: "clamp(36px,4vw,60px)", lineHeight: "1" }}>01</span>
             <span style={{ fontSize: "18px", color: "rgba(236,232,223,.7)" }}>/ {v.tunnelTotal}</span>
           </div>
@@ -242,13 +233,13 @@ export default function HomeView({ v }: { v: V }) {
           <header data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "24px", marginBottom: "56px" }}>
             <div>
               <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}><Sparkle style={{ width: "12px", height: "12px" }} />OUR CO-PILOTS</p>
-              <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>Sponsors &amp; partners</h2>
+              <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>Sponsors &amp; partners</h2>
             </div>
             <p style={{ maxWidth: "380px", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>The brands fuelling Innovision 2026. Full line-up announced closer to launch.</p>
           </header>
           <Sponsors v={v} />
           <div data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "20px", marginTop: "clamp(48px,7vh,72px)", paddingTop: "28px", borderTop: "1px solid rgba(20,19,18,.14)" }}>
-            <p style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(22px,2.2vw,32px)" }}>Want your brand in orbit?</p>
+            <p style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(22px,2.2vw,32px)" }}>Want your brand in orbit?</p>
             <a data-magnet="" href="#sponsor" onClick={v.sponsorCta} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)", color: "#ECE8DF", background: "#141312" }} className="hv-bronze-fill">
               <span data-scr="">BECOME A SPONSOR</span>
             </a>
@@ -260,7 +251,7 @@ export default function HomeView({ v }: { v: V }) {
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(40px,6vw,96px)", alignItems: "center" }}>
           <div data-reveal="">
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH</p>
-            <h2 data-attract=".05" style={{ margin: "0 0 18px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(40px,5.4vw,88px)", lineHeight: "1" }}>Wear the odyssey.</h2>
+            <h2 data-attract=".05" style={{ margin: "0 0 18px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,5.4vw,88px)", lineHeight: "1" }}>Wear the odyssey.</h2>
             <p style={{ margin: "0 0 32px", maxWidth: "420px", fontSize: "17px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Limited-run tees, hoodies and keepsakes. Pre-order online, collect on campus during the fest.</p>
             <a data-magnet="" href="#/merch" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)", color: "#141312", background: "#ECE8DF" }} className="hv-gold-fill">
               <span data-scr="">VISIT THE STORE</span>
@@ -291,7 +282,7 @@ export default function HomeView({ v }: { v: V }) {
         </div>
         <div data-reveal="" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <Sparkle style={{ width: "28px", height: "28px", color: "#8a6a2a" }} />
-          <h2 data-attract=".05" style={{ margin: "22px 0 22px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
+          <h2 data-attract=".05" style={{ margin: "22px 0 22px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
           <p style={{ margin: "0 auto 36px", maxWidth: "520px", fontSize: "18px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>Innovision 2026 is boarding soon at NIT Rourkela. Claim your seat on the voyage.</p>
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
             <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">

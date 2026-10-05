@@ -1,9 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
-import type { CSSProperties } from 'react';
 import { CornerFrame, OrbitBackdrop, Radar } from './decor';
 import Rover from './Rover';
 import SignalLink from './SignalLink';
-import { imgSize } from './data';
 import type { V } from './types';
 
 /** Horizontal world slider (Events). */
@@ -85,12 +83,12 @@ export default function WorldsView({ v }: { v: V }) {
         </article>
       ))}
       <CornerFrame color="rgba(20,19,18,.5)" rulers={['24%', '28%']} style={{ zIndex: 4 }} />
-      <button type="button" aria-label="Previous world" onClick={v.prevSlide} onMouseEnter={v.beep} style={{ position: "absolute", top: "64%", left: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
+      <button type="button" aria-label="Previous world" onClick={v.prevSlide} style={{ position: "absolute", top: "64%", left: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
         <svg viewBox="0 0 24 24" style={{ width: "24px", height: "24px" }}>
           <path d="M14 6l-6 6 6 6M8 12h12" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
         </svg>
       </button>
-      <button type="button" aria-label="Next world" onClick={v.nextSlide} onMouseEnter={v.beep} style={{ position: "absolute", top: "64%", right: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
+      <button type="button" aria-label="Next world" onClick={v.nextSlide} style={{ position: "absolute", top: "64%", right: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
         <svg viewBox="0 0 24 24" style={{ width: "24px", height: "24px" }}>
           <path d="M10 6l6 6-6 6M16 12H4" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
         </svg>

@@ -10,13 +10,13 @@ import type { V } from './types';
  */
 export default function MenuOverlay({ v }: { v: V }) {
   return (
-    <div aria-hidden={v.menuHidden} data-open={v.menuHidden ? undefined : ""} className="menu" style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
+    <div data-menu="" aria-hidden={v.menuHidden} data-open={v.menuHidden ? undefined : ""} className="menu" style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
       <div className="menu-panel" style={{ clipPath: v.menuClip, transition: "clip-path .9s cubic-bezier(.25,1,.1,1)" }}>
         <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
         <div className="menu-top">
           <a href="#/" onClick={(e) => { v.closeMenu(); v.goHome(e); }} aria-label="Innovision home" className="menu-brand">
             <Logo style={{ width: "24px", height: "auto" }} />
-            <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "17px", letterSpacing: ".04em" }}>INNOVISION</span>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "17px", letterSpacing: ".04em" }}>INNOVISION</span>
           </a>
           <button type="button" onClick={v.closeMenu} onMouseEnter={v.hover} className="menu-close">
             <span data-scr="">CLOSE</span>
@@ -42,7 +42,10 @@ export default function MenuOverlay({ v }: { v: V }) {
           </nav>
           <div className="menu-foot menu-item" style={{ "--i": v.topNav.length } as CSSProperties}>
             <div className="menu-meta">
-              {!v.showLogin && <a href="#login" onClick={v.menuLogin} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} className="hv-sand">{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
+              {/* Account (phones, where the HUD has no LOG IN): LOG IN signed out; PROFILE and LOG OUT signed in. */}
+              {!v.showLogin && v.authReady && v.noUser && <a href="#login" onClick={v.menuLogin} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} className="hv-sand">LOG IN</a>}
+              {!v.showLogin && v.authReady && !v.noUser && <a href="#profile" onClick={v.openProfile} aria-label={v.profileAria} className="hv-sand">PROFILE</a>}
+              {!v.showLogin && v.authReady && !v.noUser && <a href="#logout" onClick={v.menuLogout} className="hv-sand">LOG OUT</a>}
               <a href="#about" onClick={v.openAbout} className="hv-sand">ABOUT</a>
               <a href="https://www.instagram.com/" target="_blank" rel="noopener" className="hv-sand">INSTAGRAM</a>
             </div>

@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Cinzel, Space_Grotesk } from "next/font/google";
+import { DM_Serif_Display, Manrope } from "next/font/google";
 import "./globals.css";
 
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
-  weight: ["700", "900"],
+// Typography (roles and weights: globals.css, "typography"). Display: DM Serif Display, which has one weight.
+const dmSerif = DM_Serif_Display({
+  variable: "--font-dm-serif",
+  weight: "400",
   subsets: ["latin"],
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-grotesk",
-  weight: ["400", "500", "700"],
+// Text: Manrope is a variable font, so every weight from 200 to 800 comes from one file.
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -28,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`${dmSerif.variable} ${manrope.variable}`}>
       <body>{children}</body>
     </html>
   );

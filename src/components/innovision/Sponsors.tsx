@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- logos keep their own proportions inside fixed cards */
 import { Sparkle } from './icons';
 import ImageSlot from './ImageSlot';
-import { A, imgSize } from './data';
+import { A } from './data';
 import type { V } from './types';
 
 const CUT = (n: number) => `polygon(${n}px 0,100% 0,100% calc(100% - ${n}px),calc(100% - ${n}px) 100%,0 100%,0 ${n}px)`;
@@ -21,7 +21,7 @@ export default function Sponsors({ v }: { v: V }) {
         <span aria-hidden="true" style={{ position: "absolute", right: "-12%", top: "50%", width: "min(70vw, 640px)", aspectRatio: "1", transform: "translateY(-50%)", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.16)", pointerEvents: "none" }}></span>
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "18px", minWidth: "0" }}>
           <span style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />TITLE SPONSOR</span>
-          <p style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(26px,3.2vw,46px)", lineHeight: "1.05" }}>Innovision 2026, presented by</p>
+          <p style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(26px,3.2vw,46px)", lineHeight: "1.05" }}>Innovision 2026, presented by</p>
           <a href={t.url || undefined} target={t.url ? "_blank" : undefined} rel={t.url ? "noopener noreferrer" : undefined} aria-label={t.name || "Title sponsor"} style={{ display: "block", width: "min(100%, 480px)", aspectRatio: "3 / 1", padding: t.logo ? "clamp(14px,2vw,24px)" : "0", background: "#ECE8DF", color: "#141312", clipPath: CUT(12), cursor: t.url ? "pointer" : "default" }}>
             {t.logo ? <img decoding="async" src={t.logo} alt={t.name || ""} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <ImageSlot id="sponsor-title-logo" shape="rect" fit="contain" placeholder="Title sponsor logo" style={SLOT_FILL} />}
           </a>
@@ -36,7 +36,7 @@ export default function Sponsors({ v }: { v: V }) {
       {v.sponsorTiers.map((tier, ti) => (
         <div key={tier.key} data-reveal="" style={{ marginTop: "clamp(44px,7vh,72px)" }}>
           <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "6px 14px", marginBottom: "18px" }}>
-            <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1" }}>{tier.title}</h3>
+            <h3 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1" }}>{tier.title}</h3>
             <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".12em", color: "#5c574f" }}>{tier.countL}</span>
           </div>
           {/* Endless ticker: the strip holds the logos twice and slides by one copy, so it loops without a seam. */}

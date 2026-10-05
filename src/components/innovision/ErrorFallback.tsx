@@ -19,16 +19,16 @@ const STARS = [
 ].join(',');
 
 /**
- * Branded crash screen shared by app/error.tsx and app/global-error.tsx: dark space theme, Cinzel heading,
+ * Branded crash screen shared by app/error.tsx and app/global-error.tsx: dark space theme, DM Serif Display heading,
  * Space Grotesk copy, and a way back in (retry re-renders the failed part; reload starts the page afresh).
  */
 export default function ErrorFallback({ retry, digest }: { retry: () => void; digest?: string }) {
   return (
-    <main role="alert" style={{ position: 'fixed', inset: 0, zIndex: 200, overflowY: 'auto', display: 'grid', placeItems: 'center', padding: '48px 16px', background: `${STARS},radial-gradient(ellipse at 50% 120%,#2a2620 0%,#0c0b0a 60%)`, color: PAPER, fontFamily: "var(--font-grotesk),'Space Grotesk','Segoe UI',system-ui,sans-serif", textAlign: 'center' }}>
+    <main role="alert" style={{ position: 'fixed', inset: 0, zIndex: 200, overflowY: 'auto', display: 'grid', placeItems: 'center', padding: '48px 16px', background: `${STARS},radial-gradient(ellipse at 50% 120%,#2a2620 0%,#0c0b0a 60%)`, color: PAPER, fontFamily: "var(--font-manrope),'Segoe UI',system-ui,sans-serif", textAlign: 'center' }}>
       <div aria-hidden="true" style={{ position: 'absolute', left: '50%', bottom: 'min(-60vw,-420px)', width: 'max(120vw,840px)', aspectRatio: '1', marginLeft: 'min(-60vw,-420px)', borderRadius: '50%', border: '1px dashed rgba(236,232,223,.14)', pointerEvents: 'none' }}></div>
       <div style={{ position: 'relative', maxWidth: '560px' }}>
         <p style={{ margin: '0 0 18px', fontSize: '12px', fontWeight: 700, letterSpacing: '.34em', color: GOLD }}>SIGNAL LOST</p>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-cinzel),'Cinzel',Georgia,serif", fontWeight: 900, fontSize: 'clamp(34px,7vw,64px)', lineHeight: 1.02, letterSpacing: '.01em' }}>We drifted off course.</h1>
+        <h1 style={{ margin: 0, fontFamily: "var(--font-dm-serif),'Times New Roman',serif", fontWeight: 400, fontSize: 'clamp(34px,7vw,64px)', lineHeight: 1.02, letterSpacing: '.01em' }}>We drifted off course.</h1>
         <p style={{ margin: '20px auto 0', maxWidth: '42ch', fontSize: '17px', lineHeight: 1.6, color: 'rgba(236,232,223,.8)' }}>
           Something went wrong while drawing this part of Innovision 2026. Try again, or reload the page if it keeps happening.
         </p>

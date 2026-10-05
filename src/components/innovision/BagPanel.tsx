@@ -11,7 +11,7 @@ export default function BagPanel({ v }: { v: V }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "16px", padding: "clamp(24px,3vw,36px) clamp(22px,3vw,36px) 22px", borderBottom: "1px solid rgba(20,19,18,.16)" }}>
           <div>
             <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}>YOUR BAG · {v.bagCountStr}</p>
-            <h2 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "32px", lineHeight: "1" }}>The Cargo Hold</h2>
+            <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "32px", lineHeight: "1" }}>The Cargo Hold</h2>
           </div>
           <button type="button" onClick={v.closeBag} onMouseEnter={v.hover} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "13px", letterSpacing: ".18em", color: "#141312" }}>
             <span data-scr="">CLOSE</span>
@@ -30,7 +30,7 @@ export default function BagPanel({ v }: { v: V }) {
                 <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
               <div style={{ minWidth: "0" }}>
-                <div style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "16px", lineHeight: "1.2" }}>{l.name}</div>
+                <div style={{ fontWeight: "700", fontSize: "16px", lineHeight: "1.3" }}>{l.name}</div>
                 <div style={{ marginTop: "4px", fontSize: "13px", color: "#4a4641" }}>{l.meta}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
                   <button type="button" aria-label="Decrease" onClick={l.dec} style={{ width: "30px", height: "30px", border: "1px solid rgba(20,19,18,.4)", background: "none", cursor: "pointer", fontSize: "16px", lineHeight: "1" }}>−</button>
@@ -46,7 +46,7 @@ export default function BagPanel({ v }: { v: V }) {
         <div style={{ padding: "22px clamp(22px,3vw,36px) clamp(24px,3vw,36px)", borderTop: "1px solid rgba(20,19,18,.16)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
             <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>SUBTOTAL</span>
-            <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "26px" }}>{v.subtotalStr}</span>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "26px" }}>{v.subtotalStr}</span>
           </div>
           <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#4a4641" }}>Pay and collect at the Innovision merch desk.</p>
           <button type="button" onClick={v.checkout} onMouseEnter={v.hover} style={{ width: "100%", padding: "17px 20px", border: "0", background: "#141312", color: "#ECE8DF", fontWeight: "700", fontSize: "14px", letterSpacing: ".1em", cursor: "pointer", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .3s" }} className="hv-bronze-bg">

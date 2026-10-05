@@ -1,6 +1,13 @@
 /* ---------- base (from the Innovision 2026 design) ---------- */
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-grotesk),'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+/* ---------- typography ----------
+   Two families, one role each (fonts load in app/layout.tsx):
+   --font-display  DM Serif Display, single weight 400: headings, titles, the wordmark and large display figures.
+   --font-sans     Manrope, variable: subheadings, eyebrow labels, buttons, navigation, body copy and data (IDs, prices
+                   in lists). Weights by role: 400 body, 500 navigation and secondary text, 700 labels, buttons and
+                   subheadings, 800 small badges and ID numbers. Display text is never bolded (the face has no bold). */
+:root{--font-display:var(--font-dm-serif),'Times New Roman',serif;--font-sans:var(--font-manrope),'Segoe UI',system-ui,sans-serif}
+html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 img{display:block;max-width:none;user-select:none;-webkit-user-drag:none}
 button{font:inherit;color:inherit}
 a{color:#141312}
@@ -202,7 +209,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .menu-body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,4vh,40px);width:100%;max-width:640px;margin:0 auto;padding:clamp(8px,2vh,24px) clamp(20px,6vw,48px) clamp(24px,5vh,48px);overflow-y:auto;scrollbar-width:none}
 .menu-body::-webkit-scrollbar{display:none}
 .menu-list{margin:0;padding:0;list-style:none;border-bottom:1px solid rgba(236,232,223,.16)}
-.menu-link{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:clamp(10px,1.9vh,16px) 4px;border-top:1px solid rgba(236,232,223,.16);text-decoration:none;font-family:var(--font-cinzel),serif;font-weight:700;font-size:clamp(20px,min(5.4vw,4.4vh),30px);line-height:1.1;letter-spacing:.03em;transition:color .3s,background-color .3s}
+.menu-link{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:clamp(10px,1.9vh,16px) 4px;border-top:1px solid rgba(236,232,223,.16);text-decoration:none;font-family:var(--font-display);font-weight:400;font-size:clamp(20px,min(5.4vw,4.4vh),30px);line-height:1.1;letter-spacing:.03em;transition:color .3s,background-color .3s}
 .menu-link:hover,.menu-link:focus-visible{color:oklch(0.84 0.09 85) !important;background:rgba(236,232,223,.04)}
 .menu-link[aria-current="page"] .menu-label::before{content:'';display:inline-block;width:14px;height:1.5px;margin:0 12px 0 0;vertical-align:middle;background:currentColor}
 .menu-arrow{flex:none;opacity:.45;transition:transform .45s cubic-bezier(.25,1,.1,1),opacity .3s}
@@ -240,6 +247,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hud-orbit-ping{display:block;position:absolute;inset:0;border:1.5px solid currentColor;border-radius:50%;opacity:0;pointer-events:none;animation:hud-ping .7s cubic-bezier(.2,.7,.3,1) both}
 }
 
+/* ---------- hud account ---------- */
+/* Signed in, the LOG IN slot becomes the visitor's profile: an initials badge in the HUD colour plus their first name
+   (Hud.tsx); phones get the badge alone. While the first session check runs, the slot shows an empty, dimmed frame. */
+.hud-profile{gap:10px;padding-left:clamp(9px,.7vw,11px) !important}
+.hud-avatar{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;font-size:10.5px;font-weight:800;letter-spacing:.04em;line-height:1;transition:background-color .4s,color .4s}
+.hud-profile-name{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud-avatar-btn{display:grid;place-items:center;min-width:40px;min-height:40px;color:inherit;text-decoration:none}
+.hud-avatar-btn .hud-avatar{width:30px;height:30px;font-size:11.5px}
+.hud-avatar-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:50%}
+.hud-auth-pending{opacity:.3;pointer-events:none}
+
 /* ---------- hud on small phones ---------- */
 /* Keep SOUND, REGISTER and MENU on screen: the sound label and the wordmark beside BACK go first, then spacing tightens. */
 @media (max-width:519px){.hud-wordmark-detail,.hud-sound-label{display:none}}
@@ -272,17 +290,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
    REGISTER washes it out. */
 .sc-planet{position:absolute;right:max(-14vw,-210px);top:clamp(150px,22vh,230px);width:min(44vw,580px);aspect-ratio:1;opacity:.5;pointer-events:none}
 .sc-hero-copy{position:relative}
-.sc-title{margin:0;font-family:var(--font-cinzel),serif;font-weight:900;font-size:clamp(42px,7vw,112px);line-height:.98}
+.sc-title{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(42px,7vw,112px);line-height:.98}
 .sc-lede{max-width:44ch;margin:clamp(14px,2.4vh,22px) 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.6;color:rgba(236,232,223,.82);text-wrap:pretty}
 .sc-tabs{position:relative;margin-top:clamp(36px,6vh,64px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid rgba(236,232,223,.18)}
 .sc-body{padding:clamp(40px,7vh,72px) 0 calc(clamp(16px,2.6vw,44px) + 180px)}
 .sc-wrap{display:block;padding:0 var(--gut)}
-.sc-day-name{margin:0;font-family:var(--font-cinzel),serif;font-weight:900;font-size:clamp(36px,4.6vw,64px);line-height:1}
+.sc-day-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(36px,4.6vw,64px);line-height:1}
 .sc-day-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:12px 0 0;font-size:15px;font-weight:500;color:#5c574f}
 .sc-day-starred{display:inline-flex;align-items:center;gap:7px;color:#141312}
 .sc-block{margin-top:clamp(36px,6vh,60px)}
 .sc-block-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:0 var(--gut);margin-bottom:16px}
-.sc-block-name{margin:0;font-family:var(--font-cinzel),serif;font-weight:900;font-size:clamp(24px,2.4vw,34px);line-height:1}
+.sc-block-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(24px,2.4vw,34px);line-height:1}
 .sc-block-meta{margin:8px 0 0;font-size:14px;color:#5c574f}
 .sc-nav{display:flex;gap:8px;flex:none}
 .sc-arrow{display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;background:#141312;color:#ECE8DF;cursor:pointer;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:background-color .3s,opacity .3s}
@@ -300,11 +318,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-card-in::before{content:'';position:absolute;left:0;top:14px;bottom:0;width:4px;background:var(--wc)}
 .sc-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .sc-time{display:flex;align-items:baseline;gap:5px;margin:4px 0 0}
-.sc-time strong{font-family:var(--font-cinzel),serif;font-weight:900;font-size:30px;line-height:1}
+.sc-time strong{font-family:var(--font-display);font-weight:400;font-size:30px;line-height:1}
 .sc-time span{font-size:12px;font-weight:700;letter-spacing:.08em}
 .sc-star{display:grid;place-items:center;flex:none;width:44px;height:44px;margin:-8px -6px 0 0;padding:0;border:0;background:none;cursor:pointer;color:#141312}
 .sc-star:focus-visible{outline:2px solid #8a6a2a;outline-offset:-4px}
-.sc-card-title{margin:14px 0 20px;font-family:var(--font-cinzel),serif;font-weight:900;font-size:20px;line-height:1.18;text-wrap:balance}
+.sc-card-title{margin:14px 0 20px;font-family:var(--font-display);font-weight:400;font-size:20px;line-height:1.18;text-wrap:balance}
 .sc-card-foot{display:grid;gap:8px;margin-top:auto;padding-top:14px;border-top:1.5px dashed rgba(20,19,18,.24);font-size:14px;color:#3a3733}
 .sc-card-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sc-world{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;color:#141312}

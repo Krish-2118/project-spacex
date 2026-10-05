@@ -5,30 +5,24 @@
 'use client';
 
 import { Component, createRef, memo, type ComponentType, type FormEvent, type MouseEvent, type TouchEvent, type WheelEvent } from 'react';
+import dynamic from 'next/dynamic';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
-import type { Howl } from 'howler';
 import {
-  A, WORLDS, PRELOAD, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
-  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
+  A, WORLDS, PRELOAD_CRITICAL, PRELOAD_DEFERRED, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
+  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SCHED_BLOCKS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
 } from './data';
+import { CLICKABLE, preloadClick, unlockClick, playClick, setClickMuted } from './clickSound';
 import HomeView from './HomeView';
 import WorldsView from './WorldsView';
-import DetailView from './DetailView';
-import GalleryView from './GalleryView';
-import MerchView from './MerchView';
-import ScheduleView from './ScheduleView';
 import Hud from './Hud';
 import WorldNav from './WorldNav';
 import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
-import MenuOverlay from './MenuOverlay';
-import AuthOverlay from './AuthOverlay';
 import ProfileOverlay from './ProfileOverlay';
 import PhoneModal from './PhoneModal';
 import AdminDashboard from './AdminDashboard';
-import BagPanel from './BagPanel';
 import CartPill from './CartPill';
 import Toast from './Toast';
 import Cursor from './Cursor';
@@ -128,8 +122,12 @@ interface State {
   view: ViewName; index: number; dIndex: number; muted: boolean; about: boolean; compact: boolean; narrow: boolean;
   menu: boolean; toastOn: boolean; toastMsg: string; curtainLabel: string; curtainKicker: string;
   gIdx: number; sel: Record<string, Sel>; bag: BagLine[]; bagOpen: boolean; added: string | null;
-  /** Schedule: selected day index, filter ('all' | 'saved' | world index as a string), starred event ids. */
-  schedDay: number; schedFilter: string; saved: string[];
+  /** Schedule: selected day index, starred event ids. */
+  schedDay: number; saved: string[];
+  /** Lighter rendering (see goLowPower); only ever switches on. */
+  lowPower: boolean;
+  /** Lazy views and overlays (LAZY) that have been mounted. */
+  lazy: Partial<Record<LazyKey, boolean>>;
   /** The active page has scrolled under the HUD, which then sits on a frosted bar. */
   hudSolid: boolean;
   /** Continue with Google: popup in progress, the last problem to show, and the account it returned. */
@@ -142,7 +140,14 @@ interface State {
   phoneModalOpen: boolean;
   registration: Registration | null;
   user: UserProfile | null;
+  /** The first session check has finished (signed in or not); until then the HUD holds the account slot empty. */
+  authReady: boolean;
 }
+
+/** Bag lines read back from storage, minus anything malformed (unknown shape, bad quantity, unknown product). */
+const cleanBag = (raw: unknown): BagLine[] => (Array.isArray(raw) ? raw : [])
+  .filter((l) => l && typeof l.id === 'string' && typeof l.key === 'string' && PRODUCTS.some((p) => p.id === l.key) && Number.isFinite(l.qty) && l.qty > 0)
+  .map((l) => ({ id: l.id, key: l.key, c: Number.isInteger(l.c) ? l.c : -1, s: typeof l.s === 'string' ? l.s : '', qty: Math.min(99, Math.floor(l.qty)) }));
 
 const BAG_KEY = 'innovisionCart';
 const SAVED_KEY = 'iv26-schedule-saved';
@@ -161,15 +166,17 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false,
-    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null };
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
+  /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
+  _authReady = (() => { let res = () => {}; const p = new Promise<void>((r) => { res = r; }); return { p, res, done: false }; })();
   _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
   // flagship rover ticker; _rvReseq is set when roverPauses changes so the drive sequence is rebuilt
   _rvTick: ((time: number, dms: number) => void) | null = null; _rvReseq = false;
-  // schedule timeline: measured list parts, pending scroll frame, day/filter swap in progress
-  _sc: SchedParts | null = null; _scRaf = 0; _dayBusy = false;
+  // schedule: day swap in progress
+  _dayBusy = false;
   // new-visitor guidance: the worlds guide has been seen/dismissed, and its delayed appearance
   hintSeen = false; _hintT?: ReturnType<typeof setTimeout>;
   /** Home section to scroll to once the home view has been prepared. */
@@ -243,26 +250,26 @@ export default class Innovision extends Component<Props, State> {
         if (c !== this.state.compact || n !== this.state.narrow) this.setState({ compact: c, narrow: n }, () => { if (this.state.view === 'detail') this.setupDetailScroll(true); });
         this.fitTitle();
         if (this.ctx) this.openMap(this.mapOpen);
-        if (this.state.view === 'schedule') this.schedMeasure();
       });
     });
     this.cleanups.push(() => cancelAnimationFrame(rz));
     this.boot();
+    this.watchFrames();
     this.initSupabaseAuth();
   }
 
   componentWillUnmount() {
     this.alive = false;
+    // A remount (dev strict mode) reuses this instance: low-power mode and the view tickers are set up again.
+    document.documentElement.removeAttribute('data-lowpower'); this.lowPower = false; this.viewTicks = [];
     clearTimeout(this._toast); clearTimeout(this._added); clearTimeout(this._hintT);
-    cancelAnimationFrame(this._scRaf); this._scRaf = 0; this._sc = null; this._dayBusy = false;
+    this._dayBusy = false;
     this.cleanups.splice(0).forEach((fn) => fn());
     this.io?.disconnect(); this.io = undefined; this.off.clear(); this.amb.clear();
     this.ctx?.revert();
     this.ctx = undefined;
     ScrollTrigger.getAll().forEach((t) => t.kill());
     gsap.globalTimeline.clear();
-    this.hw?.Howler.unload();
-    this.sfx = undefined; this.music = undefined;
   }
 
   boot() {
@@ -301,6 +308,7 @@ export default class Innovision extends Component<Props, State> {
       if (this.props.skipLoader) { this.hideLoader(); this.firstPaint(); return; }
       this.loaderIntro();
     }, R);
+    this.cleanups.push(() => { R.setAttribute('data-booting', ''); R.querySelectorAll('[data-idle]').forEach((el) => el.removeAttribute('data-idle')); });
     if (!this.props.skipLoader) this.runLoader().then(() => { if (this.alive) this.loaderExit(); });
 
     // Auth Middleware Route Inspector: Check for middleware redirects (?auth=login, ?required=register, ?open=register, or #register)
@@ -512,6 +520,56 @@ export default class Innovision extends Component<Props, State> {
     this._rvTick = tick;
     this.tickFor('worlds', tick);
     this.cleanups.push(() => { this._rvTick = null; });
+  }
+
+  /* ---------- low-power mode ---------- */
+  lowPower = false;
+  /** Ticker callbacks that only matter while one view is shown. */
+  viewTicks: { view: ViewName; fn: gsap.TickerCallback; prio: boolean; on: boolean }[] = [];
+  /** Adds a view's per-frame callback; in low-power mode it leaves the ticker while that view is hidden. */
+  tickFor(view: ViewName, fn: gsap.TickerCallback, prio = false) {
+    const t = { view, fn, prio, on: false };
+    this.viewTicks.push(t);
+    this.syncTicks();
+    this.cleanups.push(() => { if (t.on) gsap.ticker.remove(fn); t.on = false; });
+  }
+  syncTicks() {
+    for (const t of this.viewTicks) {
+      const want = !this.lowPower || this.state.view === t.view;
+      if (want && !t.on) { gsap.ticker.add(t.fn, false, t.prio); t.on = true; }
+      else if (!want && t.on) { gsap.ticker.remove(t.fn); t.on = false; }
+    }
+  }
+  /**
+   * Switches to the lighter rendering for good: <html data-lowpower> (globals.css drops the drop shadows and
+   * half the sparks, dust and curtain clouds), their loops pause, and hidden views' ticker callbacks stop.
+   */
+  goLowPower() {
+    if (this.lowPower || !this.alive) return;
+    this.lowPower = true;
+    document.documentElement.setAttribute('data-lowpower', '');
+    this.setState({ lowPower: true });
+    this.syncLoops();
+    this.syncTicks();
+  }
+  /** Measures the first ~3 s of frames (after hydration settles) and downgrades if they average under ~40 fps. */
+  watchFrames() {
+    if (this.lowPower) return;
+    let raf = 0, t0 = 0, n = 0;
+    const from = performance.now() + 500;
+    // A tab in the background has no frames: coming back restarts the window instead of counting the gap.
+    this.listen(document, 'visibilitychange', () => { t0 = 0; });
+    const step = (t: number) => {
+      if (!this.alive || this.lowPower) return;
+      if (document.hidden) t0 = 0;
+      else if (t >= from) {
+        if (!t0) { t0 = t; n = 0; } else n++;
+        if (t - t0 >= 3000) { if ((t - t0) / n > 25) this.goLowPower(); return; }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    this.cleanups.push(() => cancelAnimationFrame(raf));
   }
 
   /* ---------- sound ---------- */
@@ -1204,7 +1262,7 @@ export default class Innovision extends Component<Props, State> {
       await this.slideTo(to.index, this.slideDir || (to.index > this.state.index ? 1 : -1));
       return;
     }
-    const label = to.view === 'worlds' ? 'THE WORLDS' : to.view === 'merch' ? 'THE STORE' : to.view === 'gallery' ? 'THE GALLERY' : to.view === 'schedule' ? 'THE SCHEDULE' : w.name.toUpperCase();
+    const label = to.view === 'worlds' ? 'The Worlds' : to.view === 'merch' ? 'The Store' : to.view === 'gallery' ? 'The Gallery' : to.view === 'schedule' ? 'The Schedule' : w.name;
     // A lazy view's chunk downloads while the curtain falls.
     if (to.view in LAZY) this.prefetch(to.view as LazyKey);
     const back: Route = { view: from as Route['view'], index: this.state.index };
@@ -1359,8 +1417,11 @@ export default class Innovision extends Component<Props, State> {
   /* ---------- auth: register / login ---------- */
   RN = 22;
   // @ts-ignore
-  register = (e) => { 
+  register = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    const t = e && e.currentTarget;
+    // A click before the session check finishes waits for it, so a signed-in visitor isn't sent to log in.
+    if (!this._authReady.done) await this._authReady.p;
     if (!this.state.user) {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('inv_pending_action', 'register');
@@ -1373,23 +1434,53 @@ export default class Innovision extends Component<Props, State> {
       this.openAuth('pass');
       return;
     }
-    const t = e && e.currentTarget, disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
+    const disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
     this.openAuth('register', disc || t, !!disc);
   };
   // @ts-ignore
-  loginClick = (e) => {
+  loginClick = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (this.state.user) {
-      this.setState({ profileOpen: true });
-      return;
-    }
     const src = e && e.currentTarget;
+    if (!this._authReady.done) await this._authReady.p;
+    if (this.state.user) { this.openProfile(); return; }
     if (this.state.about) this.setState({ about: false });
     this.openAuth('login', src);
   };
+  /** Opens the profile panel (closing the menu or About on the way) and refreshes the profile behind it. */
+  // @ts-ignore
+  openProfile = (e?) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const u = this.state.user;
+    if (!u) return;
+    if (u.id) this.refreshUserProfile(u.id);
+    this.setState({ profileOpen: true, menu: false, about: false });
+  };
+  /** HUD and menu labels for the signed-in visitor: first name, initials, and an accessible name. */
+  accountVals(s: State) {
+    const u = s.user;
+    const full = u ? ((u.full_name || '').trim() || this.nameFrom(u.email || '')) : '';
+    const words = full.split(/\s+/).filter(Boolean);
+    return {
+      authReady: s.authReady,
+      profileName: (words[0] || 'Profile').toUpperCase(),
+      profileInitials: (words.slice(0, 2).map((w) => w[0]).join('') || 'IV').toUpperCase(),
+      profileAria: 'Open your profile' + (full ? ', ' + full : ''),
+      menuLogout: (e: MouseEvent) => { e.preventDefault(); this.setState({ menu: false }); this.logout(); },
+    };
+  }
 
   /* ---------- Supabase Auth & Google OAuth (Cookie-Backed Sessions) ---------- */
+  /** The first session check is over: show LOG IN or the profile, and release clicks waiting on it. */
+  markAuthReady = () => {
+    if (this._authReady.done) return;
+    this._authReady.done = true;
+    this._authReady.res();
+    if (this.alive) this.setState({ authReady: true });
+  };
+
   initSupabaseAuth = async () => {
+    const slow = setTimeout(this.markAuthReady, 4000);
+    this.cleanups.push(() => clearTimeout(slow));
     try {
       purgeLocalStorageTokens();
       const supabase = getSupabase();
@@ -1467,6 +1558,9 @@ export default class Innovision extends Component<Props, State> {
       this.cleanups.push(() => subscription.unsubscribe());
     } catch (err) {
       console.warn('initSupabaseAuth error:', err);
+    } finally {
+      clearTimeout(slow);
+      this.markAuthReady();
     }
   };
 
@@ -1567,7 +1661,6 @@ export default class Innovision extends Component<Props, State> {
   googleLogin = async (isInternal: boolean = false) => {
     const s = this.state;
     if (s.gBusy || s.busyLbl) return;
-    this.play('thumpSoft');
     this.setState({ gBusy: true, gErr: '' });
     try {
       const { error } = await signInWithGoogle({ internalOnly: isInternal });
@@ -1580,7 +1673,6 @@ export default class Innovision extends Component<Props, State> {
   };
 
   gFail(msg: string) {
-    this.play('beep');
     this.setState({ gErr: msg });
     const b = this.$('[data-g-btn]');
     if (b && !this.reduce) gsap.fromTo(b, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
@@ -1607,7 +1699,6 @@ export default class Innovision extends Component<Props, State> {
       gUser: null,
       gErr: '',
     });
-    this.play('thumpSoft');
     this.toast('Logged out. See you in orbit.');
   };
   // @ts-ignore
@@ -1710,13 +1801,16 @@ export default class Innovision extends Component<Props, State> {
 
     if (this.state.auth) { this.switchMode(mode); return; }
     this.authBusy = true;
+    // The overlay is a lazy chunk (LAZY.auth): mount it before animating it. The rift opens from the button as it
+    // is now, even if mounting takes a moment.
+    const origin = this.originOf(src, fromDisc);
+    if (!(await this.mount('auth'))) { this.authBusy = false; this.toast(LOAD_FAIL); return; }
     const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
-    this.page = this.livePage(); this.authO = this.originOf(src, fromDisc);
+    this.page = this.livePage(); this.authO = origin;
     await this.set({ auth: true, authMode: mode, err: {}, gErr: '' });
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
     const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
     g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
-    this.play('swoosh');
     this.authSpin(true);
     g.set(planet, { rotation: -Math.min(this.state.step, 4) * 26 });
     if (this.reduce) {
@@ -1817,7 +1911,6 @@ export default class Innovision extends Component<Props, State> {
 
     // Strict Auth Middleware: Intercept switching to register without login
     if (m === 'register' && !s.user) {
-      this.play('beep');
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('inv_pending_action', 'register');
       }
@@ -1825,13 +1918,11 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    this.play('thumpSoft');
     this.setState({ authMode: m, err: {}, gErr: '' }, () => { this.animPane(1, true); this.focusAuth(); });
   };
   // @ts-ignore
   toStep(n) {
     const dir = n > this.state.step ? 1 : -1;
-    this.play('thumpSoft');
     this.setState({ step: n, err: {} }, () => {
       const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
       this.animPane(dir); this.focusAuth();
@@ -1889,7 +1980,6 @@ export default class Innovision extends Component<Props, State> {
     if (old && old.url && old.url.startsWith('blob:')) URL.revokeObjectURL(old.url);
 
     const previewUrl = isImg ? URL.createObjectURL(f) : '';
-    this.play('beep');
     this.setState(
       (st) => ({
         files: { ...st.files, [kind]: { name: f.name, size: f.size, url: previewUrl, pdf: !isImg, status: 'up' } },
@@ -1958,7 +2048,6 @@ export default class Innovision extends Component<Props, State> {
   // @ts-ignore
     const f = (this.state.files || {})[kind]; if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
     if (this._up && this._up[kind]) this._up[kind].kill();
-    this.play('beep');
     this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
   }
   replaceFile(kind) { const i = this.$('[data-auth] [name="' + (kind === 'id' ? 'idfile' : 'payfile') + '"]'); if (i) i.click(); }
@@ -2069,7 +2158,6 @@ export default class Innovision extends Component<Props, State> {
             email: user.email,
             status: 'CONFIRMED',
           };
-          this.play('fx');
           this.toast('🎉 Registration confirmed! Welcome to Innovision 2026.');
           this.setState(
             {
@@ -2132,7 +2220,6 @@ export default class Innovision extends Component<Props, State> {
           status: 'PAYMENT UNDER REVIEW',
           utr,
         };
-        this.play('fx');
         this.setState(
           {
             authMode: 'pass',
@@ -2204,7 +2291,7 @@ export default class Innovision extends Component<Props, State> {
       authHidden: String(!s.auth),
       authAria: reg ? 'Register for Innovision 2026' : am === 'login' ? 'Log in to Innovision' : 'Your boarding pass',
       authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
-      authTitle: reg ? 'CLAIM YOUR SEAT' : am === 'login' ? 'WELCOME BACK' : "YOU'RE ON BOARD",
+      authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : "You're on board",
       authSub: reg
         ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Four short stops to register for Innovision 2026 at NIT Rourkela.')
         : am === 'login' ? 'Sign in using your Google account or institute webmail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
@@ -2242,7 +2329,7 @@ export default class Innovision extends Component<Props, State> {
       user: s.user,
     };
   }
-  checkout = () => { this.play('thumpSoft'); this.toast('Pre-orders open with registrations. Stay in orbit.'); };
+  checkout = () => { this.toast('Pre-orders open with registrations. Stay in orbit.'); };
   linkGo = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const href = e.currentTarget.getAttribute('href') || '#/';
@@ -2359,12 +2446,12 @@ export default class Innovision extends Component<Props, State> {
         ...dw, categoryU: dw.category.toUpperCase(), statLU: dw.statL.toUpperCase(), serial: 'IV26-0' + (s.dIndex + 1),
         stampText: 'BOARDING SOON · ' + dw.statL.toUpperCase() + ' · ', frame: 'color-mix(in oklab, ' + dw.ink + ' 50%, transparent)',
         ticker: [0, 1, 2, 3].flatMap(() => ['Now boarding · ' + dw.name, ...dw.missions.map((m) => m[0])]).map((t) => ({ t })),
-        chars: [...dw.name.toUpperCase()].map((ch) => ({ ch: ch === ' ' ? ' ' : ch })),
+        chars: [...dw.name].map((ch) => ({ ch: ch === ' ' ? ' ' : ch })),
         words: dw.tagline.split(' ').map((t) => ({ t })),
         specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })), missionCount: String(dw.missions.length).padStart(2, '0'),
         missions: dw.missions.map(([name, text, format, dur], k) => ({ no: String(k + 1).padStart(2, '0'), name, text, format, dur, img: A + dw.gates[k % dw.gates.length] })),
       },
-      nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
+      nw: { href: '#/world/' + nx.slug, name: nx.name, planet: nx.planet },
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
       isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
@@ -2391,16 +2478,13 @@ export default class Innovision extends Component<Props, State> {
       muted: s.muted, soundOn: !s.muted, soundLabel: s.muted ? 'Turn sound on' : 'Turn sound off', toggleSound: this.toggleSound,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',
       aboutHidden: !s.about,
-      openAbout: (e?: MouseEvent) => { if (e) e.preventDefault(); this.play('thumpSoft'); this.setState({ about: true, menu: false }); },
+      openAbout: (e?: MouseEvent) => { if (e) e.preventDefault(); this.setState({ about: true, menu: false }); },
       closeAbout: () => this.setState({ about: false }),
       toTop: (e: MouseEvent) => { e.preventDefault(); const h = this.$('[data-view="home"]'); if (h) h.scrollTo({ top: 0, behavior: 'smooth' }); },
       toastO: s.toastOn ? 1 : 0, toastY: s.toastOn ? '0px' : '16px',
-      register: this.register, hover: this.hover, beep: this.beep,
-      openProfile: (e?: any) => {
-        if (e) e.preventDefault();
-        if (s.user?.id) this.refreshUserProfile(s.user.id);
-        this.setState({ profileOpen: true });
-      },
+      register: this.register, hover: this.hover, prefetchAuth: this.prefetchAuth,
+      openProfile: this.openProfile,
+      ...this.accountVals(s),
       openAdmin: (e?: any) => {
         if (e) e.preventDefault();
         if (s.user?.id) this.refreshUserProfile(s.user.id);
@@ -2414,7 +2498,7 @@ export default class Innovision extends Component<Props, State> {
       prevSlide: () => this.stepSlide(-1), nextSlide: () => this.stepSlide(1),
       onWheel: this.onWheel, onTouchStart: this.onTouchStart, onTouchEnd: this.onTouchEnd,
       // gallery page
-      gallery: GALLERY.map((g, k) => ({ ...g, onFocus: () => { this.play('beep'); this.gTarget = k * GAP + 200; } })),
+      gallery: GALLERY.map((g, k) => ({ ...g, onFocus: () => { this.gTarget = k * GAP + 200; } })),
       gDust: Array.from({ length: 46 }, (_, k) => ({ s: (k % 3 === 0 ? 3 : 2) + 'px' })),
       gCur: GALLERY[s.gIdx], gTotal: String(GALLERY.length).padStart(2, '0'),
       gRestart: () => { this.gTarget = 0; },
@@ -2428,21 +2512,21 @@ export default class Innovision extends Component<Props, State> {
     // The big views re-render only when what they show changes (the home page never does; its footer
     // reads the live values through LiveV). Small overlays render with every update.
     return (
-      <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-grotesk),'Segoe UI',system-ui,sans-serif" }}>
+      <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-sans)" }}>
         <LiveV value={v}>
         <HomeV v={v} deps={[]} />
         <WorldsV v={v} deps={[s.narrow, s.compact]} />
-        <DetailV v={v} deps={[s.dIndex, s.compact]} />
-        <GalleryV v={v} deps={[s.gIdx]} />
-        <MerchV v={v} deps={[s.sel, s.added]} />
-        <ScheduleV v={v} deps={[s.schedDay, s.schedFilter, s.saved, s.narrow]} />
+        {s.lazy.detail && <DetailV v={v} deps={[s.dIndex, s.compact]} />}
+        {s.lazy.gallery && <GalleryV v={v} deps={[s.gIdx]} />}
+        {s.lazy.merch && <MerchV v={v} deps={[s.sel, s.added]} />}
+        {s.lazy.schedule && <ScheduleV v={v} deps={[s.schedDay, s.saved, s.narrow]} />}
         <Hud v={v} />
         <WorldNav v={v} />
         <WorldHint v={v} />
         <Curtain v={v} />
         <AboutPanel v={v} />
-        <MenuOverlay v={v} />
-        <AuthOverlay v={v} />
+        {s.lazy.menu && <MenuOverlay v={v} />}
+        {s.lazy.auth && <AuthOverlay v={v} />}
         <ProfileOverlay
           isOpen={s.profileOpen}
           onClose={() => this.setState({ profileOpen: false })}
@@ -2467,7 +2551,7 @@ export default class Innovision extends Component<Props, State> {
             currentUser={s.user}
           />
         )}
-        <BagPanel v={v} />
+        {s.lazy.bag && <BagPanel v={v} />}
         <CartPill v={v} />
         <Toast v={v} />
         <Cursor />

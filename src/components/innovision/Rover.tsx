@@ -60,7 +60,7 @@ export default function Rover() {
             <path d="M90 99.5H262" fill="none" stroke="#fff" strokeWidth="1.6" opacity=".85" />
             <path d="M216 104V116M222 104V116M228 104V116M234 104V116M240 104V116M246 104V116" fill="none" stroke="#141312" strokeWidth="1.6" />
             <rect x="146" y="102" width="46" height="13" rx="1.5" fill="none" stroke="#141312" strokeWidth="1.3" />
-            <text x="169" y="111.6" textAnchor="middle" style={{ fontFamily: "var(--font-grotesk),sans-serif", fontSize: "8.5px", fontWeight: "700", letterSpacing: "1.2px", fill: "#141312" }}>IV·26</text>
+            <text x="169" y="111.6" textAnchor="middle" style={{ fontFamily: "var(--font-sans)", fontSize: "8.5px", fontWeight: "700", letterSpacing: "1.2px", fill: "#141312" }}>IV·26</text>
             <circle cx="92" cy="104" r="1.6" fill="#141312" /><circle cx="127" cy="104" r="1.6" fill="#141312" /><circle cx="141" cy="104" r="1.6" fill="#141312" /><circle cx="197" cy="104" r="1.6" fill="#141312" /><circle cx="211" cy="104" r="1.6" fill="#141312" /><circle cx="260" cy="104" r="1.6" fill="#141312" />
             <g data-rv-arm=""><path d="M272 112L295 124L292 156" fill="none" stroke="#141312" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M272 112L295 124L292 156" fill="none" stroke="#d6d6d2" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />

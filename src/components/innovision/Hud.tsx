@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Logo } from './icons';
 import type { V } from './types';
 
@@ -9,7 +10,7 @@ const FROST = "rgba(236,232,223,.86)";
 const EASE = "cubic-bezier(.25,1,.1,1)";
 
 /**
- * Fixed top bar: back, logo, nav, sound (orbit toggle), register, log in / menu.
+ * Fixed top bar: back, logo, nav, sound (orbit toggle), register / my pass, log in or profile, menu.
  * At the top of a page the bars float over the scene and invert against it (mix-blend difference).
  * Once the page scrolls under them (v.hudSolid) that would invert the content too, so the top bar
  * settles onto a frosted paper strip with ink text.
@@ -17,6 +18,8 @@ const EASE = "cubic-bezier(.25,1,.1,1)";
 export default function Hud({ v }: { v: V }) {
   const solid = v.hudSolid, fg = solid ? INK : "#fff";
   const blend = solid ? "normal" : "difference";
+  const ghost: CSSProperties = { position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: "inherit", background: "currentColor", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" };
+  const ghostFill: CSSProperties = { position: "absolute", inset: "1.5px", zIndex: "-1", background: solid ? PAPER : "#000", clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)", transition: "background-color .4s" };
   return (
     <>
       <header data-hud="" data-hud-solid={solid ? "" : undefined} className="hud-bar" style={{ position: "fixed", left: "0", right: "0", top: "0", zIndex: "50", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", padding: solid ? "clamp(10px,1.05vw,16px) clamp(16px,2.6vw,44px)" : "clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)", pointerEvents: "none", color: fg, mixBlendMode: blend, transition: `padding .5s ${EASE}` }}>
@@ -35,7 +38,7 @@ export default function Hud({ v }: { v: V }) {
           )}
           <a data-magnet="" href="#/" onClick={v.goHome} aria-label="Innovision home" className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", color: "inherit", textDecoration: "none" }}>
             <Logo style={{ width: "clamp(24px,2vw,32px)", height: "auto" }} />
-            <span className={v.isDetail ? "hud-wordmark hud-wordmark-detail" : "hud-wordmark"} style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(17px,1.6vw,24px)", letterSpacing: ".04em" }}>INNOVISION</span>
+            <span className={v.isDetail ? "hud-wordmark hud-wordmark-detail" : "hud-wordmark"} style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(17px,1.6vw,24px)", letterSpacing: ".04em" }}>INNOVISION</span>
           </a>
         </div>
         {v.wide && (
@@ -117,46 +120,35 @@ export default function Hud({ v }: { v: V }) {
               transition: "background-color .4s, color .4s",
             }}
           >
-            <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
+            <span key={v.noUser || !v.hasRegistered ? "register" : "pass"} data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
           </a>
 
-          {/* Secondary Action: LOG IN if not logged in, PROFILE if logged in */}
-          {v.showLogin && (
-            <a
-              id="hud-auth-profile-btn"
-              data-magnet=""
-              href={v.noUser ? "#login" : "#profile"}
-              onClick={v.noUser ? v.loginClick : v.openProfile}
-              onMouseEnter={v.hover}
-              className="hud-register hud-ghost"
-              style={{
-                position: "relative",
-                isolation: "isolate",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)",
-                textDecoration: "none",
-                fontWeight: "700",
-                fontSize: LABEL,
-                letterSpacing: ".08em",
-                color: "inherit",
-                background: "currentColor",
-                clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: "1.5px",
-                  zIndex: "-1",
-                  background: solid ? PAPER : "#000",
-                  clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)",
-                  transition: "background-color .4s",
-                }}
-              ></span>
-              <span data-scr="" style={{ color: fg }}>{v.noUser ? "LOG IN" : "PROFILE"}</span>
+          {/* Account slot. Signed out: LOG IN. Signed in: the visitor's profile (initials badge + first name; the badge
+              alone on phones, where LOG IN lives in the menu). Until the first session check finishes, the frame holds
+              its place empty, so a signed-in visitor never sees LOG IN flash first. The badge uses initials rather than
+              the account photo: the bar blends with difference over the scene, which would show a photo as a negative. */}
+          {v.showLogin && !v.authReady && (
+            <span aria-hidden="true" className="hud-register hud-ghost hud-auth-pending" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span style={{ visibility: "hidden" }}>LOG IN</span>
+            </span>
+          )}
+          {v.showLogin && v.authReady && v.noUser && (
+            <a id="hud-auth-profile-btn" data-magnet="" href="#login" onClick={v.loginClick} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onFocus={v.prefetchAuth} className="hud-register hud-ghost" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span key="login" data-scr="" style={{ color: fg }}>LOG IN</span>
+            </a>
+          )}
+          {v.showLogin && v.authReady && !v.noUser && (
+            <a id="hud-auth-profile-btn" data-magnet="" href="#profile" onClick={v.openProfile} onMouseEnter={v.hover} aria-label={v.profileAria} title={v.profileAria} className="hud-register hud-ghost hud-profile" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span className="hud-avatar" aria-hidden="true" style={{ background: fg, color: solid ? PAPER : "#000" }}>{v.profileInitials}</span>
+              <span key={"p-" + v.profileName} data-scr="" className="hud-profile-name" style={{ color: fg }}>{v.profileName}</span>
+            </a>
+          )}
+          {!v.showLogin && v.authReady && !v.noUser && (
+            <a href="#profile" onClick={v.openProfile} aria-label={v.profileAria} title={v.profileAria} className="hud-avatar-btn">
+              <span className="hud-avatar" aria-hidden="true" style={{ background: fg, color: solid ? PAPER : "#000" }}>{v.profileInitials}</span>
             </a>
           )}
           {!v.wide && (

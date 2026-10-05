@@ -2,7 +2,6 @@
 import type { CSSProperties } from 'react';
 import { CornerFrame, OrbitBackdrop, Radar } from './decor';
 import { Sparkle } from './icons';
-import { imgSize, lazyUnlessCritical } from './data';
 import type { V } from './types';
 
 const MONO = "grayscale(1) contrast(1.35) brightness(1.05)";
@@ -151,7 +150,7 @@ export default function DetailView({ v }: { v: V }) {
                 <span>{cw.statL}</span>
                 <span>{cw.statR}</span>
               </div>
-              <h1 data-d-title="" aria-label={cw.name} style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(56px,13vw,250px)", lineHeight: "1", letterSpacing: "-.01em", whiteSpace: "nowrap", color: cw.ink, textShadow: v.titleShadow }}>
+              <h1 data-d-title="" aria-label={cw.name} style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(56px,13vw,250px)", lineHeight: "1", letterSpacing: "-.01em", whiteSpace: "nowrap", color: cw.ink, textShadow: v.titleShadow }}>
                 {cw.chars.map((c, cI) => (
                   <span key={cI} data-d-ch="" style={{ display: "inline-block" }}>{c.ch}</span>
                 ))}
@@ -211,7 +210,7 @@ export default function DetailView({ v }: { v: V }) {
 
             {/* ---- copy ---- */}
             {v.compact && (
-              <h2 style={{ position: "absolute", top: "max(88px, 12%)", left: "0", right: "0", width: v.taglineW, margin: "0 auto", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(26px,3.1vw,56px)", lineHeight: "1.04", textAlign: "center", textTransform: "uppercase", color: "#fff", mixBlendMode: "difference", pointerEvents: "none" }}>
+              <h2 style={{ position: "absolute", top: "max(88px, 12%)", left: "0", right: "0", width: v.taglineW, margin: "0 auto", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(26px,3.1vw,56px)", lineHeight: "1.04", textAlign: "center", color: "#fff", mixBlendMode: "difference", pointerEvents: "none" }}>
                 {cw.words.map((wd, wdI) => (
                   <span key={wdI} data-d-word="" style={{ display: "inline-block", margin: "0 .14em" }}>{wd.t}</span>
                 ))}
@@ -224,7 +223,7 @@ export default function DetailView({ v }: { v: V }) {
                     <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: cw.accent }}></span>
                     {cw.statL} / {cw.statR}
                   </p>
-                  <h2 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(28px,2.9vw,52px)", lineHeight: "1.02", textTransform: "uppercase", color: cw.ink, textWrap: "balance" }}>
+                  <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(28px,2.9vw,52px)", lineHeight: "1.02", color: cw.ink, textWrap: "balance" }}>
                     {cw.words.map((wd, wdI) => (
                       <span key={wdI} data-d-word="" style={{ display: "inline-block", marginRight: ".24em" }}>{wd.t}</span>
                     ))}
@@ -259,7 +258,7 @@ export default function DetailView({ v }: { v: V }) {
                     <Sparkle style={{ position: "absolute", left: "50%", top: "50%", width: "24px", height: "24px", margin: "-12px 0 0 -12px" }} />
                   </span>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px", marginBottom: "6px", paddingRight: "44px" }}>
-                    <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(17px,1.35vw,22px)", color: "#141312" }}>Flight data</span>
+                    <span style={{ fontFamily: "var(--font-display)", whiteSpace: "nowrap", fontWeight: "400", fontSize: "clamp(17px,1.35vw,22px)", color: "#141312" }}>Flight data</span>
                     <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: cw.accent }}>{cw.categoryU}</span>
                   </div>
                   <dl style={{ margin: "0" }}>
@@ -313,7 +312,7 @@ export default function DetailView({ v }: { v: V }) {
                 <p style={{ margin: "0", fontSize: "16px", lineHeight: "1.6" }}>{cw.intro}</p>
               </div>
               <div data-d-card="" style={{ padding: "22px 22px 8px", border: "1px solid rgba(236,232,223,.16)", borderRadius: "20px", background: "#1b1a18" }}>
-                <div style={{ marginBottom: "6px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "18px" }}>Flight data</div>
+                <div style={{ marginBottom: "6px", fontFamily: "var(--font-display)", whiteSpace: "nowrap", fontWeight: "400", fontSize: "18px" }}>Flight data</div>
                 <dl style={{ margin: "0" }}>
                   {cw.specs.map((sp) => (
                     <div key={sp.i} style={{ display: "grid", gridTemplateColumns: "28px minmax(0,1fr) auto", alignItems: "baseline", gap: "10px", padding: "12px 0", borderTop: "1px solid rgba(236,232,223,.12)", fontSize: "15px" }}>
@@ -332,20 +331,20 @@ export default function DetailView({ v }: { v: V }) {
                 <span style={{ width: "28px", height: "2px", background: cw.accentL }}></span>
                 {cw.categoryU}
               </p>
-              <h2 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>Mission manifest</h2>
+              <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>Mission manifest</h2>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <strong style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(56px,6vw,104px)", lineHeight: ".8", color: "transparent", WebkitTextStroke: `1.5px ${cw.accentL}` }}>{cw.missionCount}</strong>
+              <strong style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(56px,6vw,104px)", lineHeight: ".8", color: "transparent", WebkitTextStroke: `1.5px ${cw.accentL}` }}>{cw.missionCount}</strong>
               <span style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", letterSpacing: ".3em", color: "rgba(236,232,223,.65)" }}><span>EVENTS</span><span>ON BOARD</span></span>
             </div>
           </header>
           <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,500px),1fr))", gap: "22px" }}>
             {cw.missions.map((m) => (
-              <article key={m.no} data-d-card="" onMouseEnter={v.beep} style={{ display: "flex" }}>
+              <article key={m.no} data-d-card="" style={{ display: "flex" }}>
                 <div className="hv-ticket" style={{ "--hv-accent": cw.accentL, flex: "1", display: "grid", gridTemplateColumns: "120px minmax(0,1fr)", minHeight: "270px", background: "radial-gradient(rgba(236,232,223,.06) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(160deg,#23211e,#191816 70%)", border: "1px solid rgba(236,232,223,.14)", borderRadius: "18px", WebkitMask: TICKET_MASK, mask: TICKET_MASK, transition: "transform .6s cubic-bezier(.25,1,.1,1),border-color .6s cubic-bezier(.25,1,.1,1)" } as CSSProperties}>
                   <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", gap: "16px", padding: "24px 10px", borderRight: "1.5px dashed rgba(236,232,223,.22)" }}>
                     <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: "rgba(236,232,223,.6)" }}>GATE</span>
-                    <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
+                    <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
                     <span style={{ position: "relative", width: "80px", height: "80px" }}>
                       <span style={{ position: "absolute", inset: "0", display: "grid", gridTemplate: "100%/100%", placeItems: "center", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 32% 28%,rgba(236,232,223,.16),transparent 58%),url(/assets/stars.webp) center/260% auto,#0d0c0b", boxShadow: "inset 0 0 0 3px #2b2926,inset 0 0 0 4px rgba(236,232,223,.3),inset 0 12px 20px rgba(0,0,0,.65)" }}>
                         <img decoding="async" src={m.img} alt="" style={{ height: "62px", width: "auto", maxWidth: "88%", objectFit: "contain", filter: "grayscale(1) contrast(1.3) brightness(1.15) drop-shadow(0 6px 8px rgba(0,0,0,.5))", animation: "iv-porthole 5s ease-in-out infinite" }} />
@@ -358,7 +357,7 @@ export default function DetailView({ v }: { v: V }) {
                       <span>{cw.statLU}</span>
                       <span style={{ color: "rgba(236,232,223,.55)" }}>{cw.serial} · {m.no}</span>
                     </div>
-                    <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1" }}>{m.name}</h3>
+                    <h3 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1" }}>{m.name}</h3>
                     <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.78)", textWrap: "pretty" }}>{m.text}</p>
                     <dl style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "12px", margin: "auto 0 0", paddingTop: "14px", borderTop: "1px solid rgba(236,232,223,.12)" }}>
                       {[['FORMAT', m.format], ['DURATION', m.dur]].map(([dt, dd]) => (
@@ -387,13 +386,13 @@ export default function DetailView({ v }: { v: V }) {
             ))}
           </div>
           <div style={{ position: "relative", display: "flex", justifyContent: "center", marginTop: "96px" }}>
-            <a href={v.nw.href} onMouseEnter={v.beep} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px", textDecoration: "none", color: "#ECE8DF" }}>
+            <a href={v.nw.href} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px", textDecoration: "none", color: "#ECE8DF" }}>
               <span style={{ position: "relative", width: "88px", height: "88px", marginBottom: "12px" }}>
                 <img decoding="async" src={v.nw.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.3) brightness(1.1)", animation: "iv-spin 60s linear infinite" }} />
                 <span style={{ position: "absolute", left: "-30%", top: "40%", width: "160%", height: "22%", borderRadius: "50%", border: "1.5px solid rgba(236,232,223,.5)", transform: "rotate(-14deg)" }}></span>
               </span>
               <small style={{ fontSize: "13px", letterSpacing: ".3em", opacity: ".7" }}>NEXT WORLD</small>
-              <strong style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(40px,7vw,120px)", lineHeight: "1", color: "transparent", WebkitTextStroke: "1.5px #ECE8DF", transition: "color .6s cubic-bezier(.25,1,.1,1)", textAlign: "center" }} className="hv-paper">{v.nw.nameU}</strong>
+              <strong style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,7vw,120px)", lineHeight: "1", color: "transparent", WebkitTextStroke: "1.5px #ECE8DF", transition: "color .6s cubic-bezier(.25,1,.1,1)", textAlign: "center" }} className="hv-paper">{v.nw.name}</strong>
             </a>
           </div>
         </section>

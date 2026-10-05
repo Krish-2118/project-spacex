@@ -12,7 +12,7 @@ export default function MerchView({ v }: { v: V }) {
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "28px" }}>
           <div data-m-reveal="">
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH · INNOVISION 2026</p>
-            <h1 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,8vw,140px)", lineHeight: ".95" }}>The Odyssey Store</h1>
+            <h1 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8vw,140px)", lineHeight: ".95" }}>The Odyssey Store</h1>
           </div>
           <p data-m-reveal="" style={{ maxWidth: "400px", margin: "0", fontSize: "17px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Limited-run gear for the crew. Pre-order now, collect at the merch desk during the fest.</p>
         </div>
@@ -28,7 +28,7 @@ export default function MerchView({ v }: { v: V }) {
                 )}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px" }}>
-                <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "24px", lineHeight: "1.1" }}>{p.name}</h3>
+                <h3 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "24px", lineHeight: "1.1" }}>{p.name}</h3>
                 <span style={{ fontWeight: "700", fontSize: "18px" }}>{p.priceL}</span>
               </div>
               <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.55", color: "#3a3733", textWrap: "pretty" }}>{p.desc}</p>

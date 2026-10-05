@@ -85,15 +85,15 @@ test('tour every view without errors', async ({ page, isMobile }) => {
 
   if (vp.width < 720) {
     // Phones: LOG IN lives in the menu.
-    await authRoundTrip(page, () => menu.locator('a[href="#login"]').click(), 'WELCOME BACK');
+    await authRoundTrip(page, () => menu.locator('a[href="#login"]').click(), 'Welcome back');
   } else {
     await menu.locator('.menu-close').click();
     await expect(menu).toBeHidden();
     if (vp.width >= 1100) await page.setViewportSize(vp);
-    await authRoundTrip(page, () => page.locator('[data-hud] a[href="#login"]').click(), 'WELCOME BACK');
+    await authRoundTrip(page, () => page.locator('[data-hud] a[href="#login"]').click(), 'Welcome back');
   }
-  // Register overlay from the HUD.
-  await authRoundTrip(page, () => page.locator('[data-hud] a[href="#register"]').click(), 'CLAIM YOUR SEAT');
+  // REGISTER from the HUD: signed-out visitors are sent to log in first (openAuth's auth guard).
+  await authRoundTrip(page, () => page.locator('[data-hud] a[href="#register"]').click(), 'Welcome back');
 
   await go(page, '#/', 'home');
 
