@@ -341,8 +341,82 @@ export default function DetailView({ v }: { v: V }) {
           <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,500px),1fr))", gap: "22px" }}>
             {cw.missions.map((m) => (
               <article key={m.no} data-d-card="" onMouseEnter={v.beep} style={{ display: "flex" }}>
-                <div className="hv-ticket" style={{ "--hv-accent": cw.accentL, flex: "1", display: "grid", gridTemplateColumns: "120px minmax(0,1fr)", minHeight: "270px", background: "radial-gradient(rgba(236,232,223,.06) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(160deg,#23211e,#191816 70%)", border: "1px solid rgba(236,232,223,.14)", borderRadius: "18px", WebkitMask: TICKET_MASK, mask: TICKET_MASK, transition: "transform .6s cubic-bezier(.25,1,.1,1),border-color .6s cubic-bezier(.25,1,.1,1)" } as CSSProperties}>
-                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", gap: "16px", padding: "24px 10px", borderRight: "1.5px dashed rgba(236,232,223,.22)" }}>
+                <div
+                  className="hv-ticket"
+                  style={{
+                    "--hv-accent": cw.accentL,
+                    position: "relative",
+                    flex: "1",
+                    display: "grid",
+                    gridTemplateColumns: "120px minmax(0,1fr)",
+                    minHeight: "270px",
+                    background: "#191816",
+                    border: "1px solid rgba(236,232,223,.16)",
+                    borderRadius: "18px",
+                    overflow: "hidden",
+                    WebkitMask: TICKET_MASK,
+                    mask: TICKET_MASK,
+                    transition: "transform .6s cubic-bezier(.25,1,.1,1),border-color .6s cubic-bezier(.25,1,.1,1)",
+                  } as CSSProperties}
+                >
+                  {/* Poster Background with atmospheric sci-fi overlay */}
+                  {m.posterUrl ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        zIndex: 0,
+                        overflow: "hidden",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <img
+                        src={m.posterUrl}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          opacity: 0.35,
+                          filter: "contrast(1.15) brightness(0.9)",
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "linear-gradient(135deg, rgba(16,15,14,0.94) 0%, rgba(20,19,18,0.85) 45%, rgba(16,15,14,0.78) 100%)",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        zIndex: 0,
+                        pointerEvents: "none",
+                        background:
+                          "radial-gradient(rgba(236,232,223,.06) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(160deg,#23211e,#191816 70%)",
+                      }}
+                    />
+                  )}
+
+                  {/* Left Column: GATE and Porthole */}
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                      padding: "24px 10px",
+                      borderRight: "1.5px dashed rgba(236,232,223,.22)",
+                    }}
+                  >
                     <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: "rgba(236,232,223,.6)" }}>GATE</span>
                     <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
                     <span style={{ position: "relative", width: "80px", height: "80px" }}>
@@ -352,33 +426,63 @@ export default function DetailView({ v }: { v: V }) {
                       <span style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "1.5px dotted rgba(236,232,223,.4)" }}></span>
                     </span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "24px clamp(18px,2vw,28px) 20px" }}>
+
+                  {/* Right Column: Mission Details */}
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                      padding: "24px clamp(18px,2vw,28px) 20px",
+                    }}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: cw.accentL }}>
                       <span>{cw.statLU}</span>
                       <span style={{ color: "rgba(236,232,223,.55)" }}>{cw.serial} · {m.no}</span>
                     </div>
-                    <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1" }}>{m.name}</h3>
-                    <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.78)", textWrap: "pretty" }}>{m.text}</p>
-                    <dl style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "12px", margin: "auto 0 0", paddingTop: "14px", borderTop: "1px solid rgba(236,232,223,.12)" }}>
-                      {[['FORMAT', m.format], ['DURATION', m.dur]].map(([dt, dd]) => (
-                        <div key={dt} style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: "0" }}>
-                          <dt style={{ fontSize: "10px", fontWeight: "700", letterSpacing: ".24em", color: "rgba(236,232,223,.55)" }}>{dt}</dt>
-                          <dd style={{ margin: "0", fontSize: "14px", fontWeight: "700" }}>{dd}</dd>
-                        </div>
-                      ))}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "5px", minWidth: "0" }}>
-                        <dt style={{ fontSize: "10px", fontWeight: "700", letterSpacing: ".24em", color: "rgba(236,232,223,.55)" }}>STATUS</dt>
-                        <dd style={{ display: "flex", alignItems: "center", gap: "7px", margin: "0", fontSize: "14px", fontWeight: "700" }}>
-                          <span style={{ flex: "none", width: "6px", height: "6px", borderRadius: "50%", background: cw.accentL, animation: "iv-blink 1.4s steps(2) infinite" }}></span>
-                          Boarding
-                        </dd>
-                      </div>
-                    </dl>
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1", color: "#ECE8DF" }}>
+                      {m.name}
+                    </h3>
+                    <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>
+                      {m.text}
+                    </p>
+
+                    {/* Bottom Row: Barcode & Brochure Link */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "auto", paddingTop: "20px" }}>
                       <span aria-hidden="true" style={{ flex: "1", height: "26px", opacity: ".55", background: barcode("#ECE8DF") }}></span>
-                      <span aria-hidden="true" style={{ flex: "none", display: "grid", placeItems: "center", width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(236,232,223,.3)", color: cw.accentL }}>
-                        <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px" }}><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg>
-                      </span>
+                      {m.brochureUrl ? (
+                        <a
+                          href={m.brochureUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open Event Brochure (Google Drive)"
+                          style={{
+                            flex: "none",
+                            display: "grid",
+                            placeItems: "center",
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "50%",
+                            border: `1.5px solid ${cw.accentL}`,
+                            background: "rgba(236,232,223,0.08)",
+                            color: cw.accentL,
+                            textDecoration: "none",
+                            cursor: "pointer",
+                            transition: "background .2s, transform .2s, box-shadow .2s",
+                            boxShadow: `0 0 16px ${cw.accentL}40`,
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px" }}>
+                            <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2" />
+                          </svg>
+                        </a>
+                      ) : (
+                        <span aria-hidden="true" style={{ flex: "none", display: "grid", placeItems: "center", width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(236,232,223,.2)", color: "rgba(236,232,223,.3)" }}>
+                          <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px" }}><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

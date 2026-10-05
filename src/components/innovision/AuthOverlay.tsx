@@ -1,9 +1,14 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- parent class component passes untyped view-model */
+/* eslint-disable @typescript-eslint/ban-ts-comment -- view-model is untyped dynamic GSAP view */
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
 // @ts-nocheck
+import React, { useState } from 'react';
 import type { V } from './types';
+import { isIterSoaCollege, isIterSoaEmail } from '@/lib/validation';
 
 export default function AuthOverlay({ v }: { v: V }) {
+  const [userCollege, setUserCollege] = useState<string | null>(null);
+  const collegeValue = userCollege !== null ? userCollege : (v.regVals?.college || '');
+  const isBlockedCollege = !v.isInternal && (isIterSoaCollege(collegeValue) || isIterSoaEmail(v.regVals?.email));
   return (
   <div data-auth-root="" aria-hidden={v.authHidden} style={{ position: "fixed", inset: "0", zIndex: "62", visibility: "hidden", pointerEvents: "none" }}>
     <div data-rift-veil="" style={{ position: "absolute", inset: "0", background: "#070605", opacity: "0" }}></div>
@@ -86,10 +91,70 @@ export default function AuthOverlay({ v }: { v: V }) {
                         {v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
-                        <input name="college" defaultValue={v.regVals.college} readOnly={v.isInternal} autoComplete="organization" placeholder="Full name of your institute" aria-invalid={v.inv.college} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: v.isInternal ? "rgba(236,232,223,.08)" : "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.college}`, cursor: v.isInternal ? "not-allowed" : "text" }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
+                          {isBlockedCollege && (
+                            <span style={{ fontSize: "11px", fontWeight: "700", color: "#f87171", letterSpacing: ".06em" }}>
+                              🚫 NOT ELIGIBLE
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          name="college"
+                          value={v.isInternal ? v.regVals.college : collegeValue}
+                          onChange={(e) => {
+                            setUserCollege(e.target.value);
+                            if (v.clearErr) v.clearErr({ target: { name: 'college' } });
+                          }}
+                          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                            setUserCollege(e.currentTarget.value);
+                          }}
+                          readOnly={v.isInternal}
+                          autoComplete="organization"
+                          placeholder="Full name of your institute"
+                          aria-invalid={isBlockedCollege || !!v.err.college}
+                          style={{
+                            height: "54px",
+                            padding: "0 16px",
+                            borderRadius: "0",
+                            background: isBlockedCollege ? "rgba(239, 68, 68, 0.08)" : v.isInternal ? "rgba(236,232,223,.08)" : "rgba(236,232,223,.04)",
+                            fontSize: "16px",
+                            color: "#ECE8DF",
+                            outline: "none",
+                            transition: "border-color .3s,background-color .3s",
+                            border: isBlockedCollege ? "1.5px solid #ef4444" : `1.5px solid ${v.bc.college}`,
+                            cursor: v.isInternal ? "not-allowed" : "text",
+                          }}
+                          style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)"
+                        />
                         {v.isInternal && <span style={{ fontSize: "12px", color: "oklch(0.8 0.12 85)" }}>Verified NIT Rourkela student registration (Free).</span>}
-                        {v.err.college ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
+                        {!v.isInternal && !isBlockedCollege && (
+                          <span style={{ fontSize: "12px", color: "rgba(236,232,223,0.5)" }}>
+                            Note: Students from ITER - SOA are not eligible to register.
+                          </span>
+                        )}
+                        {isBlockedCollege && (
+                          <div
+                            role="alert"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "10px 14px",
+                              background: "rgba(239, 68, 68, 0.14)",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              color: "#fca5a5",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              lineHeight: "1.4",
+                            }}
+                          >
+                            <span>⚠️</span>
+                            <span>Registration is not allowed for students from ITER - SOA.</span>
+                          </div>
+                        )}
+                        {v.err.college && !isBlockedCollege ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -303,7 +368,44 @@ export default function AuthOverlay({ v }: { v: V }) {
                       {v.canBack ? (
                         <button type="button" onClick={v.stepBack} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: "58px", padding: "0 26px", border: "0", cursor: "pointer", fontWeight: "700", fontSize: "14px", letterSpacing: ".08em", color: "#ECE8DF", background: "rgba(236,232,223,.7)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} style-active="transform:scale(.98)"><span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#100f0e", clipPath: "polygon(11.4px 0,100% 0,100% calc(100% - 11.4px),calc(100% - 11.4px) 100%,0 100%,0 11.4px)" }}></span><span data-scr="">BACK</span></button>
                       ) : null}
-                      <button type="submit" disabled={v.busy} onMouseEnter={v.beep} style={{ flex: "1", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "12px", minHeight: "58px", padding: "0 28px", border: "0", cursor: "pointer", fontWeight: "700", fontSize: "15px", letterSpacing: ".08em", whiteSpace: "nowrap", color: "#141312", background: "#ECE8DF", opacity: v.busyO, clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s,opacity .3s" }} style-hover="background:oklch(0.8 0.12 85)" style-active="transform:scale(.98)"><span>{v.submitLbl}</span><svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M11 1l4 4-4 4M15 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg></button>
+                      <button
+                        type="submit"
+                        disabled={v.busy || (v.d.s0 !== 'none' && isBlockedCollege)}
+                        onMouseEnter={v.beep}
+                        style={{
+                          flex: "1",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "12px",
+                          minHeight: "58px",
+                          padding: "0 28px",
+                          border: "0",
+                          cursor: (v.d.s0 !== 'none' && isBlockedCollege) ? "not-allowed" : "pointer",
+                          fontWeight: "700",
+                          fontSize: "15px",
+                          letterSpacing: ".08em",
+                          whiteSpace: "nowrap",
+                          color: (v.d.s0 !== 'none' && isBlockedCollege) ? "#fca5a5" : "#141312",
+                          background: (v.d.s0 !== 'none' && isBlockedCollege) ? "rgba(239, 68, 68, 0.25)" : "#ECE8DF",
+                          opacity: (v.d.s0 !== 'none' && isBlockedCollege) ? 0.7 : v.busyO,
+                          clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)",
+                          transition: "background-color .4s,opacity .3s,color .3s",
+                        }}
+                        style-hover={(v.d.s0 !== 'none' && isBlockedCollege) ? "" : "background:oklch(0.8 0.12 85)"}
+                        style-active="transform:scale(.98)"
+                      >
+                        <span>
+                          {v.d.s0 !== 'none' && isBlockedCollege
+                            ? 'NOT ELIGIBLE (ITER - SOA)'
+                            : v.submitLbl}
+                        </span>
+                        {!(v.d.s0 !== 'none' && isBlockedCollege) && (
+                          <svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true">
+                            <path d="M11 1l4 4-4 4M15 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
+                          </svg>
+                        )}
+                      </button>
                     </div>
                   </form>
                 </div>

@@ -87,7 +87,7 @@ export default function Hud({ v }: { v: V }) {
           <a
             id="hud-reg-pass-btn"
             data-magnet=""
-            href="#register"
+            href={v.noUser || !v.hasRegistered ? "#register" : "#pass"}
             onClick={v.register}
             onMouseEnter={v.hover}
             className="hud-register hud-cta"

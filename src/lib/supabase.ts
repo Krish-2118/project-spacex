@@ -40,6 +40,36 @@ export interface Registration {
   updated_at?: string;
 }
 
+export type EventCategory = 'flagship events' | 'main events' | 'fun events' | 'dts events';
+
+export interface EventItem {
+  id?: string;
+  title: string;
+  description: string;
+  poster_url: string;
+  brochure_url?: string | null; // Optional Google Drive link
+  category: EventCategory;
+  format?: string;
+  duration?: string;
+  venue?: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GalleryPhoto {
+  id?: string;
+  title?: string | null;
+  image_url: string;
+  file_id?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type GalleryItem = GalleryPhoto;
+
 // Cookie-based storage adapter for Supabase Client: ZERO tokens or keys ever touch browser localStorage
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -456,10 +486,62 @@ export async function updateUserProfile(
 }
 
 /**
- * Fetch existing registration for a user
+ * Fetch existing registration for a user with local caching and server fallback
  */
-export async function fetchUserRegistration(userId: string): Promise<Registration | null> {
+export async function fetchUserRegistration(userId: string, email?: string): Promise<Registration | null> {
+  // Check local cache first for instant rendering
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(`inv_reg_${userId}`) || (email ? localStorage.getItem(`inv_reg_${email}`) : null);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.registration_id || parsed.id)) {
+          // Re-verify in background with server
+          setTimeout(() => {
+            fetchUserRegistrationServer(userId, email);
+          }, 50);
+          return parsed as Registration;
+        }
+      }
+    } catch {
+      // Ignore cache errors
+    }
+  }
+
+  return fetchUserRegistrationServer(userId, email);
+}
+
+export async function fetchUserRegistrationServer(userId: string, email?: string): Promise<Registration | null> {
   const supabase = getSupabase();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    // 1. Try server endpoint which bypasses client RLS policies
+    const res = await fetch('/api/register', {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      if (result.success && result.registration) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`inv_reg_${userId}`, JSON.stringify(result.registration));
+            if (email) localStorage.setItem(`inv_reg_${email}`, JSON.stringify(result.registration));
+          } catch {}
+        }
+        return result.registration as Registration;
+      }
+    }
+  } catch (apiErr) {
+    console.warn('API /api/register GET error, falling back to direct query:', apiErr);
+  }
+
+  // 2. Fallback: direct Supabase query
   try {
     const { data, error } = await supabase
       .from('registrations')
@@ -472,6 +554,11 @@ export async function fetchUserRegistration(userId: string): Promise<Registratio
     if (error) {
       console.warn('Error fetching registration:', error);
       return null;
+    }
+    if (data && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`inv_reg_${userId}`, JSON.stringify(data));
+      } catch {}
     }
     return data as Registration;
   } catch (err) {
@@ -486,7 +573,7 @@ export async function fetchUserRegistration(userId: string): Promise<Registratio
  */
 export async function createRegistration(
   regData: Omit<Registration, 'id' | 'created_at' | 'updated_at'>
-): Promise<{ success: boolean; registration?: Registration; error?: string }> {
+): Promise<{ success: boolean; registration?: Registration; alreadyRegistered?: boolean; error?: string }> {
   try {
     const supabase = getSupabase();
     const { data: { session } } = await supabase.auth.getSession();
@@ -503,9 +590,25 @@ export async function createRegistration(
 
     const result = await res.json();
     if (!res.ok) {
+      if (result.registration) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`inv_reg_${regData.user_id}`, JSON.stringify(result.registration));
+            if (regData.email) localStorage.setItem(`inv_reg_${regData.email}`, JSON.stringify(result.registration));
+          } catch {}
+        }
+        return { success: true, registration: result.registration, alreadyRegistered: true };
+      }
       return { success: false, error: result.message || result.error || 'Registration failed' };
     }
-    return { success: true, registration: result.registration };
+
+    if (result.registration && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`inv_reg_${regData.user_id}`, JSON.stringify(result.registration));
+        if (regData.email) localStorage.setItem(`inv_reg_${regData.email}`, JSON.stringify(result.registration));
+      } catch {}
+    }
+    return { success: true, registration: result.registration, alreadyRegistered: !!result.alreadyRegistered };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to create registration';
     return { success: false, error: message };
