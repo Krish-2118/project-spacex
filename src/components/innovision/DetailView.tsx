@@ -161,7 +161,7 @@ export default function DetailView({ v }: { v: V }) {
             {v.isTakeoff && (
               <div data-speed="0" style={{ position: "absolute", left: "calc(50% - max(124vw, 170vh) / 2)", bottom: "-4%", width: "max(124vw, 170vh)", aspectRatio: "4000 / 973", pointerEvents: "none" }}>
                 <div data-depth=".35" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/lab.png" alt="" style={{ position: "absolute", left: "10%", bottom: "14%", width: "24%", height: "auto", transform: "rotate(4deg)", filter: `${MONO} drop-shadow(0 12px 16px rgba(0,0,0,.4))` }} />
+                  <img src="/assets/lab.webp" alt="" style={{ position: "absolute", left: "10%", bottom: "14%", width: "24%", height: "auto", transform: "rotate(4deg)", filter: `${MONO} drop-shadow(0 12px 16px rgba(0,0,0,.4))` }} />
                   <img src="/assets/floor.webp" alt="" style={{ position: "absolute", left: "0", bottom: "0", width: "50.6%", height: "auto", transform: "scaleX(-1)", filter: MONO }} />
                   <img src="/assets/floor.webp" alt="" style={{ position: "absolute", right: "0", bottom: "0", width: "50.6%", height: "auto", filter: MONO }} />
                   <div style={{ position: "absolute", left: "50%", bottom: "35%", width: "18%", aspectRatio: "6 / 1", marginLeft: "-9%" }}>
@@ -170,7 +170,7 @@ export default function DetailView({ v }: { v: V }) {
                     <span style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "#1f1d1b", boxShadow: "inset 0 -6px 0 rgba(255,255,255,.12),0 10px 24px rgba(0,0,0,.3)" }}></span>
                     <span style={{ position: "absolute", inset: "22% 18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.5)" }}></span>
                     <div data-lander="" style={{ position: "absolute", left: "50%", bottom: "36.5%", width: "40vh", marginLeft: "-20vh", display: "flex", flexDirection: "column", alignItems: "center", paddingBottom: "1.5vh" }}>
-                      <img src="/assets/lander.png" alt="Lander hovering above the launch pad" style={{ height: "32vh", width: "auto", filter: "grayscale(1) contrast(1.15) drop-shadow(0 14px 18px rgba(0,0,0,.25))" }} />
+                      <img src="/assets/lander.webp" alt="Lander hovering above the launch pad" style={{ height: "32vh", width: "auto", filter: "grayscale(1) contrast(1.15) drop-shadow(0 14px 18px rgba(0,0,0,.25))" }} />
                       <div data-thrust="" style={{ position: "relative", width: "100%", height: 0, marginTop: "-3.5vh", zIndex: -1 }}>
                         <span style={{ position: "absolute", left: "50%", marginLeft: "-7vh", top: "-1vh", width: "3.5vh", height: "7vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.7) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate" }}></span>
                         <span style={{ position: "absolute", left: "50%", marginLeft: "1vh", top: "-2vh", width: "3.5vh", height: "7.5vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.7) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate", animationDelay: "0.05s" }}></span>

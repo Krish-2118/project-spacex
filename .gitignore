@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Antigravity Skills
 .agents/skills/taste-skill/
+
+# playwright
+/test-results/
+/playwright-report/
