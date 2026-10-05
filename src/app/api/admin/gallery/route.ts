@@ -1,0 +1,241 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyStaff, isWebPImage } from '@/lib/auth-server';
+import { imagekit } from '@/lib/imagekit';
+
+export const runtime = 'nodejs';
+
+const MAX_GALLERY_SIZE = 2 * 1024 * 1024; // 2MB strictly enforced
+
+// GET all gallery images (Staff access)
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await verifyStaff(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const { supabase } = auth;
+    const { data: gallery, error } = await supabase
+      .from('gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      if (error.message?.includes('does not exist') || error.code === '42P01') {
+        return NextResponse.json({
+          success: true,
+          gallery: [],
+          notice: "Table 'gallery' not yet migrated in Supabase. Please run supabase/schema.sql."
+        });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, gallery: gallery || [] });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch gallery images';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// POST: Upload an image to the gallery (Authorized IT Team & Admin)
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await verifyStaff(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const formData = await req.formData();
+    const title = (formData.get('title') as string || '').trim();
+    const imageFile = formData.get('file') as File | null;
+
+    // 1. Validate file exists
+    if (!imageFile) {
+      return NextResponse.json(
+        { error: 'Gallery image file is required.' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Enforce format: Only .webp
+    const isWebpExt = imageFile.name.toLowerCase().endsWith('.webp');
+    if (!isWebpExt) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid file format. Only .webp format is allowed for gallery images.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Enforce size limit: Max 2MB
+    if (imageFile.size > MAX_GALLERY_SIZE) {
+      const sizeMb = (imageFile.size / (1024 * 1024)).toFixed(2);
+      return NextResponse.json(
+        {
+          error: `Gallery image exceeds the maximum allowed size of 2MB. Current file size: ${sizeMb}MB.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const arrayBuffer = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // 4. Verify WebP magic bytes (RIFF...WEBP)
+    if (!isWebPImage(imageFile.name, imageFile.type, buffer)) {
+      return NextResponse.json(
+        {
+          error:
+            'The uploaded file is not a valid WebP image. Please upload a genuine .webp image.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 5. Upload image to ImageKit
+    const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uploadRes = await imagekit.upload({
+      file: buffer,
+      fileName: `gallery_${Date.now()}_${cleanFileName}`,
+      folder: '/innovision/gallery',
+      useUniqueFileName: true,
+    });
+
+    // 6. Save in Supabase database
+    const { supabase, user } = auth;
+    const newGalleryItem = {
+      title: title || null, // Optional title
+      image_url: uploadRes.url,
+      file_id: uploadRes.fileId,
+      created_by: user.id,
+    };
+
+    const { data: createdItem, error: dbErr } = await supabase
+      .from('gallery')
+      .insert(newGalleryItem)
+      .select()
+      .maybeSingle();
+
+    if (dbErr) {
+      console.error('Database error inserting gallery photo:', dbErr);
+      return NextResponse.json(
+        {
+          error: dbErr.message?.includes('does not exist')
+            ? "Table 'gallery' does not exist in Supabase yet. Please execute the SQL in supabase/schema.sql in your Supabase SQL Editor."
+            : dbErr.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      item: createdItem,
+      message: 'Gallery image uploaded successfully!',
+    });
+  } catch (err: unknown) {
+    console.error('Error uploading gallery image:', err);
+    const message = err instanceof Error ? err.message : 'Failed to upload gallery image';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// PATCH: Edit image title (Authorized IT Team & Admin)
+export async function PATCH(req: NextRequest) {
+  try {
+    const auth = await verifyStaff(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const body = await req.json();
+    const id = (body.id || '').trim();
+    const title = body.title !== undefined ? String(body.title).trim() : null;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing gallery image ID.' }, { status: 400 });
+    }
+
+    const { supabase } = auth;
+    const { data: updatedItem, error: updateErr } = await supabase
+      .from('gallery')
+      .update({
+        title: title || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      item: updatedItem,
+      message: 'Gallery title updated successfully.',
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to update gallery image title';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// DELETE: Remove an image from the gallery (Authorized IT Team & Admin)
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await verifyStaff(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const { searchParams } = new URL(req.url);
+    let id = searchParams.get('id');
+
+    if (!id) {
+      try {
+        const body = await req.json();
+        id = body.id;
+      } catch {}
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing gallery image ID.' }, { status: 400 });
+    }
+
+    const { supabase } = auth;
+
+    // Fetch item to obtain file_id if deletion from ImageKit is desired
+    const { data: item } = await supabase
+      .from('gallery')
+      .select('file_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (item?.file_id) {
+      try {
+        await imagekit.deleteFile(item.file_id);
+      } catch (ikErr) {
+        console.warn('Notice: ImageKit file deletion skipped or failed:', ikErr);
+      }
+    }
+
+    const { error } = await supabase.from('gallery').delete().eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Gallery image deleted successfully.',
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to delete gallery image';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
