@@ -1526,6 +1526,24 @@ export default class Innovision extends Component<Props, State> {
     }
   };
 
+  /* ---------- Public Events & Gallery Data Fetching ---------- */
+  fetchPublicData = async () => {
+    try {
+      const [gRes, eRes] = await Promise.all([
+        fetch('/api/gallery').then((r) => r.json()).catch(() => null),
+        fetch('/api/events').then((r) => r.json()).catch(() => null),
+      ]);
+      if (gRes?.success && Array.isArray(gRes.gallery) && gRes.gallery.length > 0) {
+        this.setState({ dbGallery: gRes.gallery });
+      }
+      if (eRes?.success && Array.isArray(eRes.events) && eRes.events.length > 0) {
+        this.setState({ dbEvents: eRes.events });
+      }
+    } catch (e) {
+      console.warn('Error fetching public fest data:', e);
+    }
+  };
+
   /* ---------- Supabase Auth & Google OAuth (Cookie-Backed Sessions) ---------- */
   /** The first session check is over: show LOG IN or the profile, and release clicks waiting on it. */
   markAuthReady = () => {

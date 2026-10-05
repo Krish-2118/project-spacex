@@ -66,6 +66,22 @@ CREATE INDEX IF NOT EXISTS idx_registrations_user_id ON public.registrations(use
 CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations(status);
 CREATE INDEX IF NOT EXISTS idx_registrations_reg_id ON public.registrations(registration_id);
 
+-- Ensure registrations do not allow students from ITER - SOA
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'registrations' AND table_schema = 'public') THEN
+    ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_no_iter_soa;
+    ALTER TABLE public.registrations ADD CONSTRAINT registrations_no_iter_soa
+    CHECK (
+      college IS NULL OR (
+        college !~* '\m(iter|soa)\M'
+        AND college !~* 'institute of technical education'
+        AND college !~* 'siksha.*anusandhan'
+      )
+    ) NOT VALID;
+  END IF;
+END $$;
+
 
 -- 3. HELPER FUNCTIONS FOR SECURITY (SECURITY DEFINER to avoid RLS recursion)
 CREATE OR REPLACE FUNCTION public.get_user_role(uid UUID) RETURNS TEXT AS $$
@@ -229,3 +245,94 @@ DELETE TO authenticated USING (user_id = auth.uid());
 
 DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
 DROP FUNCTION IF EXISTS public.protect_profile_role();
+
+
+-- 7. EVENTS TABLE
+CREATE TABLE IF NOT EXISTS public.events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  poster_url TEXT NOT NULL,
+  brochure_url TEXT, -- Optional Google Drive link
+  category TEXT NOT NULL CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events')),
+  format TEXT DEFAULT 'Solo / Team',
+  duration TEXT DEFAULT 'TBA',
+  venue TEXT DEFAULT 'NIT Rourkela',
+  created_by UUID REFERENCES public.profiles(id),
+  updated_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_created_at ON public.events(created_at DESC);
+
+-- Ensure check constraint on category is up to date if table already exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'events' AND table_schema = 'public') THEN
+    ALTER TABLE public.events ALTER COLUMN brochure_url DROP NOT NULL;
+    ALTER TABLE public.events ALTER COLUMN format DROP NOT NULL;
+    ALTER TABLE public.events ALTER COLUMN duration DROP NOT NULL;
+    ALTER TABLE public.events ALTER COLUMN venue DROP NOT NULL;
+    ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_category_check;
+    ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events'));
+  END IF;
+END $$;
+
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view events (public and authenticated)
+DROP POLICY IF EXISTS "Public can view events" ON public.events;
+CREATE POLICY "Public can view events" ON public.events FOR
+SELECT USING (true);
+
+-- Authorized IT team member and admin can insert events
+DROP POLICY IF EXISTS "Staff can insert events" ON public.events;
+CREATE POLICY "Staff can insert events" ON public.events FOR
+INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+
+-- Authorized IT team member and admin can update events
+DROP POLICY IF EXISTS "Staff can update events" ON public.events;
+CREATE POLICY "Staff can update events" ON public.events FOR
+UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+
+-- Authorized IT team member and admin can delete events
+DROP POLICY IF EXISTS "Staff can delete events" ON public.events;
+CREATE POLICY "Staff can delete events" ON public.events FOR
+DELETE TO authenticated USING (public.is_staff(auth.uid()));
+
+
+-- 8. GALLERY TABLE
+CREATE TABLE IF NOT EXISTS public.gallery (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT, -- Optional title for gallery photo
+  image_url TEXT NOT NULL,
+  file_id TEXT, -- ImageKit file ID
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gallery_created_at ON public.gallery(created_at DESC);
+
+ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view gallery images
+DROP POLICY IF EXISTS "Public can view gallery" ON public.gallery;
+CREATE POLICY "Public can view gallery" ON public.gallery FOR
+SELECT USING (true);
+
+-- Authorized IT team member and admin can insert gallery images
+DROP POLICY IF EXISTS "Staff can insert gallery" ON public.gallery;
+CREATE POLICY "Staff can insert gallery" ON public.gallery FOR
+INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+
+-- Authorized IT team member and admin can update gallery images
+DROP POLICY IF EXISTS "Staff can update gallery" ON public.gallery;
+CREATE POLICY "Staff can update gallery" ON public.gallery FOR
+UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+
+-- Authorized IT team member and admin can delete gallery images
+DROP POLICY IF EXISTS "Staff can delete gallery" ON public.gallery;
+CREATE POLICY "Staff can delete gallery" ON public.gallery FOR
+DELETE TO authenticated USING (public.is_staff(auth.uid()));
