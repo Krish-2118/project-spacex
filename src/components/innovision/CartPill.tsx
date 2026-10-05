@@ -7,9 +7,9 @@ export default function CartPill({ v }: { v: V }) {
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 18px", padding: "8px 8px 8px 22px", background: "#141312", color: "#ECE8DF", pointerEvents: v.cartPE, clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
         <span style={{ fontSize: "14px", fontWeight: "500" }}>{v.cartCountL}</span>
         <strong style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "20px" }}>{v.cartTotal}</strong>
-        <button type="button" onClick={v.openBag} onMouseEnter={v.beep} style={{ padding: "12px 6px", border: "0", background: "none", cursor: "pointer", fontSize: "13px", letterSpacing: ".08em", color: "rgba(236,232,223,.78)" }} className="hv-paper">VIEW BAG</button>
+        <button type="button" onClick={v.openBag} style={{ padding: "12px 6px", border: "0", background: "none", cursor: "pointer", fontSize: "13px", letterSpacing: ".08em", color: "rgba(236,232,223,.78)" }} className="hv-paper">VIEW BAG</button>
         <button type="button" onClick={v.clearCart} style={{ padding: "12px 6px", border: "0", background: "none", cursor: "pointer", fontSize: "13px", letterSpacing: ".08em", color: "rgba(236,232,223,.78)" }} className="hv-paper">CLEAR</button>
-        <button type="button" onClick={v.checkout} onMouseEnter={v.beep} style={{ padding: "14px 22px", border: "0", background: "#ECE8DF", color: "#141312", fontWeight: "700", fontSize: "14px", letterSpacing: ".06em", cursor: "pointer", transition: "background-color .3s" }} className="hv-gold-bg">CHECKOUT</button>
+        <button type="button" onClick={v.checkout} style={{ padding: "14px 22px", border: "0", background: "#ECE8DF", color: "#141312", fontWeight: "700", fontSize: "14px", letterSpacing: ".06em", cursor: "pointer", transition: "background-color .3s" }} className="hv-gold-bg">CHECKOUT</button>
       </div>
     </div>
   );

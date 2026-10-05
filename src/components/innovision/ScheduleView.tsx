@@ -1,8 +1,9 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { Sparkle } from './icons';
+import { lazyUnlessCritical } from './data';
 import type { V } from './types';
 
-const MONO = "grayscale(1) contrast(1.35) brightness(1.05)";
 const GOLD = "oklch(0.8 0.12 85)";
 
 function Pin({ size }: { size: number }) {
@@ -24,9 +25,9 @@ export default function ScheduleView({ v }: { v: V }) {
   return (
     <main data-view="schedule" data-noscroll="" data-screen-label="Schedule" onScroll={v.schedScroll} style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden", background: "#ECE8DF", color: "#141312" }}>
       <section style={{ position: "relative", padding: "calc(110px + 6vh) clamp(20px,4vw,64px) 0", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div aria-hidden="true" style={{ position: "absolute", right: "max(-14vw, -220px)", top: "-12vh", width: "min(62vw, 760px)", aspectRatio: "1", opacity: ".55", pointerEvents: "none" }}>
-          <img data-sc-planet="" src="/assets/planet-crescent.webp" alt="" style={{ width: "100%", height: "100%", animation: "iv-drift 12s ease-in-out infinite" }} />
+          <img decoding="async" data-sc-planet="" src="/assets/planet-crescent.webp" alt="" style={{ width: "100%", height: "100%", animation: "iv-drift 12s ease-in-out infinite" }} />
         </div>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "100%", width: "180vmax", height: "180vmax", margin: "-90vmax 0 0 -90vmax", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.14)", pointerEvents: "none" }}></div>
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "28px" }}>
@@ -40,7 +41,7 @@ export default function ScheduleView({ v }: { v: V }) {
           {v.schedDays.map((d) => (
             <button key={d.no} data-sc-tab="" type="button" role="tab" aria-selected={d.sel} onClick={d.pick} onMouseEnter={v.beep} className="hv-link-paper" style={{ position: "relative", display: "flex", alignItems: "center", gap: "clamp(10px,1.4vw,20px)", minWidth: "0", padding: "clamp(18px,3vh,28px) clamp(8px,1.6vw,24px) clamp(22px,3.4vh,32px)", border: "0", borderLeft: `1px solid ${d.sep}`, background: "none", color: "#ECE8DF", textAlign: "left", cursor: "pointer", opacity: d.o, transition: "opacity .4s" }}>
               <span style={{ flex: "none", display: d.imgD, width: "clamp(44px,5vw,72px)", aspectRatio: "1" }}>
-                <img src={d.img} alt="" style={{ width: "100%", height: "100%", transform: `scale(${d.ps}) rotate(${d.pr})`, transition: "transform .9s cubic-bezier(.34,1.56,.64,1)" }} />
+                <img decoding="async" src={d.img} alt="" style={{ width: "100%", height: "100%", transform: `scale(${d.ps}) rotate(${d.pr})`, transition: "transform .9s cubic-bezier(.34,1.56,.64,1)" }} />
               </span>
               <span style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "0" }}>
                 <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".24em", color: GOLD }}>{d.no}</span>
@@ -76,7 +77,7 @@ export default function ScheduleView({ v }: { v: V }) {
               <div data-sc-fill="" style={{ position: "absolute", inset: "0", background: "#141312", transform: "scaleY(0)", transformOrigin: "top" }}></div>
             </div>
             <div data-sc-rocket="" aria-hidden="true" style={{ position: "absolute", left: v.lineL, top: "0", zIndex: "2", width: "0", height: "0", pointerEvents: "none" }}>
-              <img src="/assets/spaceship.webp" alt="" style={{ position: "absolute", left: "-15px", top: "-44px", width: "30px", height: "auto", transform: "rotate(180deg)", filter: MONO }} />
+              <img decoding="async" src="/assets/spaceship.webp" alt="" style={{ position: "absolute", left: "-15px", top: "-44px", width: "30px", height: "auto", transform: "rotate(180deg)", filter: MONO }} />
             </div>
             {v.schedRows.map((e) => (
               <article key={e.id} data-sc-row="" className="hv-row" style={{ position: "relative", display: "grid", gridTemplateColumns: v.rowCols, alignItems: "start", padding: "22px 0", borderBottom: "1px solid rgba(20,19,18,.12)", transition: "background-color .35s" }}>

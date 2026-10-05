@@ -7,7 +7,7 @@ import type { V } from './types';
 export default function GalleryView({ v }: { v: V }) {
   return (
     <section data-view="gallery" data-screen-label="Gallery" aria-label="Gallery" onWheel={v.gWheel} onTouchStart={v.gTouchStart} onTouchMove={v.gTouchMove} style={{ position: "absolute", inset: "0", overflow: "hidden", visibility: "hidden", background: "#0e0d0c", color: "#ECE8DF", touchAction: "none" }}>
-      <img data-g-stars="" src="/assets/stars.webp" alt="" style={{ position: "absolute", left: "-5%", top: "-5%", width: "110%", height: "110%", objectFit: "cover", opacity: ".85", pointerEvents: "none" }} />
+      <img decoding="async" data-g-stars="" src="/assets/stars.webp" alt="" style={{ position: "absolute", left: "-5%", top: "-5%", width: "110%", height: "110%", objectFit: "cover", opacity: ".85", pointerEvents: "none" }} />
       <div data-g-glow="" style={{ position: "absolute", left: "calc(50% - 5vmin)", top: "calc(50% - 5vmin)", width: "10vmin", height: "10vmin", borderRadius: "50%", background: "#ECE8DF", boxShadow: "0 0 60px 20px rgba(236,232,223,.2),0 0 160px 60px rgba(201,162,74,.14)", pointerEvents: "none" }}></div>
       <div style={{ position: "absolute", inset: "0", perspective: "1000px", perspectiveOrigin: "50% 50%", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: "0", transformStyle: "preserve-3d" }}>

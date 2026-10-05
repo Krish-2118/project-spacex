@@ -9,7 +9,7 @@ const FROST = "rgba(236,232,223,.86)";
 const EASE = "cubic-bezier(.25,1,.1,1)";
 
 /**
- * Fixed top bar: back, logo, nav, sound, register, log in / menu.
+ * Fixed top bar: back, logo, nav, sound (orbit toggle), register, log in / menu.
  * At the top of a page the bars float over the scene and invert against it (mix-blend difference).
  * Once the page scrolls under them (v.hudSolid) that would invert the content too, so the top bar
  * settles onto a frosted paper strip with ink text.
@@ -33,7 +33,7 @@ export default function Hud({ v }: { v: V }) {
               <span style={{ width: "1px", height: "22px", background: "currentColor", opacity: ".4" }}></span>
             </>
           )}
-          <a data-magnet="" href="#/" onClick={v.goHome} aria-label="Innovision home" onMouseEnter={v.beep} className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", color: "inherit", textDecoration: "none" }}>
+          <a data-magnet="" href="#/" onClick={v.goHome} aria-label="Innovision home" className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", color: "inherit", textDecoration: "none" }}>
             <Logo style={{ width: "clamp(24px,2vw,32px)", height: "auto" }} />
             <span className={v.isDetail ? "hud-wordmark hud-wordmark-detail" : "hud-wordmark"} style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(17px,1.6vw,24px)", letterSpacing: ".04em" }}>INNOVISION</span>
           </a>
@@ -49,23 +49,17 @@ export default function Hud({ v }: { v: V }) {
           </nav>
         )}
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "14px", pointerEvents: "auto" }}>
-          {/* Sound lives in the top bar so it is reachable on every screen; the label drops on phones, leaving the wave. */}
-          <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} title={v.soundLabel} className="hud-link hud-sound" style={{ display: "inline-flex", alignItems: "center", gap: "10px", minHeight: "40px", padding: "0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "inherit" }}>
-            <svg width="30" height="9" viewBox="0 0 73 9" aria-hidden="true" style={{ overflow: "visible" }}>
-              <g fill="none" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10">
-                {v.muted && (
-                  <path d="M0 4.5h73"></path>
-                )}
-                {v.soundOn && (
-                  <g data-wave="">
-                    <path d="M0 .5C3.33.5 3.33 8.5 6.66 8.5 9.99 8.5 10 .5 13.33.5c3.33 0 3.33 8 6.67 8"></path>
-                    <path d="M53 .5c3.33 0 3.33 8 6.66 8 3.33 0 3.34-8 6.67-8 3.33 0 3.33 8 6.67 8"></path>
-                    <path d="M20 8.5c2.5 0 3-6.5 6-7.5 3-1 3.33 5.5 6.66 5.5S36 3 39.33 3s3.33 5 6.67 5c3 0 3.8-7.5 7-7.5"></path>
-                  </g>
-                )}
-              </g>
-            </svg>
-            <span data-scr="" className="hud-sound-label">SOUND</span>
+          {/* Sound: a satellite on its orbit. It circles while sound is on and freezes where it is when off (ring dashed,
+              satellite hollow); turning sound on sends out one ping. On phones the label drops, leaving the orbit. */}
+          <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} title={v.soundLabel} data-on={v.soundOn ? "" : undefined} className="hud-link hud-sound" style={{ display: "inline-flex", alignItems: "center", gap: "10px", minHeight: "40px", padding: "0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "inherit" }}>
+            <span className="hud-orbit" aria-hidden="true">
+              <svg viewBox="0 0 20 20">
+                <circle className="hud-orbit-ring" cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="1.5"></circle>
+                <g className="hud-orbit-sat"><circle cx="10" cy="3" r="2.6"></circle></g>
+              </svg>
+              {v.soundOn && <span key="ping" className="hud-orbit-ping"></span>}
+            </span>
+            <span className="hud-sound-label"><span data-scr="">SOUND</span> <span className="hud-sound-state">{v.soundOn ? "ON" : "OFF"}</span></span>
           </button>
 
           {/* Staff Portal Shortcut (Admin / IT-Team) */}

@@ -5,7 +5,7 @@ import type { V } from './types';
 /** Shopping bag drawer (opened from the store's cart pill). */
 export default function BagPanel({ v }: { v: V }) {
   return (
-    <aside aria-hidden={v.bagHidden} aria-label="Your bag" style={{ position: "fixed", inset: "0", zIndex: "62", visibility: v.bagVis, transition: `visibility 0s linear ${v.bagDelay}` }}>
+    <aside data-bag="" aria-hidden={v.bagHidden} aria-label="Your bag" style={{ position: "fixed", inset: "0", zIndex: "62", visibility: v.bagVis, transition: `visibility 0s linear ${v.bagDelay}` }}>
       <div onClick={v.closeBag} style={{ position: "absolute", inset: "0", background: "rgba(10,9,8,.5)", backdropFilter: "blur(4px)", opacity: v.bagO, transition: "opacity .8s cubic-bezier(.25,1,.1,1)" }}></div>
       <div style={{ position: "absolute", top: "0", right: "0", bottom: "0", width: "min(460px, 100%)", display: "flex", flexDirection: "column", background: "#ECE8DF", color: "#141312", borderLeft: "1.5px solid #141312", transform: `translateX(${v.bagX})`, transition: "transform .8s cubic-bezier(.25,1,.1,1)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "16px", padding: "clamp(24px,3vw,36px) clamp(22px,3vw,36px) 22px", borderBottom: "1px solid rgba(20,19,18,.16)" }}>
@@ -27,7 +27,7 @@ export default function BagPanel({ v }: { v: V }) {
           {v.bagLines.map((l, lI) => (
             <div key={lI} style={{ display: "grid", gridTemplateColumns: "56px minmax(0,1fr) auto", gap: "14px", alignItems: "center", padding: "18px 0", borderBottom: "1px solid rgba(20,19,18,.12)" }}>
               <div style={{ position: "relative", width: "56px", height: "56px", borderRadius: "50%", overflow: "hidden", background: "#141312" }}>
-                <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+                <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
               <div style={{ minWidth: "0" }}>
                 <div style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "16px", lineHeight: "1.2" }}>{l.name}</div>

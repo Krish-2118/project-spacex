@@ -2,6 +2,7 @@
 import type { CSSProperties } from 'react';
 import { CornerFrame, OrbitBackdrop, Radar } from './decor';
 import { Sparkle } from './icons';
+import { imgSize, lazyUnlessCritical } from './data';
 import type { V } from './types';
 
 const MONO = "grayscale(1) contrast(1.35) brightness(1.05)";
@@ -92,13 +93,13 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
                 <div data-speed="-0.14" style={{ position: "absolute", left: "calc(50% - max(47vw, 60vh) / 2)", top: "calc(77% - max(47vw, 60vh) * 1.329)", width: "max(47vw, 60vh)", pointerEvents: "none" }}>
                   <div data-depth=".25" style={{ position: "relative", width: "110%", margin: "4% 0 0 -5%", aspectRatio: "1" }}>
-                    <img src="/assets/planet-ringed.webp" alt="" style={{ width: "100%", height: "100%", transform: "rotate(6deg)", filter: MONO, animation: "iv-drift 9s ease-in-out infinite" }} />
+                    <img decoding="async" src="/assets/planet-ringed.webp" alt="" style={{ width: "100%", height: "100%", transform: "rotate(6deg)", filter: MONO, animation: "iv-drift 9s ease-in-out infinite" }} />
                   </div>
                 </div>
                 <div data-speed="-0.22" aria-hidden="true" style={{ position: "absolute", right: "max(9%, 40px)", top: "17%", height: "min(30vh, 290px)", pointerEvents: "none" }}>
                   <div data-depth=".45" style={{ height: "100%" }}>
                     <div style={{ height: "100%", transform: "rotate(16deg)" }}>
-                      <img src="/assets/spaceship.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO + " drop-shadow(0 18px 24px rgba(0,0,0,.2))", animation: "iv-drift 6s ease-in-out infinite" }} />
+                      <img decoding="async" src="/assets/spaceship.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO + " drop-shadow(0 18px 24px rgba(0,0,0,.2))", animation: "iv-drift 6s ease-in-out infinite" }} />
                     </div>
                   </div>
                 </div>
@@ -111,13 +112,13 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
                 <div data-speed="-0.08" style={{ position: "absolute", left: "min(-2vw, calc(50% - max(84vw, 120vh) * .53))", top: "calc(54% - max(84vw, 120vh) * .5)", width: "max(84vw, 120vh)", pointerEvents: "none" }}>
                   <div data-depth=".3" style={{ position: "relative" }}>
-                    <img src="/assets/planet-blue-half.webp" alt="" style={{ width: "100%", height: "auto", filter: MONO }} />
+                    <img decoding="async" src="/assets/planet-blue-half.webp" alt="" style={{ width: "100%", height: "auto", filter: MONO }} />
                   </div>
                 </div>
                 <div data-speed="-0.2" aria-hidden="true" style={{ position: "absolute", right: "max(11%, 40px)", top: "15%", height: "min(26vh, 260px)", pointerEvents: "none" }}>
                   <div data-depth=".4" style={{ height: "100%" }}>
                     <div style={{ height: "100%", transform: "rotate(-8deg)" }}>
-                      <img src="/assets/big-spaceship.webp" alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.2) brightness(1.75) drop-shadow(0 18px 24px rgba(0,0,0,.2))", animation: "iv-drift 8s ease-in-out infinite" }} />
+                      <img decoding="async" src="/assets/big-spaceship.webp" alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.2) brightness(1.75) drop-shadow(0 18px 24px rgba(0,0,0,.2))", animation: "iv-drift 8s ease-in-out infinite" }} />
                     </div>
                   </div>
                 </div>
@@ -130,17 +131,17 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
                 <div data-speed="-0.16" style={{ position: "absolute", left: "calc(50% - max(37vw, 52vh) / 2.4)", top: "calc(38% - max(37vw, 52vh) * 1.0625)", width: "max(37vw, 52vh)", pointerEvents: "none" }}>
                   <div data-depth=".15" style={{ position: "relative", aspectRatio: "1" }}>
-                    <img src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
+                    <img decoding="async" src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
                     <span style={{ position: "absolute", inset: "-14%", borderRadius: "50%", border: "1px dashed rgba(20,19,18,.4)" }}></span>
                   </div>
                 </div>
                 <div data-speed="-0.1" style={{ position: "absolute", right: "-4%", top: "-6%", width: "min(34vw, 560px)", opacity: ".9", pointerEvents: "none" }}>
                   <div data-depth=".3" style={{ width: "38%", marginLeft: "40%", aspectRatio: "1" }}>
-                    <img data-spin="180" src="/assets/moon-cratered.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
+                    <img decoding="async" data-spin="180" src="/assets/moon-cratered.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
                   </div>
                 </div>
                 <div data-speed="-0.1" style={{ position: "absolute", right: "10%", top: "-12%", height: "88%", pointerEvents: "none" }}>
-                  <div data-depth=".35" style={{ height: "18%", marginTop: "60vh" }}><img data-spin="90" src="/assets/asteroid.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO }} /></div>
+                  <div data-depth=".35" style={{ height: "18%", marginTop: "60vh" }}><img decoding="async" data-spin="90" src="/assets/asteroid.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO }} /></div>
                 </div>
               </>
             )}
@@ -161,16 +162,16 @@ export default function DetailView({ v }: { v: V }) {
             {v.isTakeoff && (
               <div data-speed="0" style={{ position: "absolute", left: "calc(50% - max(124vw, 170vh) / 2)", bottom: "-4%", width: "max(124vw, 170vh)", aspectRatio: "4000 / 973", pointerEvents: "none" }}>
                 <div data-depth=".35" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/lab.webp" alt="" style={{ position: "absolute", left: "10%", bottom: "14%", width: "24%", height: "auto", transform: "rotate(4deg)", filter: `${MONO} drop-shadow(0 12px 16px rgba(0,0,0,.4))` }} />
-                  <img src="/assets/floor.webp" alt="" style={{ position: "absolute", left: "0", bottom: "0", width: "50.6%", height: "auto", transform: "scaleX(-1)", filter: MONO }} />
-                  <img src="/assets/floor.webp" alt="" style={{ position: "absolute", right: "0", bottom: "0", width: "50.6%", height: "auto", filter: MONO }} />
+                  <img decoding="async" src="/assets/lab.webp" alt="" style={{ position: "absolute", left: "10%", bottom: "14%", width: "24%", height: "auto", transform: "rotate(4deg)", filter: `${MONO} drop-shadow(0 12px 16px rgba(0,0,0,.4))` }} />
+                  <img decoding="async" src="/assets/floor.webp" alt="" style={{ position: "absolute", left: "0", bottom: "0", width: "50.6%", height: "auto", transform: "scaleX(-1)", filter: MONO }} />
+                  <img decoding="async" src="/assets/floor.webp" alt="" style={{ position: "absolute", right: "0", bottom: "0", width: "50.6%", height: "auto", filter: MONO }} />
                   <div style={{ position: "absolute", left: "50%", bottom: "35%", width: "18%", aspectRatio: "6 / 1", marginLeft: "-9%" }}>
                     <span style={{ position: "absolute", inset: "0", borderRadius: "50%", border: "2px solid rgba(20,19,18,.5)", animation: "iv-pulse 2.4s cubic-bezier(.25,1,.1,1) infinite" }}></span>
                     <span style={{ position: "absolute", inset: "0", borderRadius: "50%", border: "2px solid rgba(20,19,18,.5)", animation: "iv-pulse 2.4s cubic-bezier(.25,1,.1,1) 1.2s infinite" }}></span>
                     <span style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "#1f1d1b", boxShadow: "inset 0 -6px 0 rgba(255,255,255,.12),0 10px 24px rgba(0,0,0,.3)" }}></span>
                     <span style={{ position: "absolute", inset: "22% 18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.5)" }}></span>
                     <div data-lander="" style={{ position: "absolute", left: "50%", bottom: "36.5%", width: "40vh", marginLeft: "-20vh", display: "flex", flexDirection: "column", alignItems: "center", paddingBottom: "1.5vh" }}>
-                      <img src="/assets/lander.webp" alt="Lander hovering above the launch pad" style={{ height: "32vh", width: "auto", filter: "grayscale(1) contrast(1.15) drop-shadow(0 14px 18px rgba(0,0,0,.25))" }} />
+                      <img decoding="async" src="/assets/lander.webp" alt="Lander hovering above the launch pad" style={{ height: "32vh", width: "auto", filter: "grayscale(1) contrast(1.15) drop-shadow(0 14px 18px rgba(0,0,0,.25))" }} />
                       <div data-thrust="" style={{ position: "relative", width: "100%", height: 0, marginTop: "-3.5vh", zIndex: -1 }}>
                         <span style={{ position: "absolute", left: "50%", marginLeft: "-7vh", top: "-1vh", width: "3.5vh", height: "7vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.7) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate" }}></span>
                         <span style={{ position: "absolute", left: "50%", marginLeft: "1vh", top: "-2vh", width: "3.5vh", height: "7.5vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.7) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate", animationDelay: "0.05s" }}></span>
@@ -190,11 +191,11 @@ export default function DetailView({ v }: { v: V }) {
                   <div data-depth=".5" style={{ position: "relative" }}>
                     <span style={{ position: "absolute", left: "50%", top: "-2vh", width: "34vh", height: "7vh", marginLeft: "-17vh", borderRadius: "50%", border: "2px solid rgba(20,19,18,.45)", animation: "iv-pulse 3.2s cubic-bezier(.25,1,.1,1) infinite" }}></span>
                     <span style={{ position: "absolute", left: "50%", top: "-2vh", width: "34vh", height: "7vh", marginLeft: "-17vh", borderRadius: "50%", border: "2px solid rgba(20,19,18,.45)", animation: "iv-pulse 3.2s cubic-bezier(.25,1,.1,1) 1.6s infinite" }}></span>
-                    <img src="/assets/moon.webp" alt="" style={{ display: "block", width: "100%", height: "auto", filter: MONO }} />
+                    <img decoding="async" src="/assets/moon.webp" alt="" style={{ display: "block", width: "100%", height: "auto", filter: MONO }} />
                     <div style={{ position: "absolute", left: "50%", top: "1.6vh", width: "0", height: "0" }}>
                       <span style={{ position: "absolute", left: "-6vh", top: "-1.2vh", width: "12vh", height: "2.4vh", borderRadius: "50%", background: "rgba(20,19,18,.55)", animation: "iv-hopshadow 3.6s infinite" }}></span>
                       <span style={{ position: "absolute", left: "-12vh", top: "-3.4vh", width: "24vh", height: "5.6vh", borderRadius: "50%", background: "radial-gradient(closest-side,rgba(236,232,223,.95),rgba(236,232,223,0))", border: "1.5px dotted rgba(20,19,18,.45)", animation: "iv-dust 3.6s ease-out infinite" }}></span>
-                      <img src="/assets/home-astronaut.webp" alt="Astronaut making a low-gravity touchdown on the moon" style={{ position: "absolute", left: "-4.4vh", bottom: "0", height: "21vh", width: "auto", transformOrigin: "50% 100%", filter: "grayscale(1) contrast(1.15) brightness(4) drop-shadow(0 12px 14px rgba(0,0,0,.25))", animation: "iv-hop 3.6s infinite" }} />
+                      <img decoding="async" src="/assets/home-astronaut.webp" alt="Astronaut making a low-gravity touchdown on the moon" style={{ position: "absolute", left: "-4.4vh", bottom: "0", height: "21vh", width: "auto", transformOrigin: "50% 100%", filter: "grayscale(1) contrast(1.15) brightness(4) drop-shadow(0 12px 14px rgba(0,0,0,.25))", animation: "iv-hop 3.6s infinite" }} />
                     </div>
                   </div>
                 </div>
@@ -289,10 +290,10 @@ export default function DetailView({ v }: { v: V }) {
 
         {/* ---- mission manifest ---- */}
         <section aria-label={cw.category} style={{ position: "relative", overflow: "hidden", padding: "18vh clamp(16px,2.6vw,44px) calc(clamp(16px,2.6vw,44px) + 200px)", background: "#141312", color: "#ECE8DF" }}>
-          <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
+          <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
           <div aria-hidden="true" style={{ position: "absolute", inset: "0", backgroundImage: "linear-gradient(rgba(236,232,223,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(236,232,223,.05) 1px,transparent 1px)", backgroundSize: "80px 80px", WebkitMaskImage: "linear-gradient(180deg,transparent,#000 18%,#000 62%,transparent 90%)", maskImage: "linear-gradient(180deg,transparent,#000 18%,#000 62%,transparent 90%)", pointerEvents: "none" }}></div>
           <div aria-hidden="true" style={{ position: "absolute", left: "50%", bottom: "calc(min(110vw, 1500px) * -.74)", width: "min(110vw, 1500px)", aspectRatio: "1", marginLeft: "calc(min(110vw, 1500px) / -2)", opacity: ".2", pointerEvents: "none" }}>
-            <img src={v.nw.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.3)", animation: "iv-spin 240s linear infinite" }} />
+            <img decoding="async" src={v.nw.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.3)", animation: "iv-spin 240s linear infinite" }} />
           </div>
           <div aria-hidden="true" style={{ position: "absolute", left: "-6vw", right: "-6vw", top: "5vh", transform: "rotate(-1.6deg)", overflow: "hidden", padding: "clamp(8px,.7vw,12px) 0", background: cw.accentL, color: "#141312", boxShadow: "0 14px 30px rgba(0,0,0,.35)", pointerEvents: "none" }}>
             <div style={{ display: "inline-flex", whiteSpace: "nowrap", animation: "iv-tick 40s linear infinite" }}>
@@ -347,7 +348,7 @@ export default function DetailView({ v }: { v: V }) {
                     <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
                     <span style={{ position: "relative", width: "80px", height: "80px" }}>
                       <span style={{ position: "absolute", inset: "0", display: "grid", gridTemplate: "100%/100%", placeItems: "center", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 32% 28%,rgba(236,232,223,.16),transparent 58%),url(/assets/stars.webp) center/260% auto,#0d0c0b", boxShadow: "inset 0 0 0 3px #2b2926,inset 0 0 0 4px rgba(236,232,223,.3),inset 0 12px 20px rgba(0,0,0,.65)" }}>
-                        <img src={m.img} alt="" style={{ height: "62px", width: "auto", maxWidth: "88%", objectFit: "contain", filter: "grayscale(1) contrast(1.3) brightness(1.15) drop-shadow(0 6px 8px rgba(0,0,0,.5))", animation: "iv-porthole 5s ease-in-out infinite" }} />
+                        <img decoding="async" src={m.img} alt="" style={{ height: "62px", width: "auto", maxWidth: "88%", objectFit: "contain", filter: "grayscale(1) contrast(1.3) brightness(1.15) drop-shadow(0 6px 8px rgba(0,0,0,.5))", animation: "iv-porthole 5s ease-in-out infinite" }} />
                       </span>
                       <span style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "1.5px dotted rgba(236,232,223,.4)" }}></span>
                     </span>
@@ -388,7 +389,7 @@ export default function DetailView({ v }: { v: V }) {
           <div style={{ position: "relative", display: "flex", justifyContent: "center", marginTop: "96px" }}>
             <a href={v.nw.href} onMouseEnter={v.beep} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px", textDecoration: "none", color: "#ECE8DF" }}>
               <span style={{ position: "relative", width: "88px", height: "88px", marginBottom: "12px" }}>
-                <img src={v.nw.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.3) brightness(1.1)", animation: "iv-spin 60s linear infinite" }} />
+                <img decoding="async" src={v.nw.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.3) brightness(1.1)", animation: "iv-spin 60s linear infinite" }} />
                 <span style={{ position: "absolute", left: "-30%", top: "40%", width: "160%", height: "22%", borderRadius: "50%", border: "1.5px solid rgba(236,232,223,.5)", transform: "rotate(-14deg)" }}></span>
               </span>
               <small style={{ fontSize: "13px", letterSpacing: ".3em", opacity: ".7" }}>NEXT WORLD</small>

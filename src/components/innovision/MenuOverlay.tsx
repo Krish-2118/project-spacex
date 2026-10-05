@@ -12,7 +12,7 @@ export default function MenuOverlay({ v }: { v: V }) {
   return (
     <div aria-hidden={v.menuHidden} data-open={v.menuHidden ? undefined : ""} className="menu" style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
       <div className="menu-panel" style={{ clipPath: v.menuClip, transition: "clip-path .9s cubic-bezier(.25,1,.1,1)" }}>
-        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
         <div className="menu-top">
           <a href="#/" onClick={(e) => { v.closeMenu(); v.goHome(e); }} aria-label="Innovision home" className="menu-brand">
             <Logo style={{ width: "24px", height: "auto" }} />
@@ -30,7 +30,7 @@ export default function MenuOverlay({ v }: { v: V }) {
             <ul className="menu-list">
               {v.topNav.map((t, tI) => (
                 <li key={tI} className="menu-item" style={{ "--i": tI } as CSSProperties}>
-                  <a href={t.href} onClick={t.onClick} onMouseEnter={v.beep} aria-current={t.cur ? "page" : undefined} className="menu-link" style={{ color: t.menuColor }}>
+                  <a href={t.href} onClick={t.onClick} aria-current={t.cur ? "page" : undefined} className="menu-link" style={{ color: t.menuColor }}>
                     <span className="menu-label">{t.labelCap}</span>
                     <svg className="menu-arrow" width="18" height="10" viewBox="0 0 18 10" aria-hidden="true">
                       <path d="M13 1l4 4-4 4M17 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
@@ -42,7 +42,7 @@ export default function MenuOverlay({ v }: { v: V }) {
           </nav>
           <div className="menu-foot menu-item" style={{ "--i": v.topNav.length } as CSSProperties}>
             <div className="menu-meta">
-              {!v.showLogin && <a href="#login" onClick={v.menuLogin} className="hv-sand">{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
+              {!v.showLogin && <a href="#login" onClick={v.menuLogin} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} className="hv-sand">{v.noUser ? "LOG IN" : "LOG OUT"}</a>}
               <a href="#about" onClick={v.openAbout} className="hv-sand">ABOUT</a>
               <a href="https://www.instagram.com/" target="_blank" rel="noopener" className="hv-sand">INSTAGRAM</a>
             </div>

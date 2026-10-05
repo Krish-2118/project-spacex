@@ -5,6 +5,7 @@ import { CornerFrame } from './decor';
 import Sponsors from './Sponsors';
 import ImageSlot from './ImageSlot';
 import { LiveFooter } from './SiteFooter';
+import { imgSize } from './data';
 import type { V } from './types';
 
 /** Landing page: sticky hero, marquee bands, briefing, odyssey map, gallery tunnel, sponsors, merch teaser and closing call to action. */
@@ -24,28 +25,28 @@ export default function HomeView({ v }: { v: V }) {
               </div>
               <div data-h-ring="" className="hero-ring" style={{ "--r": ".71", border: "1px dashed rgba(20,19,18,.4)" } as CSSProperties}>
                 <div data-orbit="" data-dur="120" data-start="232" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/asteroid.webp" alt="" className="hero-asteroid" style={{ position: "absolute", left: "50%", top: "0", height: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img decoding="async" src="/assets/asteroid.webp" alt="" className="hero-asteroid" style={{ position: "absolute", left: "50%", top: "0", height: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
               <div data-h-ring="" className="hero-ring" style={{ "--r": ".89", border: "1px dotted rgba(20,19,18,.5)" } as CSSProperties}>
                 <div data-orbit="" data-dur="200" data-start="318" data-rev="1" style={{ position: "absolute", inset: "0" }}>
-                  <img src="/assets/planet-ringed.webp" alt="" className="hero-ringed" style={{ position: "absolute", left: "50%", top: "0", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img decoding="async" src="/assets/planet-ringed.webp" alt="" className="hero-ringed" style={{ position: "absolute", left: "50%", top: "0", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                 </div>
               </div>
             </div>
             {/* Own layer: the cursor pull nudges it every frame, which otherwise re-rasters the starfield. */}
             <div data-hero-disc="" data-attract=".03" className="hero-disc" style={{ borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
-              <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
+              <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
               <span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
               <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
             </div>
             <div data-depth=".8" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
               <div data-float="" data-attract=".05" style={{ position: "absolute", left: "-4%", top: "-10%", width: "108%", height: "106%", clipPath: "inset(0 0 58% 0)" }}>
-                <img src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
+                <img decoding="async" src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
               </div>
               <div data-float="" data-attract=".05" style={{ position: "absolute", left: "-9%", top: "31%", width: "108%", height: "106%", clipPath: "inset(40% 0 0 0)" }}>
-                <img src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
+                <img decoding="async" src="/assets/home-rocks.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(1) contrast(1.4)" }} />
               </div>
             </div>
             {v.heroSparks.map((s, sI) => (
@@ -56,14 +57,14 @@ export default function HomeView({ v }: { v: V }) {
             <div data-depth=".6" className="hero-planet" style={{ pointerEvents: "none" }}>
               <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
                 {/* The storm texture is lit from one side, so it holds still instead of spinning. */}
-                <img src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                <img decoding="async" src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
               </div>
             </div>
             <div data-depth=".4" className="hero-astro" style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
               <div data-h-astro="" data-attract=".14" style={{ width: "100%", height: "100%" }}>
                 {/* Same box and tilt as the image, so the bob moves it exactly as before while the filter stays static. */}
                 <div data-bob="" style={{ width: "fit-content", height: "100%", marginLeft: "auto", transform: "rotate(-8deg)" }}>
-                  <img src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
+                  <img decoding="async" src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
                 </div>
               </div>
             </div>
@@ -93,7 +94,7 @@ export default function HomeView({ v }: { v: V }) {
                   </a>
                 </div>
                 <div data-h-cta="" className="hero-cta-slot">
-                  <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} className="hero-cta hero-cta-secondary hv-gold" style={{ position: "relative", isolation: "isolate", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
+                  <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} className="hero-cta hero-cta-secondary hv-gold" style={{ position: "relative", isolation: "isolate", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
                     <span className="hero-cta-fill" style={{ position: "absolute", inset: "1.5px", zIndex: "-1", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
                     <span data-scr="">REGISTER</span>
                   </a>
@@ -103,7 +104,7 @@ export default function HomeView({ v }: { v: V }) {
             {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on.
                 Stacked screens drop it: there it would collide with INSTAGRAM and SOUND. */}
             <div className="hero-scroll" style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
-            <button data-h-scroll="" type="button" onClick={v.scrollNext} onMouseEnter={v.beep} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
+            <button data-h-scroll="" type="button" onClick={v.scrollNext} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
               <svg viewBox="0 0 16 24" aria-hidden="true" style={{ width: "15px", height: "23px", overflow: "visible" }}>
                 <rect x="1" y="1" width="14" height="22" rx="7" fill="none" stroke="currentColor" strokeWidth="1.6"></rect>
                 <circle data-scroll-wheel="" cx="8" cy="7" r="1.9" fill="currentColor"></circle>
@@ -149,7 +150,7 @@ export default function HomeView({ v }: { v: V }) {
               <span key={bwI} data-fill="" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", marginRight: ".26em" }}>
                 {bw.isImg ? (
                   <span style={{ position: "relative", display: "block", width: "1.9em", height: ".92em", borderRadius: "999px", overflow: "hidden", background: "#141312 url(/assets/stars.webp) center/cover", boxShadow: "inset 0 0 0 1.5px rgba(20,19,18,.8)" }}>
-                    <img src={bw.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: bw.pos, filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                    <img decoding="async" src={bw.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: bw.pos, filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                   </span>
                 ) : bw.t}
               </span>
@@ -169,7 +170,7 @@ export default function HomeView({ v }: { v: V }) {
         </div>
       </section>
       <section style={{ position: "relative", padding: "clamp(96px,14vh,160px) clamp(20px,4vw,64px)", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto" }}>
           <header data-reveal="" style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "48px" }}>
             <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>The Odyssey Map</h2>
@@ -181,7 +182,7 @@ export default function HomeView({ v }: { v: V }) {
                 <span style={{ position: "absolute", inset: "0", zIndex: "-3", background: w.accentL, opacity: ".6" }}></span>
                 <span style={{ position: "absolute", inset: "1.5px", zIndex: "-2", background: "radial-gradient(rgba(236,232,223,.07) 1px,transparent 1.3px) 0 0/16px 16px,linear-gradient(170deg,#23211e,#141312 75%)", clipPath: "polygon(0 0,100% 0,100% calc(100% - 35px),calc(100% - 35px) 100%,0 100%)" }}></span>
                 <div data-card-planet="" style={{ position: "absolute", zIndex: "-1", right: "-22%", top: "14%", width: "clamp(280px,86%,540px)", aspectRatio: "1" }}>
-                  <img data-spin="160" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+                  <img decoding="async" data-spin="160" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
                   <span style={{ position: "absolute", inset: "-8%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.28)" }}></span>
                 </div>
                 <span style={{ position: "absolute", inset: "36% 0 0", zIndex: "-1", background: "linear-gradient(180deg,rgba(20,19,18,0),rgba(20,19,18,.94) 68%)" }}></span>
@@ -209,7 +210,7 @@ export default function HomeView({ v }: { v: V }) {
       </section>
       <section data-sec="gallery" data-tunnel="" aria-label="Gallery" style={{ position: "relative", height: "600vh", background: "#141312", color: "#ECE8DF" }}>
         <div style={{ position: "sticky", top: "0", height: "100vh", overflow: "hidden" }}>
-          <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".75", pointerEvents: "none" }} />
+          <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".75", pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: "0", perspective: "900px", perspectiveOrigin: "50% 50%" }}>
             <div style={{ position: "absolute", inset: "0", transformStyle: "preserve-3d" }}>
               {v.tunnel.map((g, gI) => (
@@ -255,7 +256,7 @@ export default function HomeView({ v }: { v: V }) {
         </div>
       </section>
       <section data-sec="merch" aria-label="Merch" style={{ position: "relative", padding: "clamp(96px,14vh,160px) clamp(20px,4vw,64px)", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(40px,6vw,96px)", alignItems: "center" }}>
           <div data-reveal="">
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH</p>
@@ -267,7 +268,7 @@ export default function HomeView({ v }: { v: V }) {
           </div>
           <div data-reveal="" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "14px" }}>
             {v.merchTeaser.map((t, tI) => (
-              <a key={tI} href="#/merch" onMouseEnter={v.beep} style={{ display: "flex", flexDirection: "column", gap: "10px", textDecoration: "none", color: "#ECE8DF" }}>
+              <a key={tI} href="#/merch" style={{ display: "flex", flexDirection: "column", gap: "10px", textDecoration: "none", color: "#ECE8DF" }}>
                 <div data-attract=".08" style={{ position: "relative", aspectRatio: "4 / 5", background: "#26241f", pointerEvents: "none" }}>
                   <ImageSlot id={t.slot} shape="rect" placeholder={t.ph} style={{ position: "absolute", inset: "0", width: "100%", height: "100%" }} />
                 </div>
@@ -281,10 +282,10 @@ export default function HomeView({ v }: { v: V }) {
       <section data-launch-sec="" style={{ position: "relative", overflow: "hidden", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(260px,40vh,420px)", textAlign: "center", background: "#ECE8DF" }}>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "100%", width: "220vmax", height: "220vmax", margin: "-110vmax 0 0 -110vmax", borderRadius: "50%", background: "repeating-conic-gradient(from 0deg,rgba(20,19,18,.09) 0deg .5deg,transparent .5deg 5deg)", WebkitMaskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", maskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", pointerEvents: "none" }}></div>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", bottom: "calc(min(130vw, 1700px) * -.8)", width: "min(130vw, 1700px)", aspectRatio: "1", marginLeft: "calc(min(130vw, 1700px) / -2)", pointerEvents: "none" }}>
-          <img data-spin="480" src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+          <img decoding="async" data-spin="480" src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
         </div>
         <div data-launch="" aria-hidden="true" style={{ position: "absolute", right: "clamp(20px,11vw,220px)", bottom: "16%", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none" }}>
-          <img src="/assets/spaceship.webp" alt="" style={{ height: "min(34vh, 320px)", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.2))" }} />
+          <img decoding="async" src="/assets/spaceship.webp" alt="" style={{ height: "min(34vh, 320px)", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.2))" }} />
           <span style={{ width: "3.6vh", height: "8vh", marginTop: "-1.4vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.75) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate" }}></span>
           <span style={{ width: "2px", height: "70vh", background: "repeating-linear-gradient(180deg,rgba(20,19,18,.45) 0 8px,transparent 8px 18px)" }}></span>
         </div>
@@ -293,7 +294,7 @@ export default function HomeView({ v }: { v: V }) {
           <h2 data-attract=".05" style={{ margin: "22px 0 22px", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
           <p style={{ margin: "0 auto 36px", maxWidth: "520px", fontSize: "18px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>Innovision 2026 is boarding soon at NIT Rourkela. Claim your seat on the voyage.</p>
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
-            <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
+            <a data-magnet="" href="#register" onClick={v.register} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onPointerDown={v.prefetchAuth} onFocus={v.prefetchAuth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
               <span data-scr="">REGISTER</span>
             </a>
             <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-bronze">

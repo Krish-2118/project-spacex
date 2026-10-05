@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment -- parent class component passes untyped view-model */
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
 // @ts-nocheck
+import { imgSize } from './data';
 import type { V } from './types';
 
 export default function AuthOverlay({ v }: { v: V }) {
@@ -8,13 +9,13 @@ export default function AuthOverlay({ v }: { v: V }) {
   <div data-auth-root="" aria-hidden={v.authHidden} style={{ position: "fixed", inset: "0", zIndex: "62", visibility: "hidden", pointerEvents: "none" }}>
     <div data-rift-veil="" style={{ position: "absolute", inset: "0", background: "#070605", opacity: "0" }}></div>
     <section data-auth="" data-screen-label="Register" role="dialog" aria-modal="true" aria-label={v.authAria} onDragOver={v.noDrop} onDrop={v.noDrop} style={{ position: "absolute", inset: "0", overflow: "hidden", background: "#0c0b0a", color: "#ECE8DF" }}>
-      <img src="assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".3", pointerEvents: "none" }} />
+      <img decoding="async" src="assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".3", pointerEvents: "none" }} />
       <canvas data-warp="" aria-hidden="true" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none" }}></canvas>
       <div data-a-planet-wrap="" aria-hidden="true" style={{ position: "absolute", right: "calc(min(92vh, 64vw) * -.3)", bottom: "calc(min(92vh, 64vw) * -.34)", width: "min(92vh, 64vw)", aspectRatio: "1", pointerEvents: "none" }}>
         <span style={{ position: "absolute", inset: "-16%", border: "1px solid rgba(236,232,223,.12)", borderRadius: "50%" }}></span>
         <span style={{ position: "absolute", inset: "-34%", border: "1px dashed rgba(236,232,223,.08)", borderRadius: "50%" }}></span>
         <div data-a-orbit="" style={{ position: "absolute", inset: "-16%" }}><span style={{ position: "absolute", left: "50%", top: "0", width: "10px", height: "10px", margin: "-5px 0 0 -5px", borderRadius: "50%", background: "oklch(0.8 0.12 85)" }}></span></div>
-        <img data-a-planet="" src="assets/planet-crescent.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" }} />
+        <img decoding="async" data-a-planet="" src="assets/planet-crescent.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" }} />
       </div>
       <div data-auth-scroll="" data-noscroll="" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", overscrollBehavior: "contain" }}>
         <div data-a-ui="" style={{ position: "relative", minHeight: "100%", display: "flex", flexDirection: "column" }}>
@@ -27,7 +28,7 @@ export default function AuthOverlay({ v }: { v: V }) {
               {v.showSwitch ? (
                 <span style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px" }}>
                   <span style={{ display: v.switchQD, color: "rgba(236,232,223,.72)" }}>{v.switchQ}</span>
-                  <button type="button" onClick={v.switchMode} onMouseEnter={v.beep} style={{ padding: "6px 0 4px", border: "0", borderBottom: "1.5px solid oklch(0.8 0.12 85)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", color: "#ECE8DF" }}>{v.switchLbl}</button>
+                  <button type="button" onClick={v.switchMode} style={{ padding: "6px 0 4px", border: "0", borderBottom: "1.5px solid oklch(0.8 0.12 85)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", color: "#ECE8DF" }}>{v.switchLbl}</button>
                 </span>
               ) : null}
               <button type="button" onClick={v.closeAuthH} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "13px", letterSpacing: ".14em", color: "#ECE8DF" }}><span data-scr="">CLOSE</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1l10 10M11 1 1 11" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg></button>
@@ -125,7 +126,7 @@ export default function AuthOverlay({ v }: { v: V }) {
 <span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG, PNG or PDF up to 2 MB</span>
 </span>
 <span style={{ display: v.upId.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
-{v.upId.hasImg ? (<img src={v.upId.url} alt="Your college ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />) : null}
+{v.upId.hasImg ? (<img decoding="async" src={v.upId.url} alt="Your college ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />) : null}
 <span style={{ display: v.upId.pdfD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", background: "rgba(236,232,223,.05)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "40px", height: "40px", color: "oklch(0.8 0.12 85)" }}><path d="M6 2h9l5 5v15H6zM15 2v5h5" fill="none" stroke="currentColor" strokeWidth="1.4"></path></svg><span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>PDF</span></span>
 <span style={{ position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" }}><span data-scan="id" style={{ position: "absolute", inset: "0", opacity: "0" }}><span style={{ position: "absolute", left: "0", right: "0", top: "-64px", height: "64px", background: "linear-gradient(rgba(220,183,106,0),rgba(220,183,106,.3))" }}></span><span style={{ position: "absolute", left: "0", right: "0", top: "0", height: "2px", background: "#F3DFA8" }}></span></span></span>
 <span style={{ display: v.upId.busyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "rgba(12,11,10,.66)" }}>
@@ -195,7 +196,7 @@ export default function AuthOverlay({ v }: { v: V }) {
 <span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 2 MB</span>
 </span>
 <span style={{ display: v.upPay.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
-{v.upPay.hasImg ? (<img src={v.upPay.url} alt="Your payment screenshot" style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
+{v.upPay.hasImg ? (<img decoding="async" src={v.upPay.url} alt="Your payment screenshot" style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
 <span style={{ display: v.upPay.pdfD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", background: "rgba(236,232,223,.05)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "40px", height: "40px", color: "oklch(0.8 0.12 85)" }}><path d="M6 2h9l5 5v15H6zM15 2v5h5" fill="none" stroke="currentColor" strokeWidth="1.4"></path></svg><span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>PDF</span></span>
 <span style={{ position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" }}><span data-scan="pay" style={{ position: "absolute", inset: "0", opacity: "0" }}><span style={{ position: "absolute", left: "0", right: "0", top: "-64px", height: "64px", background: "linear-gradient(rgba(220,183,106,0),rgba(220,183,106,.3))" }}></span><span style={{ position: "absolute", left: "0", right: "0", top: "0", height: "2px", background: "#F3DFA8" }}></span></span></span>
 <span style={{ display: v.upPay.busyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "rgba(12,11,10,.66)" }}>
@@ -273,7 +274,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                     <div style={{ display: v.d.pass, flexDirection: "column", gap: "22px" }}>
                       <div data-pass-wrap="">
                         <div style={{ position: "relative", overflow: "hidden", color: "#141312", background: "#ECE8DF", clipPath: "polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px)" }}>
-                          <img src="assets/planet-yellow.webp" alt="" style={{ position: "absolute", right: "-58px", top: "-58px", width: "140px", height: "auto", pointerEvents: "none" }} />
+                          <img decoding="async" src="assets/planet-yellow.webp" alt="" style={{ position: "absolute", right: "-58px", top: "-58px", width: "140px", height: "auto", pointerEvents: "none" }} />
                           <div style={{ position: "relative", padding: "26px 26px 22px" }}>
                             <p style={{ margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: ".26em", color: "#7a5c20" }}>BOARDING PASS</p>
                             <p style={{ margin: "24px 0 6px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "#5c574f" }}>PASSENGER</p>
@@ -303,7 +304,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       {v.canBack ? (
                         <button type="button" onClick={v.stepBack} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: "58px", padding: "0 26px", border: "0", cursor: "pointer", fontWeight: "700", fontSize: "14px", letterSpacing: ".08em", color: "#ECE8DF", background: "rgba(236,232,223,.7)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} style-active="transform:scale(.98)"><span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#100f0e", clipPath: "polygon(11.4px 0,100% 0,100% calc(100% - 11.4px),calc(100% - 11.4px) 100%,0 100%,0 11.4px)" }}></span><span data-scr="">BACK</span></button>
                       ) : null}
-                      <button type="submit" disabled={v.busy} onMouseEnter={v.beep} style={{ flex: "1", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "12px", minHeight: "58px", padding: "0 28px", border: "0", cursor: "pointer", fontWeight: "700", fontSize: "15px", letterSpacing: ".08em", whiteSpace: "nowrap", color: "#141312", background: "#ECE8DF", opacity: v.busyO, clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s,opacity .3s" }} style-hover="background:oklch(0.8 0.12 85)" style-active="transform:scale(.98)"><span>{v.submitLbl}</span><svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M11 1l4 4-4 4M15 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg></button>
+                      <button type="submit" disabled={v.busy} style={{ flex: "1", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "12px", minHeight: "58px", padding: "0 28px", border: "0", cursor: "pointer", fontWeight: "700", fontSize: "15px", letterSpacing: ".08em", whiteSpace: "nowrap", color: "#141312", background: "#ECE8DF", opacity: v.busyO, clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s,opacity .3s" }} style-hover="background:oklch(0.8 0.12 85)" style-active="transform:scale(.98)"><span>{v.submitLbl}</span><svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M11 1l4 4-4 4M15 5H0" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg></button>
                     </div>
                   </form>
                 </div>

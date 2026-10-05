@@ -19,7 +19,7 @@ export default function WorldHint({ v }: { v: V }) {
           <strong className="wh-main" style={{ fontSize: "15px", fontWeight: "700", lineHeight: "1.3" }}>{v.hintMain}</strong>
           <span className="wh-sub" style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.72)" }}>{v.hintSub}</span>
         </span>
-        <button type="button" onClick={v.dismissHint} onMouseEnter={v.beep} style={{ flex: "none", alignSelf: "center", padding: "6px 0 4px", border: "0", borderBottom: "1.5px solid oklch(0.8 0.12 85)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".1em", color: "#ECE8DF", whiteSpace: "nowrap" }}>GOT IT</button>
+        <button type="button" onClick={v.dismissHint} style={{ flex: "none", alignSelf: "center", padding: "6px 0 4px", border: "0", borderBottom: "1.5px solid oklch(0.8 0.12 85)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".1em", color: "#ECE8DF", whiteSpace: "nowrap" }}>GOT IT</button>
       </div>
     </div>
   );

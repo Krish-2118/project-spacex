@@ -8,7 +8,7 @@ export default function WorldNav({ v }: { v: V }) {
         <div style={{ position: "relative", display: "flex" }}>
           <span style={{ position: "absolute", top: "0", bottom: "0", left: "0", width: "33.333%", borderRadius: "999px", background: v.navGlow, transform: `translateX(${v.navX})`, transition: "transform .9s cubic-bezier(.25,1,.1,1)", pointerEvents: "none" }}></span>
           {v.nav.map((n, nI) => (
-            <button key={nI} type="button" onClick={n.onClick} onMouseEnter={v.beep} aria-current={n.current} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", width: "clamp(100px,13vw,180px)", padding: "10px 0", borderRadius: "999px", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "clamp(11px,1.1vw,16px)", letterSpacing: ".02em", color: n.color, transition: "color .5s cubic-bezier(.25,1,.1,1)" }}>
+            <button key={nI} type="button" onClick={n.onClick} aria-current={n.current} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", width: "clamp(100px,13vw,180px)", padding: "10px 0", borderRadius: "999px", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "clamp(11px,1.1vw,16px)", letterSpacing: ".02em", color: n.color, transition: "color .5s cubic-bezier(.25,1,.1,1)" }}>
               <small style={{ fontSize: "10px", fontWeight: "700", letterSpacing: ".25em", opacity: ".7" }}>{n.no}</small>
               <span>{n.label}</span>
             </button>
