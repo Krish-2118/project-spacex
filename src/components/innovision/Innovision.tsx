@@ -25,6 +25,9 @@ import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
 import MenuOverlay from './MenuOverlay';
 import AuthOverlay from './AuthOverlay';
+import ProfileOverlay from './ProfileOverlay';
+import PhoneModal from './PhoneModal';
+import AdminDashboard from './AdminDashboard';
 import BagPanel from './BagPanel';
 import CartPill from './CartPill';
 import Toast from './Toast';
@@ -33,6 +36,21 @@ import WorldHint from './WorldHint';
 import Loader from './Loader';
 import { LiveV } from './SiteFooter';
 import type { V } from './types';
+import {
+  getSupabase,
+  getOrCreateUserProfile,
+  updateUserProfile,
+  fetchUserRegistration,
+  createRegistration,
+  signInWithGoogle,
+  signOutUser,
+  cleanAuthUrl,
+  saveSessionToDatabase,
+  fetchSessionFromDatabase,
+  purgeLocalStorageTokens,
+  type UserProfile,
+  type Registration,
+} from '@/lib/supabase';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
 
@@ -84,6 +102,12 @@ interface State {
   gBusy: boolean; gErr: string; gUser: { name: string; email: string } | null;
   /** First-visit guide on the worlds slider is showing; coarse: touch-first device (hint wording). */
   hint: boolean; coarse: boolean;
+  /** Admin and profile modal states */
+  adminOpen: boolean;
+  profileOpen: boolean;
+  phoneModalOpen: boolean;
+  registration: Registration | null;
+  user: UserProfile | null;
 }
 
 const BAG_KEY = 'innovisionCart';
@@ -103,7 +127,8 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null as any, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false };
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false,
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
@@ -191,6 +216,7 @@ export default class Innovision extends Component<Props, State> {
     });
     this.cleanups.push(() => cancelAnimationFrame(rz));
     this.boot();
+    this.initSupabaseAuth();
   }
 
   componentWillUnmount() {
@@ -243,8 +269,31 @@ export default class Innovision extends Component<Props, State> {
       if (this.props.skipLoader) { this.hideLoader(); this.firstPaint(); return; }
       this.loaderIntro();
     }, R);
-    this.cleanups.push(() => { R.setAttribute('data-booting', ''); R.querySelectorAll('[data-idle]').forEach((el) => el.removeAttribute('data-idle')); });
     if (!this.props.skipLoader) this.runLoader().then(() => { if (this.alive) this.loaderExit(); });
+
+    // Auth Middleware Route Inspector: Check for middleware redirects (?auth=login, ?required=register, ?open=register, or #register)
+    if (typeof window !== 'undefined') {
+      const search = new URLSearchParams(window.location.search);
+      const isAuthRequired = search.get('required') === 'register' || search.get('auth') === 'login';
+      const isOpenRegister = search.get('open') === 'register' || window.location.hash === '#register';
+
+      if (isAuthRequired) {
+        setTimeout(() => {
+          this.openAuth('login');
+          this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+        }, 1200);
+      } else if (isOpenRegister) {
+        setTimeout(() => {
+          if (!this.state.user) {
+            sessionStorage.setItem('inv_pending_action', 'register');
+            this.openAuth('login');
+            this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+          } else {
+            this.openAuth('register');
+          }
+        }, 1200);
+      }
+    }
   }
 
   /* ---------- ambient loops ---------- */
@@ -1046,6 +1095,10 @@ export default class Innovision extends Component<Props, State> {
 
   /* ---------- router ---------- */
   parse(): Route {
+    if (typeof window !== 'undefined' && (location.hash.includes('access_token') || location.hash.includes('refresh_token'))) {
+      cleanAuthUrl();
+      return { view: 'home', index: this.state.index };
+    }
     const [v, k] = location.hash.replace(/^#\/?/, '').split('/');
     const f = WORLDS.findIndex((w) => w.slug === k || w.key === k), idx = this.state.index;
     if (v === 'worlds') return { view: 'worlds', index: f >= 0 ? f : idx };
@@ -1237,88 +1290,256 @@ export default class Innovision extends Component<Props, State> {
   RN = 22;
   // @ts-ignore
   register = (e) => { 
-    e.preventDefault();
-    const t = e.currentTarget, disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
-    this.openAuth(this.state.user ? 'pass' : 'register', disc || t, !!disc);
+    if (e && e.preventDefault) e.preventDefault();
+    if (!this.state.user) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('inv_pending_action', 'register');
+      }
+      this.openAuth('login');
+      this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+      return;
+    }
+    if (this.state.registration) {
+      this.openAuth('pass');
+      return;
+    }
+    const t = e && e.currentTarget, disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
+    this.openAuth('register', disc || t, !!disc);
   };
   // @ts-ignore
   loginClick = (e) => {
-    e.preventDefault();
-    if (this.state.user) { this.logout(); return; }
-    const src = e.currentTarget;
+    if (e && e.preventDefault) e.preventDefault();
+    if (this.state.user) {
+      this.setState({ profileOpen: true });
+      return;
+    }
+    const src = e && e.currentTarget;
     if (this.state.about) this.setState({ about: false });
     this.openAuth('login', src);
   };
-  /* ---------- continue with google ---------- */
-  gClient() { return String(this.props.googleClientId || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim(); }
-  /** Loads Google Identity Services once. Started when the overlay opens so a click can open the popup at once. */
-  gsiLoad() {
-    if (window.google?.accounts?.oauth2) return Promise.resolve();
-    if (!this._gsi) this._gsi = new Promise((res, rej) => {
-      const el = document.createElement('script');
-      el.src = 'https://accounts.google.com/gsi/client'; el.async = true;
-      el.onload = () => res(); el.onerror = () => { this._gsi = null; rej(new Error('gsi')); };
-      document.head.appendChild(el);
+
+  /* ---------- Supabase Auth & Google OAuth (Cookie-Backed Sessions) ---------- */
+  initSupabaseAuth = async () => {
+    try {
+      purgeLocalStorageTokens();
+      const supabase = getSupabase();
+
+      // 1. Exchange PKCE code if returning from Google OAuth redirect
+      if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        if (code) {
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) {
+              console.warn('PKCE exchange warning:', error.message);
+            }
+          } catch (e) {
+            console.warn('exchangeCodeForSession error:', e);
+          } finally {
+            cleanAuthUrl();
+          }
+        }
+      } else {
+        cleanAuthUrl();
+      }
+
+      // 2. Check active session from cookies / client
+      const { data: { session } } = await supabase.auth.getSession();
+      purgeLocalStorageTokens();
+
+      if (session?.user) {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          console.warn('Cached session is invalid or user was removed. Signing out...');
+          await signOutUser();
+          return;
+        }
+        await saveSessionToDatabase(session);
+        await this.handleUserSession(user);
+      } else {
+        // 3. Fall back to Server/Database session via cookies (ZERO localStorage)
+        const dbAuth = await fetchSessionFromDatabase();
+        if (dbAuth.user) {
+          if (dbAuth.tokens?.access_token) {
+            try {
+              await supabase.auth.setSession({
+                access_token: dbAuth.tokens.access_token,
+                refresh_token: dbAuth.tokens.refresh_token || '',
+              });
+            } catch (e) {
+              console.warn('setSession failed:', e);
+            }
+          }
+          await this.handleUserSession(dbAuth.user);
+        }
+      }
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        cleanAuthUrl();
+        purgeLocalStorageTokens();
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+          await saveSessionToDatabase(session);
+          await this.handleUserSession(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          this.reg = null;
+          this.pass = null;
+          purgeLocalStorageTokens();
+          this.setState({
+            user: null,
+            registration: null,
+            adminOpen: false,
+            profileOpen: false,
+            phoneModalOpen: false,
+          });
+        }
+      });
+      this.cleanups.push(() => subscription.unsubscribe());
+    } catch (err) {
+      console.warn('initSupabaseAuth error:', err);
+    }
+  };
+
+  handleUserSession = async (authUser: any) => {
+    const intent = typeof window !== 'undefined' ? sessionStorage.getItem('inv_login_intent') : null;
+    const isNitEmail = authUser.email?.toLowerCase().endsWith('@nitrkl.ac.in');
+
+    if (intent === 'internal' && !isNitEmail) {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('inv_login_intent');
+      await signOutUser();
+      this.setState({
+        user: null,
+        gErr: 'Internal login requires an official @nitrkl.ac.in institute email address. Please select External student login or use your NIT RKL account.',
+        auth: true,
+        authMode: 'login',
+      });
+      return;
+    }
+
+    const profile = await getOrCreateUserProfile(authUser);
+    if (!profile) {
+      this.setState({ user: null, registration: null });
+      return;
+    }
+
+    const registration = await fetchUserRegistration(authUser.id);
+
+    if (registration) {
+      this.pass = {
+        name: registration.name,
+        college: registration.college,
+        id: registration.registration_id,
+        email: registration.email,
+        status: registration.status.toUpperCase(),
+        utr: registration.utr,
+      };
+    }
+
+    const needsPhone = !profile.phone;
+
+    this.setState({
+      user: profile,
+      registration,
+      phoneModalOpen: needsPhone,
+      gErr: '',
+      gBusy: false,
     });
-    return this._gsi;
-  }
-  googleLogin = async () => {
+
+    const pendingAction = typeof window !== 'undefined' ? sessionStorage.getItem('inv_pending_action') : null;
+    if (pendingAction === 'register') {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('inv_pending_action');
+      if (registration) {
+        this.closeAuth(() => this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}! You are already registered.`));
+      } else {
+        this.toast(`Authenticated as ${profile.email}. Let's complete your registration.`);
+        setTimeout(() => this.openAuth('register'), 300);
+      }
+      return;
+    }
+
+    if (this.state.auth && this.state.authMode === 'login') {
+      if (registration) {
+        this.closeAuth(() => this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}.`));
+      } else {
+        this.setState({ authMode: 'register', step: 0 });
+      }
+    }
+  };
+
+  refreshUserProfile = async (userId: string) => {
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (data && !error) {
+        this.setState({ user: data as UserProfile });
+      }
+    } catch (err) {
+      console.warn('refreshUserProfile error:', err);
+    }
+  };
+
+  handleUpdatePhone = async (phone: string) => {
+    if (!this.state.user) return;
+    const res = await updateUserProfile(this.state.user.id, { phone });
+    if (!res.success) throw new Error(res.error || 'Failed to update phone');
+    this.setState((st: any) => ({
+      user: st.user ? { ...st.user, phone } : null,
+      phoneModalOpen: false,
+    }));
+    this.toast('Phone number updated successfully.');
+  };
+
+  googleLogin = async (isInternal: boolean = false) => {
     const s = this.state;
     if (s.gBusy || s.busyLbl) return;
-    const id = this.gClient();
-    if (!id) { this.gFail("Google sign-in isn't switched on yet. Log in with your email and registration ID below."); return; }
     this.play('thumpSoft');
     this.setState({ gBusy: true, gErr: '' });
     try {
-      await this.gsiLoad();
-      // The token client opens Google's account picker in a popup; the token only reads the account's name and email.
-      const token = await new Promise((res, rej) => {
-        window.google.accounts.oauth2.initTokenClient({
-          client_id: id, scope: 'openid email profile',
-          callback: (r) => (r.error ? rej(r) : res(r.access_token)),
-          error_callback: (e) => rej(e),
-        }).requestAccessToken();
-      });
-      const me = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : Promise.reject(r)));
-      if (!this.alive || !this.state.auth) return;
-      if (!me.email) throw new Error('no email');
-      this.googleDone({ name: me.name || this.nameFrom(me.email), email: me.email });
-    } catch (e) {
-      if (!this.alive) return;
-      const closed = e && (e.type === 'popup_closed' || e.error === 'access_denied');
-      this.gFail(closed ? 'Google sign-in was closed before it finished. Try again when you are ready.' : "Couldn't reach Google. Try again, or log in with your email and registration ID.");
+      const { error } = await signInWithGoogle({ internalOnly: isInternal });
+      if (error) throw error;
+    } catch (e: any) {
+      this.gFail(e?.message || 'Google sign-in could not be completed. Please try again.');
     } finally {
       if (this.alive) this.setState({ gBusy: false });
     }
   };
-  gFail(msg) {
+
+  gFail(msg: string) {
     this.play('beep');
     this.setState({ gErr: msg });
     const b = this.$('[data-g-btn]');
     if (b && !this.reduce) gsap.fromTo(b, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
   }
-  /** Registered this session: straight in. Otherwise registration opens with the Google name and email filled in. */
-  googleDone(g) {
-    if (this.pass && this.pass.email === g.email) {
-      this.setState({ user: { name: this.pass.name, email: g.email }, gUser: null });
-      this.closeAuth(() => this.toast('Welcome back, ' + this.pass.name.split(' ')[0] + '.'));
-      return;
-    }
-    this.play('thumpSoft');
-    this.setState({ gUser: g, authMode: 'register', step: 0, err: {} }, () => {
-      const f = this.$('[data-auth-form]');
-      if (f) { f.elements.name.value = g.name; f.elements.email.value = g.email; }
-      this.animPane(1, true);
-      const c = f && f.elements.college; if (c && !matchMedia('(pointer: coarse)').matches) c.focus();
+
+  logout = async () => {
+    this.reg = null;
+    this.pass = null;
+    this.dropFiles();
+    await signOutUser();
+    const f = this.$ && this.$('[data-auth-form]');
+    if (f) f.reset();
+    this.setState({
+      user: null,
+      registration: null,
+      adminOpen: false,
+      profileOpen: false,
+      phoneModalOpen: false,
+      authMode: 'register',
+      step: 0,
+      err: {},
+      files: {},
+      about: false,
+      gUser: null,
+      gErr: '',
     });
-  }
-  // @ts-ignore
-  logout() {
-    this.reg = null; this.pass = null; this.dropFiles();
-    const f = this.$ && this.$('[data-auth-form]'); if (f) f.reset();
-    this.setState({ user: null, authMode: 'register', step: 0, err: {}, files: {}, about: false, gUser: null, gErr: '' });
-    this.play('thumpSoft'); this.toast('Logged out. See you in orbit.');
-  }
+    this.play('thumpSoft');
+    this.toast('Logged out. See you in orbit.');
+  };
   // @ts-ignore
   emailOk(x) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(x); }
   nameFrom(em) { return em.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase()) || 'Explorer'; }
@@ -1407,13 +1628,21 @@ export default class Innovision extends Component<Props, State> {
   // @ts-ignore
   async openAuth(mode, src, fromDisc) {
     if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
-if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
+
+    // Strict Auth Middleware Guard: Block access to registration if unauthenticated
+    if (mode === 'register' && !this.state.user) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('inv_pending_action', 'register');
+      }
+      mode = 'login';
+      this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+    }
+
     if (this.state.auth) { this.switchMode(mode); return; }
     this.authBusy = true;
     const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
     this.page = this.livePage(); this.authO = this.originOf(src, fromDisc);
     await this.set({ auth: true, authMode: mode, err: {}, gErr: '' });
-    if (this.gClient()) this.gsiLoad().catch(() => {});
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
     const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
     g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
@@ -1517,6 +1746,17 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
   switchMode = (mode) => {
     const s = this.state, m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
     if (m === s.authMode || s.busyLbl) return;
+
+    // Strict Auth Middleware: Intercept switching to register without login
+    if (m === 'register' && !s.user) {
+      this.play('beep');
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('inv_pending_action', 'register');
+      }
+      this.toast('🔒 Authentication required: Please log in or sign up first to access registration.');
+      return;
+    }
+
     this.play('thumpSoft');
     this.setState({ authMode: m, err: {}, gErr: '' }, () => { this.animPane(1, true); this.focusAuth(); });
   };
@@ -1561,16 +1801,72 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
   // @ts-ignore
   dropFile(kind) { return (e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.setState({ drag: '' }); if (f) this.takeFile(kind, f); }; }
   // @ts-ignore
-  takeFile(kind, f) {
-    const ek = kind === 'id' ? 'idfile' : 'payfile', isImg = /^image\//.test(f.type), isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
-    if (kind === 'pay' ? !isImg : !(isImg || isPdf)) { this.fail({ [ek]: kind === 'pay' ? 'Upload the screenshot as an image (JPG or PNG).' : 'Use a JPG, PNG or PDF file.' }); return; }
-    if (f.size > 5 * 1048576) { this.fail({ [ek]: 'That file is over 5 MB. Try a smaller photo.' }); return; }
-  // @ts-ignore
-    const old = (this.state.files || {})[kind]; if (old && old.url) URL.revokeObjectURL(old.url);
-    const url = isImg ? URL.createObjectURL(f) : '';
+  takeFile = async (kind, f) => {
+    const ek = kind === 'id' ? 'idfile' : 'payfile';
+    const isImg = /^image\//.test(f.type);
+    const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+
+    if (kind === 'pay' ? !isImg : !(isImg || isPdf)) {
+      this.fail({ [ek]: kind === 'pay' ? 'Upload the screenshot as an image (JPG or PNG).' : 'Use a JPG, PNG or PDF file.' });
+      return;
+    }
+
+    // 2MB max size limit requirement
+    const MAX_SIZE = 2 * 1024 * 1024;
+    if (f.size > MAX_SIZE) {
+      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller photo or PDF (max 2MB).' });
+      return;
+    }
+
+    const old = (this.state.files || {})[kind];
+    if (old && old.url && old.url.startsWith('blob:')) URL.revokeObjectURL(old.url);
+
+    const previewUrl = isImg ? URL.createObjectURL(f) : '';
     this.play('beep');
-    this.setState((st) => ({ files: { ...st.files, [kind]: { name: f.name, size: f.size, url, pdf: !isImg, status: 'up' } }, err: this.drop(st.err, ek) }), () => this.runUpload(kind));
-  }
+    this.setState(
+      (st) => ({
+        files: { ...st.files, [kind]: { name: f.name, size: f.size, url: previewUrl, pdf: !isImg, status: 'up' } },
+        err: this.drop(st.err, ek),
+      }),
+      () => this.runUpload(kind)
+    );
+
+    // Upload to ImageKit via /api/upload Route Handler
+    try {
+      const formData = new FormData();
+      formData.append('file', f);
+      formData.append('folder', kind === 'id' ? '/innovision/id_cards' : '/innovision/payments');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload image to ImageKit');
+      }
+
+      this.setState((st) => ({
+        files: {
+          ...st.files,
+          [kind]: {
+            name: f.name,
+            size: f.size,
+            url: data.url, // Real ImageKit CDN URL
+            fileId: data.fileId,
+            pdf: !isImg,
+            status: 'done',
+          },
+        },
+      }));
+    } catch (err: any) {
+      this.setState((st) => ({
+        files: { ...st.files, [kind]: null },
+      }));
+      this.fail({ [ek]: err?.message || 'Upload to ImageKit failed. Please try again.' });
+    }
+  };
   // @ts-ignore
   runUpload(kind) {
     const bar = this.$('[data-up-bar="' + kind + '"]'), pct = this.$('[data-up-pct="' + kind + '"]'), o = { v: 0 };
@@ -1594,13 +1890,13 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
   // @ts-ignore
   removeFile(kind) {
   // @ts-ignore
-    const f = (this.state.files || {})[kind]; if (f && f.url) URL.revokeObjectURL(f.url);
+    const f = (this.state.files || {})[kind]; if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
     if (this._up && this._up[kind]) this._up[kind].kill();
     this.play('beep');
     this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
   }
   replaceFile(kind) { const i = this.$('[data-auth] [name="' + (kind === 'id' ? 'idfile' : 'payfile') + '"]'); if (i) i.click(); }
-  dropFiles() { Object.values(this.state.files || {}).forEach((f) => { if (f && f.url) URL.revokeObjectURL(f.url); }); }
+  dropFiles() { Object.values(this.state.files || {}).forEach((f: any) => { if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); }); }
   // @ts-ignore
   copyUpi = () => {
     const t = this.upi();
@@ -1615,50 +1911,170 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
     e.preventDefault();
     const s = this.state;
     if (s.busyLbl) return;
-  // @ts-ignore
-    const f = e.currentTarget.elements, v = (n) => ((f[n] && f[n].value) || '').trim(), err = {}, files = s.files || {};
+
+    const f = e.currentTarget.elements;
+    const v = (n: string) => ((f[n] && f[n].value) || '').trim();
+    const err: Record<string, string> = {};
+    const files = s.files || {};
+    const user = s.user;
+    const isInternal = (user?.student_type === 'internal') || (user?.email?.toLowerCase().endsWith('@nitrkl.ac.in'));
+
     if (s.authMode === 'login') {
       const em = v('lemail'), id = v('lid').toUpperCase().replace(/\s+/g, '');
       if (!this.emailOk(em)) err.lemail = 'Enter the email you registered with.';
       if (!/^IV26-?\d{4}$/.test(id)) err.lid = 'Registration IDs look like IV26-1234.';
       if (this.fail(err)) return;
-      this.wait('CHECKING', 900).then(() => {
-        if (!this.pass || this.pass.email !== em) this.pass = { name: this.nameFrom(em), college: '', id: id.replace(/^IV26-?/, 'IV26-'), email: em, status: 'CONFIRMED' };
-        const name = this.pass.name;
-        this.setState({ user: { name, email: em } });
-        this.closeAuth(() => this.toast('Welcome back, ' + name.split(' ')[0] + '.'));
+      this.wait('CHECKING', 900).then(async () => {
+        const supabase = getSupabase();
+        const { data: reg } = await supabase
+          .from('registrations')
+          .select('*')
+          .eq('registration_id', id.replace(/^IV26-?/, 'IV26-'))
+          .ilike('email', em)
+          .maybeSingle();
+
+        if (reg) {
+          this.pass = {
+            name: reg.name,
+            college: reg.college,
+            id: reg.registration_id,
+            email: reg.email,
+            status: reg.status.toUpperCase(),
+          };
+          this.setState({ registration: reg });
+          this.closeAuth(() => this.toast(`Welcome back, ${reg.name.split(' ')[0]}.`));
+        } else {
+          this.pass = { name: this.nameFrom(em), college: '', id: id.replace(/^IV26-?/, 'IV26-'), email: em, status: 'CONFIRMED' };
+          this.closeAuth(() => this.toast(`Welcome back, ${this.pass.name.split(' ')[0]}.`));
+        }
       });
       return;
     }
+
     if (s.authMode !== 'register') return;
+
+    // Requirement: Registration is only permitted if user is logged in
+    if (!user) {
+      this.openAuth('login');
+      this.toast('Please log in with Google to register.');
+      return;
+    }
+
     if (s.step === 0) {
-      const name = v('name').replace(/\s+/g, ' '), college = v('college').replace(/\s+/g, ' '), email = v('email'), phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+      const name = v('name').replace(/\s+/g, ' ');
+      const college = isInternal ? 'National Institute of Technology, Rourkela' : v('college').replace(/\s+/g, ' ');
+      const email = user.email; // LOCKED - CANNOT BE ALTERED
+      const phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+      const enrollment_no = v('enrollment_no');
+
       if (name.length < 2) err.name = 'Tell us your full name.';
-      if (college.length < 3) err.college = 'Which college are you from?';
-      if (!this.emailOk(email)) err.email = "That email doesn't look right.";
+      if (!isInternal && college.length < 3) err.college = 'Which college are you from?';
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
+      if (isInternal && !enrollment_no) err.enrollment_no = 'Enter your NIT Rourkela Roll / Enrollment number.';
+
       if (this.fail(err)) return;
-      this.reg = { name, college, email, phone };
+      this.reg = { name, college, email, phone, enrollment_no };
+
+      // INTERNAL NIT RKL STUDENTS: NO ID CARD NEEDED & AUTO-CONFIRMED (NO ADMIN APPROVAL)
+      if (isInternal) {
+        this.wait('CONFIRMING', 1000).then(async () => {
+          const regId = this.newId();
+          const regPayload = {
+            registration_id: regId,
+            user_id: user.id,
+            name,
+            email: user.email,
+            college: 'National Institute of Technology, Rourkela',
+            phone,
+            enrollment_no,
+            student_type: 'internal' as const,
+            id_card_url: '', // Zero ID card required for internal students!
+            amount: 0,
+            status: 'confirmed' as const, // Auto-confirmed! No approval needed!
+          };
+
+          const saveRes = await createRegistration(regPayload);
+          const savedReg = saveRes.registration || regPayload;
+
+          this.pass = {
+            name,
+            college: 'National Institute of Technology, Rourkela',
+            id: regId,
+            email: user.email,
+            status: 'CONFIRMED',
+          };
+          this.play('fx');
+          this.toast('🎉 Registration confirmed! Welcome to Innovision 2026.');
+          this.setState(
+            {
+              authMode: 'pass',
+              step: 4,
+              registration: savedReg as Registration,
+            },
+            () => this.passReveal()
+          );
+        });
+        return;
+      }
+
+      // External students proceed to Step 1 (ID card upload)
       this.toStep(1);
     } else if (s.step === 1) {
       const fi = files.id;
       if (!fi) err.idfile = 'Upload your college ID to continue.';
-      else if (fi.status !== 'done') err.idfile = 'Hold on, your ID is still uploading.';
+      else if (fi.status !== 'done') err.idfile = 'Hold on, your ID is still uploading to ImageKit.';
       if (this.fail(err)) return;
+
+      // External students proceed to payment
       this.toStep(2);
     } else if (s.step === 2) {
       this.toStep(3);
     } else if (s.step === 3) {
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
-      else if (fp.status !== 'done') err.payfile = 'Hold on, your screenshot is still uploading.';
+      else if (fp.status !== 'done') err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
       if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
       if (this.fail(err)) return;
-      this.wait('SUBMITTING', 1300).then(() => {
+
+      this.wait('SUBMITTING', 1400).then(async () => {
         const r = this.reg || {};
-        this.pass = { name: r.name, college: r.college, id: this.newId(), email: r.email, status: 'PAYMENT UNDER REVIEW', utr };
+        const regId = this.newId();
+        const regPayload = {
+          registration_id: regId,
+          user_id: user.id,
+          name: r.name,
+          email: user.email,
+          college: r.college,
+          phone: r.phone,
+          enrollment_no: r.enrollment_no,
+          student_type: 'external' as const,
+          id_card_url: files.id.url,
+          payment_screenshot_url: fp.url,
+          utr,
+          amount: 499,
+          status: 'pending' as const, // PENDING FOR EXTERNAL
+        };
+
+        const saveRes = await createRegistration(regPayload);
+        const savedReg = saveRes.registration || regPayload;
+
+        this.pass = {
+          name: r.name,
+          college: r.college,
+          id: regId,
+          email: user.email,
+          status: 'PAYMENT UNDER REVIEW',
+          utr,
+        };
         this.play('fx');
-        this.setState({ authMode: 'pass', step: 4, user: { name: r.name, email: r.email } }, () => this.passReveal());
+        this.setState(
+          {
+            authMode: 'pass',
+            step: 4,
+            registration: savedReg as Registration,
+          },
+          () => this.passReveal()
+        );
       });
     }
   };
@@ -1684,11 +2100,20 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
   authVals(s) {
   // @ts-ignore
     const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.8 0.12 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
-    const E = Object.assign({ name: '', college: '', email: '', phone: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
+    const E = Object.assign({ name: '', college: '', email: '', phone: '', enrollment_no: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
     Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });
-    const P = this.pass || {}, fee = this.fee(), upi = this.upi(), R = this.reg || {}, files = s.files || {};
+    const P = this.pass || s.registration || {}, fee = this.fee(), upi = this.upi(), R = this.reg || {}, files = s.files || {};
+    const user = s.user;
+    const isInternal = (user?.student_type === 'internal') || (user?.email?.toLowerCase().endsWith('@nitrkl.ac.in'));
+    const regVals = {
+      name: user?.full_name || R.name || '',
+      college: isInternal ? 'National Institute of Technology, Rourkela' : (R.college || ''),
+      email: user?.email || '',
+      phone: user?.phone || R.phone || '',
+      enrollment_no: user?.enrollment_no || s.registration?.enrollment_no || R.enrollment_no || '',
+    };
   // @ts-ignore
     const up = (kind, ek, prompt) => {
       const f = files[kind], dz = s.drag === kind;
@@ -1700,40 +2125,55 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       };
     };
     const showRail = reg || (am === 'pass' && st === 4);
-    const notes = [R.name, files.id && files.id.name, 'by UPI', 'Submitted'];
+    const notes = [regVals.name, files.id && files.id.name, 'by UPI', 'Submitted'];
+
+    // Rail steps differ for internal vs external students:
+    // Internal students do not require an ID card or admin approval (1 direct step)
+    const railSteps = isInternal
+      ? [['DETAILS', 'Roll no & phone number', 'DETAILS']]
+      : [['DETAILS', 'Name, college, email, phone', 'DETAILS'], ['COLLEGE ID', 'Photo or PDF of your ID card', 'ID'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
+
     return {
       noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
       authHidden: String(!s.auth),
       authAria: reg ? 'Register for Innovision 2026' : am === 'login' ? 'Log in to Innovision' : 'Your boarding pass',
       authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
       authTitle: reg ? 'CLAIM YOUR SEAT' : am === 'login' ? 'WELCOME BACK' : "YOU'RE ON BOARD",
-      authSub: reg ? 'Four short stops to register for Innovision 2026 at NIT Rourkela.' : am === 'login' ? 'Use the email and registration ID from your confirmation mail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
-      railD: show(showRail && !s.narrow), hprogD: showRail && s.narrow ? 'grid' : 'none',
-      prog: [['DETAILS', 'Name, college, email, phone', 'DETAILS'], ['COLLEGE ID', 'Photo or PDF of your ID card', 'ID'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']].map(([label, hint, short], k) => {
+      authSub: reg
+        ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Four short stops to register for Innovision 2026 at NIT Rourkela.')
+        : am === 'login' ? 'Sign in using your Google account or institute webmail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
+      railD: show(showRail && !s.narrow && !isInternal), hprogD: showRail && s.narrow && !isInternal ? 'grid' : 'none',
+      prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
         return {
           label, short, note: done ? (k === 2 ? 'by UPI' : notes[k] || hint) : hint, cur: cur ? 'step' : 'false',
           c: done || cur ? cream : 'rgba(236,232,223,.6)', bc: done || cur ? gold : 'rgba(236,232,223,.3)', fill: done ? gold : 'transparent', chk: done ? 1 : 0, dot: cur ? 1 : 0, dotS: cur ? 1 : .2,
-          lineD: k < 3 ? 'block' : 'none', lineS: done ? 1 : 0, segS: done ? 1 : cur ? .5 : 0,
+          lineD: k < railSteps.length - 1 ? 'block' : 'none', lineS: done ? 1 : 0, segS: done ? 1 : cur ? .5 : 0,
           lock: !back || !!s.busyLbl, cursor: back ? 'pointer' : 'default', go: () => this.railGo(k), aria: label + (done ? ', done. Go back to edit' : cur ? ', current step' : ''),
         };
       }),
-      d: { s0: show(reg && st === 0), s1: show(reg && st === 1), s2: show(reg && st === 2), s3: show(reg && st === 3), login: show(am === 'login'), pass: show(am === 'pass'), act: show(reg || am === 'login') },
+      d: { s0: show(reg && st === 0 && !!s.user), s1: show(reg && st === 1 && !isInternal && !!s.user), s2: show(reg && st === 2 && !isInternal && !!s.user), s3: show(reg && st === 3 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
       err: E, bc, inv,
-      upId: up('id', 'idfile', 'Drop your ID card here or browse'), upPay: up('pay', 'payfile', 'Drop the screenshot here or browse'),
+      upId: up('id', 'idfile', 'Drop your ID card here or browse (Max 2MB)'), upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
       authSubmit: this.authSubmit, clearErr: this.clearErr, switchMode: this.switchMode, closeAuthH: () => this.closeAuth(),
-      showSwitch: am !== 'pass', switchQ: reg ? 'Already registered?' : 'New to Innovision?', switchLbl: reg ? 'LOG IN' : 'REGISTER', switchQD: s.narrow ? 'none' : 'inline',
-      canBack: reg && st > 0, stepBack: this.stepBack,
-      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : ['CONTINUE', 'CONTINUE', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
+      showSwitch: am !== 'pass' && !!s.user,
+      switchQ: !s.user ? 'Authentication required' : (reg ? 'Already registered?' : 'Need to register?'),
+      switchLbl: !s.user ? 'SIGN IN' : (reg ? 'LOG IN' : 'REGISTER'),
+      switchQD: s.narrow ? 'none' : 'inline',
+      canBack: reg && st > 0 && !isInternal, stepBack: this.stepBack,
+      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE', 'CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
       busy: !!s.busyLbl, busyO: s.busyLbl ? .72 : 1,
-      passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || '', passStatus: P.status || '',
-      passNote: P.status === 'CONFIRMED' ? 'Show this pass at the registration desk when you arrive.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified.',
+      passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || P.registration_id || '', passStatus: P.status ? P.status.toUpperCase() : (isInternal ? 'CONFIRMED' : 'PAYMENT UNDER REVIEW'),
+      passNote: (P.status === 'CONFIRMED' || (isInternal && !P.status)) ? 'Show this pass at the registration desk when you arrive at NIT Rourkela.' : (P.status === 'REJECTED' ? 'Your registration was declined. Please contact the helpdesk.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified by the IT-Team.'),
       exploreFromPass: this.exploreFromPass,
       googleLogin: this.googleLogin, gBusy: s.gBusy, gErr: s.gErr, gLbl: s.gBusy ? 'Waiting for Google…' : 'Continue with Google',
-      gNote: reg && st === 0 && s.gUser ? 'Signed in with Google as ' + s.gUser.email + '. Add your college and phone to finish.' : '',
+      gNote: reg && st === 0 && s.user ? 'Signed in as ' + s.user.email + (isInternal ? ' (NIT RKL Student)' : '') + '.' : '',
+      regVals,
+      isInternal,
+      user: s.user,
     };
   }
   checkout = () => { this.play('thumpSoft'); this.toast('Pre-orders open with registrations. Stay in orbit.'); };
@@ -1888,6 +2328,18 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
       toTop: (e: MouseEvent) => { e.preventDefault(); const h = this.$('[data-view="home"]'); if (h) h.scrollTo({ top: 0, behavior: 'smooth' }); },
       toastO: s.toastOn ? 1 : 0, toastY: s.toastOn ? '0px' : '16px',
       register: this.register, hover: this.hover, beep: this.beep,
+      openProfile: (e?: any) => {
+        if (e) e.preventDefault();
+        if (s.user?.id) this.refreshUserProfile(s.user.id);
+        this.setState({ profileOpen: true });
+      },
+      openAdmin: (e?: any) => {
+        if (e) e.preventDefault();
+        if (s.user?.id) this.refreshUserProfile(s.user.id);
+        this.setState({ adminOpen: true, profileOpen: false });
+      },
+      isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team')),
+      hasRegistered: !!s.registration,
       // @ts-ignore
       ...this.authVals(s),
       curtainLabel: s.curtainLabel, curtainKicker: s.curtainKicker,
@@ -1923,6 +2375,30 @@ if (!this.$ || !gsap || this.authBusy || this.authClosing) return;
         <AboutPanel v={v} />
         <MenuOverlay v={v} />
         <AuthOverlay v={v} />
+        <ProfileOverlay
+          isOpen={s.profileOpen}
+          onClose={() => this.setState({ profileOpen: false })}
+          user={s.user}
+          registration={s.registration}
+          onOpenPass={() => this.openAuth('pass')}
+          onOpenRegister={() => this.openAuth('register')}
+          onOpenAdmin={() => this.setState({ adminOpen: true, profileOpen: false })}
+          onLogout={this.logout}
+          onUpdatePhone={this.handleUpdatePhone}
+        />
+        <PhoneModal
+          isOpen={s.phoneModalOpen}
+          onSave={this.handleUpdatePhone}
+          onClose={() => this.setState({ phoneModalOpen: false })}
+          userEmail={s.user?.email}
+        />
+        {s.user && (s.user.role === 'admin' || s.user.role === 'it-team') && (
+          <AdminDashboard
+            isOpen={s.adminOpen}
+            onClose={() => this.setState({ adminOpen: false })}
+            currentUser={s.user}
+          />
+        )}
         <BagPanel v={v} />
         <CartPill v={v} />
         <Toast v={v} />
