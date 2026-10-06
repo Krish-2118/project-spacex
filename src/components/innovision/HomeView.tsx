@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- view-model props are untyped across the views */
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
@@ -97,7 +98,7 @@ export default function HomeView({ v }: { v: V }) {
               </div>
             </div>
             {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on.
-                Stacked screens drop it: there it would collide with INSTAGRAM and SOUND. */}
+                Stacked screens drop it: there it would collide with INSTAGRAM. */}
             <div className="hero-scroll" style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
             <button data-h-scroll="" type="button" onClick={v.scrollNext} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
               <svg viewBox="0 0 16 24" aria-hidden="true" style={{ width: "15px", height: "23px", overflow: "visible" }}>
@@ -141,14 +142,8 @@ export default function HomeView({ v }: { v: V }) {
       <section style={{ position: "relative", zIndex: "2", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(96px,14vh,160px)", background: "#ECE8DF", boxShadow: "0 -40px 80px rgba(20,19,18,.28)" }}>
         <div style={{ maxWidth: "1240px", margin: "0 auto" }}>
           <h2 aria-label="For a few days, NIT Rourkela turns into a launch pad for builders, thinkers and makers from across the country." style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: ".14em", margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,5.2vw,84px)", lineHeight: "1.08", letterSpacing: "-.01em" }}>
-            {v.briefWords.map((bw, bwI) => (
-              <span key={bwI} data-fill="" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", marginRight: ".26em" }}>
-                {bw.isImg ? (
-                  <span style={{ position: "relative", display: "block", width: "1.9em", height: ".92em", borderRadius: "999px", overflow: "hidden", background: "#141312 url(/assets/stars.webp) center/cover", boxShadow: "inset 0 0 0 1.5px rgba(20,19,18,.8)" }}>
-                    <img decoding="async" src={bw.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: bw.pos, filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
-                  </span>
-                ) : bw.t}
-              </span>
+            {v.briefWords.map((t, bwI) => (
+              <span key={bwI} data-fill="" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", marginRight: ".26em" }}>{t}</span>
             ))}
           </h2>
           <div data-reveal="" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(32px,5vw,80px)", marginTop: "clamp(48px,8vh,96px)", paddingTop: "28px", borderTop: "1px solid rgba(20,19,18,.18)" }}>

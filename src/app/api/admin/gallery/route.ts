@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaff, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
+import { isImageKitPathInFolder, isUuid } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -28,12 +29,14 @@ export async function GET(req: NextRequest) {
           notice: "Table 'gallery' not yet migrated in Supabase. Please run supabase/schema.sql."
         });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('/api/admin/gallery database error:', error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, gallery: gallery || [] });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch gallery images';
+    console.error('/api/admin/gallery error:', err);
+    const message = 'Failed to fetch gallery images';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -49,6 +52,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const title = (formData.get('title') as string || '').trim();
     const imageFile = formData.get('file') as File | null;
+
+    if (title.length > 200) {
+      return NextResponse.json({ error: 'Gallery title must be at most 200 characters.' }, { status: 400 });
+    }
 
     // 1. Validate file exists
     if (!imageFile) {
@@ -125,7 +132,7 @@ export async function POST(req: NextRequest) {
         {
           error: dbErr.message?.includes('does not exist')
             ? "Table 'gallery' does not exist in Supabase yet. Please execute the SQL in supabase/schema.sql in your Supabase SQL Editor."
-            : dbErr.message,
+            : 'Failed to save changes.',
         },
         { status: 500 }
       );
@@ -138,7 +145,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('Error uploading gallery image:', err);
-    const message = err instanceof Error ? err.message : 'Failed to upload gallery image';
+    const message = 'Failed to upload gallery image';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -152,11 +159,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const id = (body.id || '').trim();
-    const title = body.title !== undefined ? String(body.title).trim() : null;
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
+    const title = body.title !== undefined && body.title !== null ? String(body.title).trim() : null;
 
-    if (!id) {
+    if (!id || !isUuid(id)) {
       return NextResponse.json({ error: 'Missing gallery image ID.' }, { status: 400 });
+    }
+
+    if (title && title.length > 200) {
+      return NextResponse.json({ error: 'Gallery title must be at most 200 characters.' }, { status: 400 });
     }
 
     const { supabase } = auth;
@@ -171,7 +182,8 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      console.error('/api/admin/gallery database error:', updateErr);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -180,7 +192,8 @@ export async function PATCH(req: NextRequest) {
       message: 'Gallery title updated successfully.',
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update gallery image title';
+    console.error('/api/admin/gallery error:', err);
+    const message = 'Failed to update gallery image title';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -203,7 +216,7 @@ export async function DELETE(req: NextRequest) {
       } catch {}
     }
 
-    if (!id) {
+    if (!id || !isUuid(id)) {
       return NextResponse.json({ error: 'Missing gallery image ID.' }, { status: 400 });
     }
 
@@ -218,7 +231,14 @@ export async function DELETE(req: NextRequest) {
 
     if (item?.file_id) {
       try {
-        await imagekit.deleteFile(item.file_id);
+        // file_id comes from a database row, so confirm it really is a gallery image before using the ImageKit
+        // private key to delete it (never registration proofs or event posters).
+        const details = await imagekit.getFileDetails(item.file_id);
+        if (isImageKitPathInFolder(details.filePath, '/innovision/gallery')) {
+          await imagekit.deleteFile(item.file_id);
+        } else {
+          console.warn('Refusing to delete ImageKit file outside the gallery folder:', item.file_id, details.filePath);
+        }
       } catch (ikErr) {
         console.warn('Notice: ImageKit file deletion skipped or failed:', ikErr);
       }
@@ -227,7 +247,8 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabase.from('gallery').delete().eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('/api/admin/gallery database error:', error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -235,7 +256,8 @@ export async function DELETE(req: NextRequest) {
       message: 'Gallery image deleted successfully.',
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to delete gallery image';
+    console.error('/api/admin/gallery error:', err);
+    const message = 'Failed to delete gallery image';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -225,28 +225,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .menu[data-open] .menu-item{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s),transform .7s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s)}
 }
 
-/* ---------- hud sound toggle ---------- */
-/* A satellite on its orbit (Hud.tsx): it circles while sound is on and freezes where it stopped when off, with the
-   ring dashed and the satellite hollow, so the state reads without motion too. Turning sound on mounts one ping. */
-/* At least 40px wide so the icon-only button on phones is still an easy tap. */
-.hud-sound{min-width:40px;justify-content:center}
-.hud-orbit{position:relative;display:grid;place-items:center;flex:none;width:20px;height:20px}
-.hud-orbit svg{width:20px;height:20px;overflow:visible}
-.hud-orbit-ring{transition:opacity .4s}
-.hud-orbit-sat{transform-box:view-box;transform-origin:10px 10px}
-.hud-orbit-sat circle{fill:currentColor;stroke:currentColor;stroke-width:0;transition:fill .3s,stroke-width .3s}
-.hud-sound:not([data-on]) .hud-orbit-ring{stroke-dasharray:2.2 2.6;opacity:.55}
-.hud-sound:not([data-on]) .hud-orbit-sat circle{fill:transparent;stroke-width:1.5}
-.hud-sound-state{display:inline-block;min-width:3.4ch;text-align:left;opacity:.62}
-.hud-orbit-ping{display:none}
-@keyframes hud-orbit{to{transform:rotate(360deg)}}
-@keyframes hud-ping{0%{transform:scale(.75);opacity:.75}100%{transform:scale(2.2);opacity:0}}
-@media (prefers-reduced-motion:no-preference){
-  .hud-orbit-sat{animation:hud-orbit 3.2s linear infinite}
-  .hud-sound:not([data-on]) .hud-orbit-sat{animation-play-state:paused}
-  .hud-orbit-ping{display:block;position:absolute;inset:0;border:1.5px solid currentColor;border-radius:50%;opacity:0;pointer-events:none;animation:hud-ping .7s cubic-bezier(.2,.7,.3,1) both}
-}
-
 /* ---------- hud account ---------- */
 /* Signed in, the LOG IN slot becomes the visitor's profile: an initials badge in the HUD colour plus their first name
    (Hud.tsx); phones get the badge alone. While the first session check runs, the slot shows an empty, dimmed frame. */
@@ -259,8 +237,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hud-auth-pending{opacity:.3;pointer-events:none}
 
 /* ---------- hud on small phones ---------- */
-/* Keep SOUND, REGISTER and MENU on screen: the sound label and the wordmark beside BACK go first, then spacing tightens. */
-@media (max-width:519px){.hud-wordmark-detail,.hud-sound-label{display:none}}
+/* Keep REGISTER and MENU on screen: the wordmark beside BACK goes first, then spacing tightens. */
+@media (max-width:519px){.hud-wordmark-detail{display:none}}
 @media (max-width:419px){.hud-bar,.hud-group{gap:12px !important}.hud-register{padding:10px 14px !important}}
 @media (max-width:419px){.hud-wordmark{display:none}}
 

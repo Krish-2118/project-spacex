@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- view-model is untyped dynamic GSAP view */
 // @ts-nocheck
 "use client";
-/* eslint-disable @typescript-eslint/ban-ts-comment -- view-model is untyped dynamic GSAP view */
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
 import React, { useState } from 'react';
 import type { V } from './types';
@@ -91,6 +91,18 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <input name="name" defaultValue={v.regVals.name} autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" />
                         {v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
                       </label>
+                      <fieldset data-s-in="" aria-invalid={v.inv.gender} style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0", padding: "0", border: "0", minWidth: "0" }}>
+                        <legend style={{ padding: "0", marginBottom: "8px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>GENDER</legend>
+                        <span role="radiogroup" aria-label="Gender" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "8px" }}>
+                          {v.genderOptions.map((g) => (
+                            <label key={g.value} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", minHeight: "54px", padding: "0 12px", border: `1.5px solid ${v.bc.gender}`, background: "rgba(236,232,223,.04)", fontSize: "15px", fontWeight: "500", color: "#ECE8DF", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.8 0.12 85)">
+                              <input type="radio" name="gender" value={g.value} defaultChecked={v.regVals.gender === g.value} style={{ width: "16px", height: "16px", margin: "0", accentColor: "oklch(0.8 0.12 85)", cursor: "pointer" }} />
+                              {g.label}
+                            </label>
+                          ))}
+                        </span>
+                        {v.err.gender ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.gender}</span>) : null}
+                      </fieldset>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
@@ -178,42 +190,6 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <span style={{ display: "flex", gap: "8px" }}><span style={{ display: "flex", alignItems: "center", padding: "0 14px", border: "1.5px solid rgba(236,232,223,.28)", fontSize: "16px", fontWeight: "500" }}>+91</span><input name="phone" defaultValue={v.regVals.phone} type="tel" autoComplete="tel-national" inputMode="numeric" placeholder="98765 43210" aria-invalid={v.inv.phone} style={{ flex: "1", minWidth: "0", height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.phone}` }} style-focus="border-color:oklch(0.8 0.12 85);background:rgba(236,232,223,.08)" /></span>
                         {v.err.phone ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.phone}</span>) : null}
                       </label>
-                    </div>
-
-                    <div style={{ display: v.d.s1, flexDirection: "column", gap: "16px" }}>
-                      <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>College ID card</h3>
-                      <p data-s-in="" style={{ margin: "0 0 4px", fontSize: "16px", lineHeight: "1.55", color: "rgba(236,232,223,.78)", textWrap: "pretty" }}>Upload a clear photo of the front of your ID. We match it with you at the gate.</p>
-                      
-<label data-s-in="" onDragEnter={v.upId.over} onDragOver={v.upId.over} onDragLeave={v.upId.leave} onDrop={v.upId.drop} style={{ position: "relative", display: "block", aspectRatio: "1.586", border: `1.5px dashed ${v.upId.bc}`, background: v.upId.bg, overflow: "hidden", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.8 0.12 85)">
-<span style={{ display: v.upId.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
-<span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.8 0.12 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
-<span style={{ fontSize: "16px", fontWeight: "500" }}>{v.upId.prompt}</span>
-<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG, PNG or PDF up to 2 MB</span>
-</span>
-<span style={{ display: v.upId.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
-{v.upId.hasImg ? (<img decoding="async" src={v.upId.url} alt="Your college ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />) : null}
-<span style={{ display: v.upId.pdfD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", background: "rgba(236,232,223,.05)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "40px", height: "40px", color: "oklch(0.8 0.12 85)" }}><path d="M6 2h9l5 5v15H6zM15 2v5h5" fill="none" stroke="currentColor" strokeWidth="1.4"></path></svg><span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>PDF</span></span>
-<span style={{ position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" }}><span data-scan="id" style={{ position: "absolute", inset: "0", opacity: "0" }}><span style={{ position: "absolute", left: "0", right: "0", top: "-64px", height: "64px", background: "linear-gradient(rgba(220,183,106,0),rgba(220,183,106,.3))" }}></span><span style={{ position: "absolute", left: "0", right: "0", top: "0", height: "2px", background: "#F3DFA8" }}></span></span></span>
-<span style={{ display: v.upId.busyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "rgba(12,11,10,.66)" }}>
-<span data-up-pct="id" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "34px", lineHeight: "1" }}>0%</span>
-<span style={{ position: "relative", width: "56%", height: "2px", background: "rgba(236,232,223,.2)" }}><span data-up-bar="id" style={{ position: "absolute", inset: "0", background: "oklch(0.8 0.12 85)", transform: "scaleX(0)", transformOrigin: "left" }}></span></span>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".22em" }}>UPLOADING</span>
-</span>
-</span>
-<input type="file" name="idfile" accept="image/*,application/pdf" aria-label="Upload college ID card" onChange={v.upId.pick} style={{ position: "absolute", inset: "0", zIndex: "2", width: "100%", height: "100%", opacity: "0", cursor: "pointer" }} />
-</label>
-<div data-s-in="" style={{ display: v.upId.rowD, alignItems: "center", justifyContent: "space-between", gap: "10px 16px", flexWrap: "wrap" }}>
-<span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: "0", flex: "1" }}>
-<svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", color: "oklch(0.8 0.12 85)" }}><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2"></path></svg>
-<span style={{ minWidth: "0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "15px" }}>{v.upId.name}</span>
-<span style={{ flex: "none", fontSize: "13px", color: "rgba(236,232,223,.62)" }}>{v.upId.size}</span>
-</span>
-<span style={{ display: "flex", gap: "18px" }}>
-<button type="button" onClick={v.upId.replace} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.8 0.12 85)">REPLACE</button>
-<button type="button" onClick={v.upId.remove} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.8 0.12 85)">REMOVE</button>
-</span>
-</div>
-{v.err.idfile ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.idfile}</span>) : null}
                     </div>
 
                     <div style={{ display: v.d.s2, flexDirection: "column", gap: "22px" }}>

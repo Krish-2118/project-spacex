@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+# Least privilege for the workflow token: CI only needs to read the repository.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -16,7 +20,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
         
     - name: Install dependencies
@@ -24,6 +28,9 @@ jobs:
       
     - name: Run ESLint
       run: npm run lint
+      
+    - name: Run unit tests
+      run: npm test
       
     - name: Build Project
       run: npm run build

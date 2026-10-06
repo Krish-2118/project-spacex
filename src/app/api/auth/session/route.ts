@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { safeHttpUrl } from '@/lib/validation';
+import { hashSessionToken } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -40,13 +42,13 @@ export async function GET(req: NextRequest) {
         currentRefreshToken = refreshed.session.refresh_token;
         activeUser = refreshed.user;
 
-        // Store ONLY the refresh_token in the database
-        await supabase
+        // Record the session with a one-way digest of the refresh token (never the usable token itself)
+        await getSupabaseAdmin(currentAccessToken)
           .from('user_sessions')
           .upsert(
             {
               user_id: activeUser.id,
-              refresh_token: currentRefreshToken,
+              refresh_token: hashSessionToken(currentRefreshToken),
               updated_at: new Date().toISOString(),
             },
             { onConflict: 'user_id' }
@@ -62,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch user profile from profiles table
-    const { data: profile } = await supabase
+    const { data: profile } = await getSupabaseAdmin(currentAccessToken)
       .from('profiles')
       .select('*')
       .eq('id', activeUser.id)
@@ -98,9 +100,8 @@ export async function GET(req: NextRequest) {
     return res;
   } catch (err: unknown) {
     console.error('Error fetching session:', err);
-    const message = err instanceof Error ? err.message : 'Failed to fetch session';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: 'Failed to fetch session' },
       { status: 500 }
     );
   }
@@ -117,7 +118,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { accessToken, refreshToken, userId } = body;
 
-    if (!accessToken || !userId) {
+    if (
+      typeof accessToken !== 'string' || !accessToken || accessToken.length > 8192 ||
+      typeof userId !== 'string' || !userId ||
+      (refreshToken != null && (typeof refreshToken !== 'string' || refreshToken.length > 1024))
+    ) {
       return NextResponse.json(
         { error: 'Missing accessToken or userId' },
         { status: 400 }
@@ -154,9 +159,10 @@ export async function POST(req: NextRequest) {
             user.user_metadata?.name ||
             email.split('@')[0] ||
             'Explorer',
+          // user_metadata is editable by the user, so only keep real http(s) image URLs.
           avatar_url:
-            user.user_metadata?.avatar_url ||
-            user.user_metadata?.picture ||
+            safeHttpUrl(user.user_metadata?.avatar_url) ||
+            safeHttpUrl(user.user_metadata?.picture) ||
             '',
           student_type: isInternal ? 'internal' : 'external',
           role: 'user',
@@ -166,14 +172,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Store ONLY the refresh_token in database (user_sessions table)
+    // Record the session in user_sessions with a one-way digest of the refresh token (never the token itself)
     if (refreshToken) {
       const { error: dbErr } = await supabase
         .from('user_sessions')
         .upsert(
           {
             user_id: user.id,
-            refresh_token: refreshToken,
+            refresh_token: hashSessionToken(refreshToken),
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'user_id' }
@@ -211,9 +217,8 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (err: unknown) {
     console.error('Error saving session:', err);
-    const message = err instanceof Error ? err.message : 'Failed to save session';
     return NextResponse.json(
-      { error: message },
+      { error: 'Failed to save session' },
       { status: 500 }
     );
   }

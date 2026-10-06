@@ -111,9 +111,8 @@ export const LOADER_SPARKS = [
   { x: '6%', y: '48%', s: '10px' }, { x: '93%', y: '44%', s: '9px' }, { x: '34%', y: '10%', s: '11px' }, { x: '66%', y: '86%', s: '14px' },
 ];
 
-/** Home briefing headline; [key] tokens become image pills (see PILLS). */
-export const BRIEF = 'For a few days, [moon] NIT Rourkela turns into a launch pad for [astro] builders, thinkers and makers from across the [planet] country.';
-export const PILLS: Record<string, [string, string]> = { moon: ['moon-cratered.webp', '50% 50%'], astro: ['indian-astronaut.webp', '50% 20%'], planet: ['planet-crescent.webp', '24% 26%'] };
+/** Home briefing headline; it fills in word by word as it scrolls through. */
+export const BRIEF = 'For a few days, NIT Rourkela turns into a launch pad for builders, thinkers and makers from across the country.';
 
 export const STATUS = ['ALIGNING THE ORBITS', 'CHARTING CONSTELLATIONS', 'FUELLING THE THRUSTERS', 'PLOTTING THE ODYSSEY'];
 export const SCRAMBLE = 'XYZXYZABCDEFGHIJKLMNOPQRSTUVWXYZ';

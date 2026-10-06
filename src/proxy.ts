@@ -1,14 +1,50 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { clientIp, createRateLimiter, isCrossSiteMutation } from '@/lib/security';
+
+// Largest legitimate body: a 2MB upload plus multipart overhead. Bigger requests are refused before buffering.
+const MAX_API_BODY_BYTES = 3 * 1024 * 1024;
+
+// Per-IP flood limits (best-effort, per server instance; put Cloudflare rate limiting in front for global limits).
+// Deliberately generous: many students share one campus NAT address. Per-user limits live in the routes.
+const mutationLimiter = createRateLimiter({ limit: 300, windowMs: 60 * 1000 });
+const authLimiter = createRateLimiter({ limit: 300, windowMs: 60 * 1000 });
+
+const tooMany = () =>
+  NextResponse.json(
+    { error: 'Too Many Requests', message: 'Too many requests. Please slow down and try again shortly.' },
+    { status: 429, headers: { 'Retry-After': '60' } }
+  );
 
 /**
- * Auth Middleware
- * Intercepts requests to /register, /registration, /admin, /api/register, and /api/admin
- * Checks cookies ('inn_access_token', 'inn_refresh_token', Supabase cookies) and Authorization header.
- * Guarantees no one can access protected routes without being logged in.
+ * Request proxy (formerly Middleware; renamed in Next.js 16).
+ *
+ * 1. CSRF: rejects cross-site POST/PATCH/PUT/DELETE requests to any /api route. Auth cookies are SameSite=Lax,
+ *    and this same-origin check closes the remaining gaps (sibling subdomains, `text/plain` JSON bodies).
+ * 2. Abuse limits on /api: request body size cap and per-IP rate limits for writes and auth endpoints.
+ * 3. Optimistic auth gate for /register, /registration, /admin, /api/register and /api/admin: requests that carry
+ *    no session at all are bounced early. This is NOT the authorization boundary; every route handler validates
+ *    the token with Supabase and checks roles itself.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/api/')) {
+    if (isCrossSiteMutation(request)) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Cross-site requests are not allowed.' },
+        { status: 403 }
+      );
+    }
+
+    if (Number(request.headers.get('content-length') || 0) > MAX_API_BODY_BYTES) {
+      return NextResponse.json({ error: 'Payload Too Large' }, { status: 413 });
+    }
+
+    const ip = clientIp(request.headers);
+    if (pathname.startsWith('/api/auth/') && !authLimiter.hit(ip)) return tooMany();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !mutationLimiter.hit(ip)) return tooMany();
+  }
 
   const isRegisterPage =
     pathname === '/register' ||
@@ -77,9 +113,6 @@ export const config = {
     '/registration/:path*',
     '/admin',
     '/admin/:path*',
-    '/api/register',
-    '/api/register/:path*',
-    '/api/admin',
-    '/api/admin/:path*',
+    '/api/:path*',
   ],
 };

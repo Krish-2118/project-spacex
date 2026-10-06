@@ -19,7 +19,7 @@ const RADIUS = { rect: '', rounded: '12px', circle: '50%', pill: '9999px' };
  * Image placeholder matching the design's <image-slot>: shows the slot's image when one is
  * configured in SLOT_IMAGES, otherwise an empty frame with an icon and caption.
  */
-export default function ImageSlot({ id, shape = 'rounded', fit = 'cover', placeholder = 'Drop an image', style, attract, loading }: Props) {
+export default function ImageSlot({ id, shape = 'rounded', fit = 'cover', placeholder = 'Drop an image', style, attract }: Props) {
   const img = SLOT_IMAGES[id];
   const radius = RADIUS[shape];
   return (

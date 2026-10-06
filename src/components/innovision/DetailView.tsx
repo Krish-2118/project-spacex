@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- view-model props are untyped across the views */
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
@@ -502,7 +503,7 @@ export default function DetailView({ v }: { v: V }) {
                 <span style={{ position: "absolute", left: "-30%", top: "40%", width: "160%", height: "22%", borderRadius: "50%", border: "1.5px solid rgba(236,232,223,.5)", transform: "rotate(-14deg)" }}></span>
               </span>
               <small style={{ fontSize: "13px", letterSpacing: ".3em", opacity: ".7" }}>NEXT WORLD</small>
-              <strong style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,7vw,120px)", lineHeight: "1", color: "transparent", WebkitTextStroke: "1.5px #ECE8DF", transition: "color .6s cubic-bezier(.25,1,.1,1)", textAlign: "center" }} className="hv-paper">{v.nw.name}</strong>
+              <strong style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,7vw,120px)", lineHeight: "1", color: "transparent", WebkitTextStroke: "1.5px #ECE8DF", transition: "color .6s cubic-bezier(.25,1,.1,1)", textAlign: "center" }} className="hv-paper">{v.nw.nameU}</strong>
             </a>
           </div>
         </section>

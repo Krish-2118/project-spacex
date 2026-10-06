@@ -1,74 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { getAuthenticatedUser } from '@/lib/auth-server';
+import { safeHttpUrl } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 
+const meta = (v: unknown, max: number): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
+
 /**
  * POST /api/auth/profile
- * Safely fetches or creates a user profile using server admin privileges (bypasses client RLS).
+ * Fetches or creates the CALLER's profile using server admin privileges (bypasses client RLS).
+ * Identity, email and student type come from the verified access token, never from the request body.
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { userId, email, fullName, avatarUrl, phone, studentType } = body;
-
-    const token =
-      req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-      req.cookies.get('inn_access_token')?.value;
-
-    const supabase = getSupabaseAdmin(token || undefined);
-
-    const uid = userId;
-    if (!uid) {
-      return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const { user, token } = auth;
+
+    let body: Record<string, unknown> = {};
+    try {
+      const parsed = await req.json();
+      if (parsed && typeof parsed === 'object') body = parsed;
+    } catch {}
+
+    // The body's userId (sent by older clients) must match the authenticated user.
+    if (body.userId !== undefined && body.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const supabase = getSupabaseAdmin(token);
 
     // 1. Check if profile already exists
     const { data: existing, error: fetchErr } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', uid)
+      .eq('id', user.id)
       .maybeSingle();
 
     if (existing && !fetchErr) {
       return NextResponse.json({ success: true, profile: existing });
     }
 
-    // 2. Derive student type from email if not provided
-    const userEmail = email || '';
-    const isNitEmail = userEmail.toLowerCase().endsWith('@nitrkl.ac.in');
-    const computedStudentType = studentType || (isNitEmail ? 'internal' : 'external');
-    const computedName = fullName || userEmail.split('@')[0] || 'Explorer';
+    // 2. Derive everything from the verified auth user
+    const userEmail = (user.email || '').toLowerCase();
+    const isNitEmail = userEmail.endsWith('@nitrkl.ac.in');
+    const md = user.user_metadata || {};
 
     const newProfile = {
-      id: uid,
+      id: user.id,
       email: userEmail,
-      full_name: computedName,
-      avatar_url: avatarUrl || '',
-      phone: phone || null,
-      student_type: computedStudentType,
+      full_name: meta(md.full_name, 120) || meta(md.name, 120) || userEmail.split('@')[0] || 'Explorer',
+      avatar_url: safeHttpUrl(md.avatar_url) || safeHttpUrl(md.picture) || '',
+      phone: meta(md.phone, 20) || meta(user.phone, 20),
+      student_type: isNitEmail ? 'internal' : 'external',
       role: 'user',
       updated_at: new Date().toISOString(),
     };
 
-    // 3. Upsert profile with admin client (immune to client-side RLS 42501)
+    // 3. Insert only: never overwrite an existing row (and its role) with defaults.
     const { data: inserted, error: insertErr } = await supabase
       .from('profiles')
-      .upsert(newProfile, { onConflict: 'id' })
+      .upsert(newProfile, { onConflict: 'id', ignoreDuplicates: true })
       .select()
       .maybeSingle();
 
     if (insertErr) {
       console.error('Error in /api/auth/profile upsert:', insertErr);
-      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to initialise profile' }, { status: 500 });
+    }
+
+    if (!inserted) {
+      const { data: current } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      return NextResponse.json({ success: true, profile: current });
     }
 
     return NextResponse.json({ success: true, profile: inserted });
   } catch (err: unknown) {
     console.error('API /api/auth/profile error:', err);
-    const message = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json(
-      { error: message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

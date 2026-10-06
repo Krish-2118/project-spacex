@@ -5,6 +5,19 @@
 export const ITER_SOA_ERROR_MESSAGE =
   'Registration is not allowed for students from ITER - SOA.';
 
+/** Gender options for registration (values must match the registrations.gender CHECK in supabase/schema.sql). */
+export const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'others', label: 'Others' },
+] as const;
+
+export type Gender = (typeof GENDER_OPTIONS)[number]['value'];
+
+export function isGender(value: unknown): value is Gender {
+  return GENDER_OPTIONS.some((g) => g.value === value);
+}
+
 /**
  * Validates whether a given URL is a legitimate Google Drive or Google Docs link.
  */
@@ -79,6 +92,29 @@ export function isIterSoaCollege(college: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Returns `url` only if it is an absolute http(s) URL, otherwise null. Use before putting stored, user-supplied
+ * URLs into `href`/`src` so `javascript:`/`data:` payloads can never execute.
+ */
+export function safeHttpUrl(url: unknown): string | null {
+  if (typeof url !== 'string' || !url) return null;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Quotes one CSV cell and neutralises spreadsheet formula injection (cells starting with = + - @ tab or CR).
+ */
+export function csvCell(value: unknown): string {
+  let s = value === null || value === undefined ? '' : String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return `"${s.replace(/"/g, '""')}"`;
 }
 
 /**

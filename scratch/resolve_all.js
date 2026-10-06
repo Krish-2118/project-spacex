@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- standalone Node (CommonJS) script */
 const fs = require('fs');
 
 const files = [

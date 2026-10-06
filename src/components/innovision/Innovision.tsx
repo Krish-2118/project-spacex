@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
 // @ts-nocheck
 "use client";
-import { IS_CLICKABLE, preloadClick, unlockClick, playClick, setClickMuted } from './clickSound';
-/* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
+import { CLICKABLE, preloadClick, unlockClick, playClick } from './clickSound';
 /* eslint-disable @typescript-eslint/no-explicit-any -- view-model is dynamically constructed and consumed across many child views */
 /* eslint-disable @typescript-eslint/no-unused-vars -- some destructured vars are kept for future use */
 
@@ -12,7 +12,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import {
   A, WORLDS, PRELOAD_CRITICAL, PRELOAD_DEFERRED, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
-  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SCHED_BLOCKS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
+  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, SCHED, SCHED_DAYS, SCHED_BLOCKS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
 } from './data';
 import HomeView from './HomeView';
 import WorldsView from './WorldsView';
@@ -47,7 +47,7 @@ import {
   type EventItem,
   type GalleryPhoto,
 } from '@/lib/supabase';
-import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE, isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS } from '@/lib/validation';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
 
@@ -110,7 +110,6 @@ type Attracted = HTMLElement & { _a: { x: number; y: number; tx: number; ty: num
 interface Props {
   /** Minimum loader duration in seconds. */
   loaderSeconds?: number;
-  startMuted?: boolean;
   skipLoader?: boolean;
   /** Google OAuth client ID for "Continue with Google" (defaults to NEXT_PUBLIC_GOOGLE_CLIENT_ID). */
   googleClientId?: string;
@@ -122,7 +121,7 @@ interface Props {
 
 interface State {
   /** dIndex: world shown by the detail page; it only follows index when that page is prepared. */
-  view: ViewName; index: number; dIndex: number; muted: boolean; about: boolean; compact: boolean; narrow: boolean;
+  view: ViewName; index: number; dIndex: number; about: boolean; compact: boolean; narrow: boolean;
   menu: boolean; toastOn: boolean; toastMsg: string; curtainLabel: string; curtainKicker: string;
   gIdx: number; sel: Record<string, Sel>; bag: BagLine[]; bagOpen: boolean; added: string | null;
   /** Schedule: selected day index, starred event ids. */
@@ -169,13 +168,15 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
-  state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
+  state: State = { view: 'loading', index: 0, dIndex: 0, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
     auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
     adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
   _authReady = (() => { let res = () => {}; const p = new Promise<void>((r) => { res = r; }); return { p, res, done: false }; })();
+  /** Bumped on every sign-out, so a profile lookup still in flight can't put a logged-out visitor back. */
+  _authEpoch = 0;
   _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
   // flagship rover ticker; _rvReseq is set when roverPauses changes so the drive sequence is rebuilt
   _rvTick: ((time: number, dms: number) => void) | null = null; _rvReseq = false;
@@ -233,16 +234,13 @@ export default class Innovision extends Component<Props, State> {
 
   componentDidMount() {
     this.alive = true;
-    let m = !!this.props.startMuted;
-    try { const v = localStorage.getItem('innovisionMuted'); if (v !== null) m = v === 'true'; } catch {}
     let bag: BagLine[] = [];
     // Stored values may be from an older version or edited by hand: keep only well-formed entries.
     try { bag = cleanBag(JSON.parse(localStorage.getItem(BAG_KEY) || '[]')); } catch {}
     let saved: string[] = [];
     try { const sv = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); if (Array.isArray(sv)) saved = sv.filter((x) => typeof x === 'string'); } catch {}
     try { this.hintSeen = localStorage.getItem(HINT_KEY) === '1'; } catch {}
-    setClickMuted(m);
-    this.setState({ muted: m, bag, saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
+    this.setState({ bag, saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
     if (lowPowerDevice()) this.goLowPower();
     // Resize work forces layout (title fit, map panels), so it runs at most once per frame.
     let rz = 0;
@@ -1560,39 +1558,31 @@ export default class Innovision extends Component<Props, State> {
       purgeLocalStorageTokens();
       const supabase = getSupabase();
 
-      // 1. Exchange PKCE code if returning from Google OAuth redirect
-      if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
-        const searchParams = new URLSearchParams(window.location.search);
-        const code = searchParams.get('code');
-        if (code) {
-          try {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) {
-              console.warn('PKCE exchange warning:', error.message);
-            }
-          } catch (e) {
-            console.warn('exchangeCodeForSession error:', e);
-          } finally {
-            cleanAuthUrl();
-          }
+      // 1. Check the active session. getSession waits for the client to start, which (detectSessionInUrl) already
+      //    exchanges the PKCE code when returning from Google, so the code is only exchanged by hand as a fallback.
+      let { data: { session } } = await supabase.auth.getSession();
+      const code = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('code') : null;
+      if (!session && code) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) console.warn('PKCE exchange warning:', error.message);
+          session = data?.session ?? null;
+        } catch (e) {
+          console.warn('exchangeCodeForSession error:', e);
         }
-      } else {
-        cleanAuthUrl();
       }
-
-      // 2. Check active session from cookies / client
-      const { data: { session } } = await supabase.auth.getSession();
+      cleanAuthUrl();
       purgeLocalStorageTokens();
 
       if (session?.user) {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
           console.warn('Cached session is invalid or user was removed. Signing out...');
+          this._authEpoch++;
           await signOutUser();
           return;
         }
-        await saveSessionToDatabase(session);
-        await this.handleUserSession(user);
+        await Promise.all([saveSessionToDatabase(session), this.handleUserSession(user)]);
       } else {
         // 3. Fall back to Server/Database session via cookies (ZERO localStorage)
         const dbAuth = await fetchSessionFromDatabase();
@@ -1611,23 +1601,35 @@ export default class Innovision extends Component<Props, State> {
         }
       }
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Supabase awaits this callback while holding its auth lock, so it must not await Supabase calls itself
+      // (that deadlocks the client, and a later signOut then never finishes). The work runs on the next tick.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         cleanAuthUrl();
         purgeLocalStorageTokens();
-        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-          await saveSessionToDatabase(session);
-          await this.handleUserSession(session.user);
-        } else if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
+          this._authEpoch++;
           this.reg = null;
           this.pass = null;
-          purgeLocalStorageTokens();
-          this.setState({
-            user: null,
-            registration: null,
-            adminOpen: false,
-            profileOpen: false,
-            phoneModalOpen: false,
-          });
+          if (this.alive) {
+            this.setState({
+              user: null,
+              registration: null,
+              adminOpen: false,
+              profileOpen: false,
+              phoneModalOpen: false,
+            });
+          }
+          return;
+        }
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+          const epoch = this._authEpoch;
+          const known = this.state.user?.id === session.user.id;
+          setTimeout(() => {
+            if (!this.alive || epoch !== this._authEpoch) return;
+            saveSessionToDatabase(session);
+            // A refreshed token or a re-focused tab for the same account needs no profile reload.
+            if (!known) this.handleUserSession(session.user);
+          }, 0);
         }
       });
       this.cleanups.push(() => subscription.unsubscribe());
@@ -1640,11 +1642,13 @@ export default class Innovision extends Component<Props, State> {
   };
 
   handleUserSession = async (authUser: any) => {
+    const epoch = this._authEpoch;
     const intent = typeof window !== 'undefined' ? sessionStorage.getItem('inv_login_intent') : null;
     const isNitEmail = authUser.email?.toLowerCase().endsWith('@nitrkl.ac.in');
 
     if (intent === 'internal' && !isNitEmail) {
       if (typeof window !== 'undefined') sessionStorage.removeItem('inv_login_intent');
+      this._authEpoch++;
       await signOutUser();
       this.setState({
         user: null,
@@ -1655,13 +1659,16 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    const profile = await getOrCreateUserProfile(authUser);
+    const [profile, registration] = await Promise.all([
+      getOrCreateUserProfile(authUser),
+      fetchUserRegistration(authUser.id, authUser.email),
+    ]);
+    // Signed out (or signed in as someone else) while these were loading: this result is stale.
+    if (!this.alive || epoch !== this._authEpoch) return;
     if (!profile) {
       this.setState({ user: null, registration: null });
       return;
     }
-
-    const registration = await fetchUserRegistration(authUser.id, authUser.email);
 
     if (registration) {
       this.pass = {
@@ -1708,6 +1715,7 @@ export default class Innovision extends Component<Props, State> {
   };
 
   refreshUserProfile = async (userId: string) => {
+    const epoch = this._authEpoch;
     try {
       const supabase = getSupabase();
       const { data, error } = await supabase
@@ -1716,6 +1724,7 @@ export default class Innovision extends Component<Props, State> {
         .eq('id', userId)
         .maybeSingle();
 
+      if (!this.alive || epoch !== this._authEpoch || this.state.user?.id !== userId) return;
       if (data && !error) {
         this.setState({ user: data as UserProfile });
       }
@@ -1756,10 +1765,11 @@ export default class Innovision extends Component<Props, State> {
   }
 
   logout = async () => {
+    // Flip the HUD back to LOG IN straight away; the server and Supabase sign-out finish in the background.
+    this._authEpoch++;
     this.reg = null;
     this.pass = null;
     this.dropFiles();
-    await signOutUser();
     const f = this.$ && this.$('[data-auth-form]');
     if (f) f.reset();
     this.setState({
@@ -1777,6 +1787,11 @@ export default class Innovision extends Component<Props, State> {
       gErr: '',
     });
     this.toast('Logged out. See you in orbit.');
+    try {
+      await signOutUser();
+    } catch (err) {
+      console.warn('signOutUser error:', err);
+    }
   };
   // @ts-ignore
   emailOk(x) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(x); }
@@ -2033,7 +2048,7 @@ export default class Innovision extends Component<Props, State> {
       gsap.to(this.$('[data-a-planet-wrap]'), { rotation: -n * 26, duration: 1.8, ease: 'expo.out' });
       const node = this.$$('[data-rail-node]')[n];
       if (node) gsap.fromTo(node, { scale: .5 }, { scale: 1, duration: .8, ease: 'back.out(3)' });
-      if (n === 2) setTimeout(() => this.scan('qr'), 380);
+      if (n === 1) setTimeout(() => this.scan('qr'), 380);
     });
   }
   railGo(k) { const s = this.state; if (s.authMode === 'register' && k < s.step && !s.busyLbl) this.toStep(k); }
@@ -2050,7 +2065,7 @@ export default class Innovision extends Component<Props, State> {
     this.setState({ err });
     const k = Object.keys(err)[0];
     if (!k) return false;
-    if (k !== 'idfile' && k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
+    if (k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
     const row = this.$('[data-auth-act]');
     if (row && !this.reduce) gsap.fromTo(row, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
     return true;
@@ -2063,19 +2078,18 @@ export default class Innovision extends Component<Props, State> {
   dropFile(kind) { return (e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.setState({ drag: '' }); if (f) this.takeFile(kind, f); }; }
   // @ts-ignore
   takeFile = async (kind, f) => {
-    const ek = kind === 'id' ? 'idfile' : 'payfile';
+    const ek = 'payfile';
     const isImg = /^image\//.test(f.type);
-    const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
 
-    if (kind === 'pay' ? !isImg : !(isImg || isPdf)) {
-      this.fail({ [ek]: kind === 'pay' ? 'Upload the screenshot as an image (JPG or PNG).' : 'Use a JPG, PNG or PDF file.' });
+    if (!isImg) {
+      this.fail({ [ek]: 'Upload the screenshot as an image (JPG or PNG).' });
       return;
     }
 
     // 2MB max size limit requirement
     const MAX_SIZE = 2 * 1024 * 1024;
     if (f.size > MAX_SIZE) {
-      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller photo or PDF (max 2MB).' });
+      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller image (max 2MB).' });
       return;
     }
 
@@ -2095,10 +2109,12 @@ export default class Innovision extends Component<Props, State> {
     try {
       const formData = new FormData();
       formData.append('file', f);
-      formData.append('folder', kind === 'id' ? '/innovision/id_cards' : '/innovision/payments');
+      formData.append('folder', '/innovision/payments');
 
+      const { data: { session } } = await getSupabase().auth.getSession();
       const res = await fetch('/api/upload', {
         method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         body: formData,
       });
 
@@ -2113,7 +2129,10 @@ export default class Innovision extends Component<Props, State> {
           [kind]: {
             name: f.name,
             size: f.size,
-            url: data.url, // Real ImageKit CDN URL
+            // The ImageKit file is private (its URL doesn't load without a signature), so keep showing the
+            // local preview and submit the stored ImageKit URL with the registration.
+            url: previewUrl,
+            remoteUrl: data.url,
             fileId: data.fileId,
             pdf: !isImg,
             status: 'done',
@@ -2153,7 +2172,7 @@ export default class Innovision extends Component<Props, State> {
     if (this._up && this._up[kind]) this._up[kind].kill();
     this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
   }
-  replaceFile(kind) { const i = this.$('[data-auth] [name="' + (kind === 'id' ? 'idfile' : 'payfile') + '"]'); if (i) i.click(); }
+  replaceFile() { const i = this.$('[data-auth] [name="payfile"]'); if (i) i.click(); }
   dropFiles() { Object.values(this.state.files || {}).forEach((f: any) => { if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); }); }
   // @ts-ignore
   copyUpi = () => {
@@ -2230,8 +2249,10 @@ export default class Innovision extends Component<Props, State> {
       const email = user.email; // LOCKED - CANNOT BE ALTERED
       const phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
       const enrollment_no = v('enrollment_no');
+      const gender = v('gender');
 
       if (name.length < 2) err.name = 'Tell us your full name.';
+      if (!GENDERS.some((g) => g.value === gender)) err.gender = 'Select your gender.';
       if (!isInternal && college.length < 3) {
         err.college = 'Which college are you from?';
       } else if (!isInternal && (isIterSoaCollege(college) || isIterSoaEmail(email))) {
@@ -2241,9 +2262,9 @@ export default class Innovision extends Component<Props, State> {
       if (isInternal && !enrollment_no) err.enrollment_no = 'Enter your NIT Rourkela Roll / Enrollment number.';
 
       if (this.fail(err)) return;
-      this.reg = { name, college, email, phone, enrollment_no };
+      this.reg = { name, college, email, phone, enrollment_no, gender };
 
-      // INTERNAL NIT RKL STUDENTS: NO ID CARD NEEDED & AUTO-CONFIRMED (NO ADMIN APPROVAL)
+      // INTERNAL NIT RKL STUDENTS: AUTO-CONFIRMED (NO PAYMENT OR ADMIN APPROVAL)
       if (isInternal) {
         this.wait('CONFIRMING', 1000).then(async () => {
           const regId = this.newId();
@@ -2255,8 +2276,8 @@ export default class Innovision extends Component<Props, State> {
             college: 'National Institute of Technology, Rourkela',
             phone,
             enrollment_no,
+            gender,
             student_type: 'internal' as const,
-            id_card_url: '', // Zero ID card required for internal students!
             amount: 0,
             status: 'confirmed' as const, // Auto-confirmed! No approval needed!
           };
@@ -2293,22 +2314,14 @@ export default class Innovision extends Component<Props, State> {
         return;
       }
 
-      // External students proceed to Step 1 (ID card upload)
+      // External students proceed to Step 1 (payment)
       this.toStep(1);
     } else if (s.step === 1) {
-      const fi = files.id;
-      if (!fi) err.idfile = 'Upload your college ID to continue.';
-      else if (fi.status !== 'done') err.idfile = 'Hold on, your ID is still uploading to ImageKit.';
-      if (this.fail(err)) return;
-
-      // External students proceed to payment
       this.toStep(2);
     } else if (s.step === 2) {
-      this.toStep(3);
-    } else if (s.step === 3) {
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
-      else if (fp.status !== 'done') err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
+      else if (fp.status !== 'done' || !fp.remoteUrl) err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
       if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
       if (this.fail(err)) return;
 
@@ -2323,9 +2336,9 @@ export default class Innovision extends Component<Props, State> {
           college: r.college,
           phone: r.phone,
           enrollment_no: r.enrollment_no,
+          gender: r.gender,
           student_type: 'external' as const,
-          id_card_url: files.id.url,
-          payment_screenshot_url: fp.url,
+          payment_screenshot_url: fp.remoteUrl,
           utr,
           amount: 499,
           status: 'pending' as const, // PENDING FOR EXTERNAL
@@ -2391,7 +2404,7 @@ export default class Innovision extends Component<Props, State> {
   authVals(s) {
   // @ts-ignore
     const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.8 0.12 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
-    const E = Object.assign({ name: '', college: '', email: '', phone: '', enrollment_no: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
+    const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
     Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });
@@ -2404,6 +2417,7 @@ export default class Innovision extends Component<Props, State> {
       email: user?.email || '',
       phone: user?.phone || R.phone || '',
       enrollment_no: user?.enrollment_no || s.registration?.enrollment_no || R.enrollment_no || '',
+      gender: R.gender || s.registration?.gender || '',
     };
   // @ts-ignore
     const up = (kind, ek, prompt) => {
@@ -2416,13 +2430,13 @@ export default class Innovision extends Component<Props, State> {
       };
     };
     const showRail = reg || (am === 'pass' && st === 4);
-    const notes = [regVals.name, files.id && files.id.name, 'by UPI', 'Submitted'];
+    const notes = [regVals.name, 'by UPI', 'Submitted'];
 
     // Rail steps differ for internal vs external students:
-    // Internal students do not require an ID card or admin approval (1 direct step)
+    // Internal students do not pay or need admin approval (1 direct step)
     const railSteps = isInternal
       ? [['DETAILS', 'Roll no & phone number', 'DETAILS']]
-      : [['DETAILS', 'Name, college, email, phone', 'DETAILS'], ['COLLEGE ID', 'Photo or PDF of your ID card', 'ID'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
+      : [['DETAILS', 'Name, gender, college, phone', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
 
     return {
       noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
@@ -2431,21 +2445,21 @@ export default class Innovision extends Component<Props, State> {
       authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
       authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : "You're on board",
       authSub: reg
-        ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Four short stops to register for Innovision 2026 at NIT Rourkela.')
+        ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Three short stops to register for Innovision 2026 at NIT Rourkela.')
         : am === 'login' ? 'Sign in using your Google account or institute webmail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
       railD: show(showRail && !s.narrow && !isInternal), hprogD: showRail && s.narrow && !isInternal ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
         return {
-          label, short, note: done ? (k === 2 ? 'by UPI' : notes[k] || hint) : hint, cur: cur ? 'step' : 'false',
+          label, short, note: done ? notes[k] || hint : hint, cur: cur ? 'step' : 'false',
           c: done || cur ? cream : 'rgba(236,232,223,.6)', bc: done || cur ? gold : 'rgba(236,232,223,.3)', fill: done ? gold : 'transparent', chk: done ? 1 : 0, dot: cur ? 1 : 0, dotS: cur ? 1 : .2,
           lineD: k < railSteps.length - 1 ? 'block' : 'none', lineS: done ? 1 : 0, segS: done ? 1 : cur ? .5 : 0,
           lock: !back || !!s.busyLbl, cursor: back ? 'pointer' : 'default', go: () => this.railGo(k), aria: label + (done ? ', done. Go back to edit' : cur ? ', current step' : ''),
         };
       }),
-      d: { s0: show(reg && st === 0 && !!s.user), s1: show(reg && st === 1 && !isInternal && !!s.user), s2: show(reg && st === 2 && !isInternal && !!s.user), s3: show(reg && st === 3 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
-      err: E, bc, inv,
-      upId: up('id', 'idfile', 'Drop your ID card here or browse (Max 2MB)'), upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
+      d: { s0: show(reg && st === 0 && !!s.user), s2: show(reg && st === 1 && !isInternal && !!s.user), s3: show(reg && st === 2 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
+      err: E, bc, inv, genderOptions: GENDERS,
+      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
@@ -2455,7 +2469,7 @@ export default class Innovision extends Component<Props, State> {
       switchLbl: !s.user ? 'SIGN IN' : 'REGISTER',
       switchQD: s.narrow ? 'none' : 'inline',
       canBack: reg && st > 0 && !isInternal, stepBack: this.stepBack,
-      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE', 'CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
+      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
       busy: !!s.busyLbl, busyO: s.busyLbl ? .72 : 1,
       passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || P.registration_id || '', passStatus: P.status ? P.status.toUpperCase() : (isInternal ? 'CONFIRMED' : 'PAYMENT UNDER REVIEW'),
       passNote: (P.status === 'CONFIRMED' || (isInternal && !P.status)) ? 'Show this pass at the registration desk when you arrive at NIT Rourkela.' : (P.status === 'REJECTED' ? 'Your registration was declined. Please contact the helpdesk.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified by the IT-Team.'),
@@ -2473,14 +2487,6 @@ export default class Innovision extends Component<Props, State> {
     const href = e.currentTarget.getAttribute('href') || '#/';
     this.setState({ menu: false, about: false, bagOpen: false });
     this.go(href);
-  };
-  toggleSound = () => {
-    const m = !this.state.muted;
-    setClickMuted(m);
-    // The click that turns sound on was silent (still muted when it landed): confirm with a tick now.
-    if (!m) playClick();
-    try { localStorage.setItem('innovisionMuted', String(m)); } catch {}
-    this.setState({ muted: m });
   };
   onWheel = (e: WheelEvent) => {
     const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -2587,7 +2593,7 @@ export default class Innovision extends Component<Props, State> {
       bandA: Array.from({ length: 6 }, () => ({ t: "EASTERN INDIA'S LARGEST TECH FEST" })),
       bandB: Array.from({ length: 6 }, () => ({ t: 'INNOVISION 2026 · NIT ROURKELA' })),
       heroChars: 'INNOVISION'.split('').map((ch) => ({ ch })),
-      briefWords: BRIEF.split(' ').map((t) => { const m = t.match(/^\[(\w+)\]$/); return m ? { isImg: true as const, img: A + PILLS[m[1]][0], pos: PILLS[m[1]][1], t: '' } : { isImg: false as const, img: '', pos: '', t }; }),
+      briefWords: BRIEF.split(' '),
       heroSparks: HERO_SPARKS,
       loaderSparks: LOADER_SPARKS,
       worlds: WORLDS.map((x, k) => ({
@@ -2624,7 +2630,7 @@ export default class Innovision extends Component<Props, State> {
               dur: '',
               img: A + dw.gates[k % dw.gates.length],
               posterUrl: ev.poster_url || '',
-              brochureUrl: ev.brochure_url || '',
+              brochureUrl: ev.brochure_url && isValidGoogleDriveUrl(ev.brochure_url) ? ev.brochure_url : '',
             }))
           : dw.missions.map(([name, text], k) => ({
               no: String(k + 1).padStart(2, '0'),
@@ -2677,7 +2683,6 @@ export default class Innovision extends Component<Props, State> {
       hintMain: s.coarse ? 'Swipe left or right to visit all three worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all three worlds' : 'Use the side arrows or ← → keys to visit all three worlds',
       hintSub: s.coarse ? 'Tap Enter, or the planet itself, to step inside one.' : 'Hover over a planet, then click Enter to step inside.',
       dismissHint: this.dismissHint,
-      muted: s.muted, soundOn: !s.muted, soundLabel: s.muted ? 'Turn sound on' : 'Turn sound off', toggleSound: this.toggleSound,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',
       aboutHidden: !s.about,
       openAbout: (e?: MouseEvent) => { if (e) e.preventDefault(); this.setState({ about: true, menu: false }); },

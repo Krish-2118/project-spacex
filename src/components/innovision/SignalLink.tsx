@@ -12,8 +12,6 @@
  *     where they still cross the panel.
  */
 
-import { imgSize } from './data';
-
 type Fit = { rW: number; sW: number; tilt: number; link: number; sink: number; satRot: number };
 
 /** Landscape: the sky above the planet is ~36% of its size. Portrait: well over half, so everything grows. */

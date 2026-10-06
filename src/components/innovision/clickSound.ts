@@ -19,7 +19,6 @@ let ctx: AudioContext | null = null;
 let out: GainNode | null = null;
 let buf: AudioBuffer | null = null;
 let bytes: Promise<ArrayBuffer | null> | null = null;
-let muted = false;
 /** Time of the last tick: a click on a <label> also clicks its input, which should not tick twice. */
 let last = -1e9;
 
@@ -60,11 +59,8 @@ export function unlockClick() {
   if (!buf) void bytes!.then((ab) => (ab && !buf ? decode(c, ab.slice(0)) : null)).then((b) => { if (b) buf ??= b; }).catch(() => {});
 }
 
-export function setClickMuted(m: boolean) { muted = m; }
-
 /** Plays the tick now: the decoded sample, or a synthesized one while it is not ready. */
 export function playClick() {
-  if (muted) return;
   const now = performance.now();
   if (now - last < 60) return;
   last = now;

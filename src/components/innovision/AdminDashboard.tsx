@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Registration } from '@/lib/supabase';
 import { getSupabase, fetchSessionFromDatabase } from '@/lib/supabase';
+import { csvCell, GENDER_OPTIONS, safeHttpUrl } from '@/lib/validation';
+
+const genderLabel = (value: string) => GENDER_OPTIONS.find((g) => g.value === value)?.label ?? value;
 import EventsManager from './admin/EventsManager';
 import GalleryManager from './admin/GalleryManager';
 
@@ -95,6 +98,27 @@ export default function AdminDashboard({
       console.warn('getAuthToken error:', e);
     }
     return null;
+  };
+
+  // Payment screenshots are private in ImageKit: ask the server for a short-lived signed URL (staff only).
+  const [proofBusyId, setProofBusyId] = useState<string | null>(null);
+  const viewPaymentProof = async (reg: Registration) => {
+    if (!reg.id) return;
+    try {
+      setProofBusyId(reg.id);
+      const token = await getAuthToken();
+      const res = await fetch(`/api/admin/registrations/payment-proof?id=${encodeURIComponent(reg.id)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'Failed to load payment screenshot');
+      setPreviewImage({ url: data.url, title: `Payment Screenshot · ${reg.name}` });
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to load payment screenshot', 'error');
+    } finally {
+      setProofBusyId(null);
+    }
   };
 
   // Fetch registrations
@@ -285,6 +309,7 @@ export default function AdminDashboard({
     const headers = [
       'Registration ID',
       'Name',
+      'Gender',
       'Email',
       'Phone',
       'College',
@@ -293,26 +318,25 @@ export default function AdminDashboard({
       'Status',
       'Amount (INR)',
       'UPI UTR',
-      'ID Card URL',
       'Payment Screenshot URL',
       'Registered At',
     ];
 
     const rows = registrations.map((r) => [
-      `"${r.registration_id}"`,
-      `"${r.name.replace(/"/g, '""')}"`,
-      `"${r.email}"`,
-      `"${r.phone}"`,
-      `"${r.college.replace(/"/g, '""')}"`,
-      `"${(r.enrollment_no || '').replace(/"/g, '""')}"`,
-      `"${r.student_type}"`,
-      `"${r.status}"`,
-      `"${r.amount}"`,
-      `"${r.utr || ''}"`,
-      `"${r.id_card_url}"`,
-      `"${r.payment_screenshot_url || ''}"`,
-      `"${r.created_at || ''}"`,
-    ]);
+      r.registration_id,
+      r.name,
+      r.gender ? genderLabel(r.gender) : '',
+      r.email,
+      r.phone,
+      r.college,
+      r.enrollment_no,
+      r.student_type,
+      r.status,
+      r.amount,
+      r.utr,
+      r.payment_screenshot_url,
+      r.created_at,
+    ].map(csvCell));
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -346,14 +370,14 @@ export default function AdminDashboard({
 
     const headers = ['User ID', 'Full Name', 'Email', 'Phone', 'Student Type', 'Role', 'Registered At'];
     const rows = filteredUsers.map((u) => [
-      `"${u.id}"`,
-      `"${(u.full_name || '').replace(/"/g, '""')}"`,
-      `"${u.email}"`,
-      `"${u.phone || ''}"`,
-      `"${u.student_type}"`,
-      `"${u.role}"`,
-      `"${u.created_at || ''}"`,
-    ]);
+      u.id,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.student_type,
+      u.role,
+      u.created_at,
+    ].map(csvCell));
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1136,6 +1160,9 @@ export default function AdminDashboard({
                             <div style={{ fontWeight: 700, fontSize: '14px' }}>{reg.name}</div>
                             <div style={{ fontSize: '12px', color: 'rgba(236,232,223,0.65)' }}>{reg.email}</div>
                             <div style={{ fontSize: '12px', color: 'rgba(236,232,223,0.5)' }}>+91 {reg.phone}</div>
+                            {reg.gender && (
+                              <div style={{ fontSize: '12px', color: 'rgba(236,232,223,0.5)' }}>{genderLabel(reg.gender)}</div>
+                            )}
                           </td>
 
                           {/* College & Enrollment */}
@@ -1168,30 +1195,11 @@ export default function AdminDashboard({
                           {/* Proofs */}
                           <td style={{ padding: '14px 18px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {reg.id_card_url && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewImage({ url: reg.id_card_url, title: `College ID · ${reg.name}` })}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    background: 'transparent',
-                                    border: '1px solid rgba(236,232,223,0.2)',
-                                    color: '#ECE8DF',
-                                    padding: '3px 8px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  <span>View ID Card</span>
-                                </button>
-                              )}
                               {reg.payment_screenshot_url && (
                                 <button
                                   type="button"
-                                  onClick={() => setPreviewImage({ url: reg.payment_screenshot_url!, title: `Payment Screenshot · ${reg.name}` })}
+                                  onClick={() => viewPaymentProof(reg)}
+                                  disabled={proofBusyId === reg.id}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -1205,8 +1213,11 @@ export default function AdminDashboard({
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  <span>View Payment</span>
+                                  <span>{proofBusyId === reg.id ? 'Loading…' : 'View Payment'}</span>
                                 </button>
+                              )}
+                              {!reg.payment_screenshot_url && (
+                                <span style={{ fontSize: '12px', color: 'rgba(236,232,223,0.4)' }}>—</span>
                               )}
                             </div>
                           </td>
@@ -1663,7 +1674,7 @@ export default function AdminDashboard({
       </main>
 
       {/* Image Preview Modal */}
-      {previewImage && (
+      {previewImage && safeHttpUrl(previewImage.url) && (
         <div
           role="dialog"
           aria-modal="true"
@@ -1701,7 +1712,7 @@ export default function AdminDashboard({
               </span>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <a
-                  href={previewImage.url}
+                  href={safeHttpUrl(previewImage.url) ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -1743,7 +1754,7 @@ export default function AdminDashboard({
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewImage.url}
+              src={safeHttpUrl(previewImage.url) ?? undefined}
               alt={previewImage.title}
               style={{
                 maxWidth: '100%',

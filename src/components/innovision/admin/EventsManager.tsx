@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { UserProfile, EventItem } from '@/lib/supabase';
-import { isValidGoogleDriveUrl } from '@/lib/auth-server';
+import { isValidGoogleDriveUrl } from '@/lib/validation';
 
 interface EventsManagerProps {
   currentUser: UserProfile;
@@ -765,7 +765,7 @@ export default function EventsManager({
 
 
                 {/* Optional Google Drive Brochure Link */}
-                {event.brochure_url && (
+                {event.brochure_url && isValidGoogleDriveUrl(event.brochure_url) && (
                   <div style={{ paddingTop: '4px' }}>
                     <a
                       href={event.brochure_url}

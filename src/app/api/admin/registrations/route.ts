@@ -1,72 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { verifyStaff } from '@/lib/auth-server';
+import { isUuid, sanitizeFilterValue } from '@/lib/security';
 
 export const runtime = 'nodejs';
-
-async function verifyStaff(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  let token = authHeader?.replace(/^Bearer\s+/i, '')?.trim();
-  if (!token || token === 'null' || token === 'undefined') {
-    token = req.cookies.get('inn_access_token')?.value?.trim();
-  }
-
-  // Also check sb-*-auth-token cookies if inn_access_token is missing
-  if (!token || token === 'null' || token === 'undefined') {
-    const allCookies = req.cookies.getAll();
-    for (const c of allCookies) {
-      if (c.name.includes('-auth-token') || c.name.includes('supabase-auth')) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(c.value));
-          if (parsed?.access_token) {
-            token = parsed.access_token;
-            break;
-          }
-        } catch {}
-      }
-    }
-  }
-
-  let supabase = getSupabaseAdmin(token || undefined);
-  let activeUser = null;
-
-  if (token && token !== 'null' && token !== 'undefined') {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (!authErr && user) {
-      activeUser = user;
-    }
-  }
-
-  // If token is expired or invalid, attempt refresh using inn_refresh_token cookie
-  if (!activeUser) {
-    const refreshToken = req.cookies.get('inn_refresh_token')?.value?.trim();
-    if (refreshToken && refreshToken !== 'null' && refreshToken !== 'undefined') {
-      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession({
-        refresh_token: refreshToken,
-      });
-      if (!refreshErr && refreshed.user && refreshed.session?.access_token) {
-        activeUser = refreshed.user;
-        token = refreshed.session.access_token;
-        supabase = getSupabaseAdmin(token);
-      }
-    }
-  }
-
-  if (!activeUser) {
-    return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
-  }
-
-  const { data: profile, error: profErr } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', activeUser.id)
-    .maybeSingle();
-
-  if (profErr || !profile || !['admin', 'it-team'].includes(profile.role)) {
-    return { error: 'Forbidden: Admin or IT-Team access required', status: 403 };
-  }
-
-  return { user: activeUser, role: profile.role, supabase };
-}
 
 // GET all registrations (with optional filtering)
 export async function GET(req: NextRequest) {
@@ -80,7 +16,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const studentType = searchParams.get('student_type');
-    const query = searchParams.get('q');
+    // Stripped of PostgREST filter syntax so a search term can't inject extra `.or()` conditions.
+    const query = sanitizeFilterValue(searchParams.get('q'));
 
     let dbQuery = supabase
       .from('registrations')
@@ -88,10 +25,16 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (status && status !== 'all') {
+      if (!['pending', 'confirmed', 'rejected'].includes(status)) {
+        return NextResponse.json({ error: 'Invalid status filter' }, { status: 400 });
+      }
       dbQuery = dbQuery.eq('status', status);
     }
 
     if (studentType && studentType !== 'all') {
+      if (!['internal', 'external'].includes(studentType)) {
+        return NextResponse.json({ error: 'Invalid student_type filter' }, { status: 400 });
+      }
       dbQuery = dbQuery.eq('student_type', studentType);
     }
 
@@ -104,12 +47,14 @@ export async function GET(req: NextRequest) {
     const { data: registrations, error } = await dbQuery;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('/api/admin/registrations database error:', error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, registrations: registrations || [] });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch registrations';
+    console.error('/api/admin/registrations error:', err);
+    const message = 'Failed to fetch registrations';
     return NextResponse.json(
       { error: message },
       { status: 500 }
@@ -135,6 +80,10 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    if (!isUuid(registrationId)) {
+      return NextResponse.json({ error: 'Invalid registrationId' }, { status: 400 });
+    }
+
     if (!['confirmed', 'rejected'].includes(status)) {
       return NextResponse.json(
         { error: "Invalid status. Must be 'confirmed' or 'rejected'" },
@@ -147,7 +96,7 @@ export async function PATCH(req: NextRequest) {
     // Fetch existing registration to verify status
     const { data: existing, error: fetchErr } = await supabase
       .from('registrations')
-      .select('id, status, registration_id')
+      .select('id, status, registration_id, user_id')
       .eq('id', registrationId)
       .maybeSingle();
 
@@ -155,6 +104,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         { error: 'Registration not found' },
         { status: 404 }
+      );
+    }
+
+    // Segregation of duties: staff can't approve or reject their own registration.
+    if (existing.user_id === user.id) {
+      return NextResponse.json(
+        { error: 'You cannot review your own registration. Ask another staff member.' },
+        { status: 403 }
       );
     }
 
@@ -177,16 +134,27 @@ export async function PATCH(req: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', registrationId)
+      // Only transition rows that are still pending, so two concurrent reviews can't both win.
+      .eq('status', 'pending')
       .select()
       .maybeSingle();
 
     if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      console.error('/api/admin/registrations database error:', updateErr);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
+    }
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: `Registration ${existing.registration_id} was already reviewed and cannot be altered.` },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({ success: true, registration: updated });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update registration status';
+    console.error('/api/admin/registrations error:', err);
+    const message = 'Failed to update registration status';
     return NextResponse.json(
       { error: message },
       { status: 500 }

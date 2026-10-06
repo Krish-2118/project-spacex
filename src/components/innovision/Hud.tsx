@@ -10,7 +10,7 @@ const FROST = "rgba(236,232,223,.86)";
 const EASE = "cubic-bezier(.25,1,.1,1)";
 
 /**
- * Fixed top bar: back, logo, nav, sound (orbit toggle), register / my pass, log in or profile, menu.
+ * Fixed top bar: back, logo, nav, register / my pass, log in or profile, menu.
  * At the top of a page the bars float over the scene and invert against it (mix-blend difference).
  * Once the page scrolls under them (v.hudSolid) that would invert the content too, so the top bar
  * settles onto a frosted paper strip with ink text.
@@ -52,19 +52,6 @@ export default function Hud({ v }: { v: V }) {
           </nav>
         )}
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "14px", pointerEvents: "auto" }}>
-          {/* Sound: a satellite on its orbit. It circles while sound is on and freezes where it is when off (ring dashed,
-              satellite hollow); turning sound on sends out one ping. On phones the label drops, leaving the orbit. */}
-          <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} title={v.soundLabel} data-on={v.soundOn ? "" : undefined} className="hud-link hud-sound" style={{ display: "inline-flex", alignItems: "center", gap: "10px", minHeight: "40px", padding: "0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: LABEL, letterSpacing: ".14em", color: "inherit" }}>
-            <span className="hud-orbit" aria-hidden="true">
-              <svg viewBox="0 0 20 20">
-                <circle className="hud-orbit-ring" cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="1.5"></circle>
-                <g className="hud-orbit-sat"><circle cx="10" cy="3" r="2.6"></circle></g>
-              </svg>
-              {v.soundOn && <span key="ping" className="hud-orbit-ping"></span>}
-            </span>
-            <span className="hud-sound-label"><span data-scr="">SOUND</span> <span className="hud-sound-state">{v.soundOn ? "ON" : "OFF"}</span></span>
-          </button>
-
           {/* Staff Portal Shortcut (Admin / IT-Team) */}
           {!v.noUser && v.isStaff && (
             <button
