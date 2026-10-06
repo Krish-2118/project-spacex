@@ -27,11 +27,11 @@ export default function Hud({ v }: { v: V }) {
         <div className="hud-group" style={{ display: "flex", alignItems: "center", gap: "18px", pointerEvents: "auto" }}>
           {v.isDetail && (
             <>
-              <a href={v.backHref} onMouseEnter={v.hover} className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 0", textDecoration: "none", fontWeight: "500", fontSize: LABEL, letterSpacing: ".04em", color: "inherit" }}>
+              <a href={v.backHref} onMouseEnter={v.hover} aria-label="Back" className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 0", textDecoration: "none", fontWeight: "500", fontSize: LABEL, letterSpacing: ".04em", color: "inherit" }}>
                 <svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true">
                   <path d="M5 1 1 5l4 4M1 5h15" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
                 </svg>
-                <span data-scr="">BACK</span>
+                <span data-scr="" className="hud-back-label">BACK</span>
               </a>
               <span style={{ width: "1px", height: "22px", background: "currentColor", opacity: ".4" }}></span>
             </>

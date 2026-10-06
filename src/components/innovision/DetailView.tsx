@@ -17,7 +17,8 @@ const TICKET_MASK = "radial-gradient(circle 13px at 120px 0,transparent 96%,#000
 const SNOW = 'oklch(0.97 0.012 180)';
 const WAVE = 'M2600 800L2600 520C2100 500 1700 470 1560 420C1440 380 1340 320 1270 230C1200 150 1100 100 990 108C880 116 800 180 790 262C784 316 826 350 868 330C900 314 904 276 878 262C880 220 930 190 980 200C1060 215 1090 320 1060 430C1030 540 940 610 800 640C600 680 300 660 -1000 690L-1000 800Z';
 const SWELL = 'M-1000 800L-1000 470C-700 430 -450 520 -150 470C150 420 350 500 650 455C950 410 1150 480 1450 440C1750 400 2000 470 2600 430L2600 800Z';
-const SHORE = 'M-1000 800L-1000 720C-600 690 -300 740 100 712C500 684 800 742 1200 712C1600 682 1900 736 2600 700L2600 800Z';
+// The shore runs on below the frame: on phones the scene is placed by its crest and its base can sit under the screen edge.
+const SHORE = 'M-1000 1400L-1000 720C-600 690 -300 740 100 712C500 684 800 742 1200 712C1600 682 1900 736 2600 700L2600 1400Z';
 const SPRAY: [number, number, number][] = [[760, 230, 7], [735, 188, 4], [772, 158, 9], [718, 282, 5], [812, 118, 6], [852, 80, 4], [902, 58, 8], [962, 38, 5], [1042, 52, 6], [1112, 72, 4], [1182, 96, 7], [742, 322, 4], [700, 240, 3], [884, 18, 3], [1012, 8, 4], [668, 300, 2.5], [1150, 30, 3]];
 
 function WaveScene() {
@@ -63,7 +64,7 @@ function WaveScene() {
       <g fill="none" stroke="oklch(0.3 0.06 185)" strokeWidth="3" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "iv-focus 5s ease-in-out infinite" }}>
         <path d="M1070 -130V-180H1120"></path><path d="M1380 -180H1430V-130"></path><path d="M1070 160V210H1120"></path><path d="M1380 210H1430V160"></path>
       </g>
-      <g fill="oklch(0.3 0.06 185)">
+      <g className="hp-freeze" fill="oklch(0.3 0.06 185)">
         <rect x="1210" y="232" width="6" height="22"></rect><rect x="1222" y="232" width="6" height="22"></rect>
         <text x="1242" y="251" style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "4px" }}>FREEZE FRAME · 1/8000 S</text>
       </g>
@@ -142,8 +143,8 @@ export default function DetailView({ v }: { v: V }) {
                     <img decoding="async" data-spin="180" src="/assets/moon-cratered.webp" alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
                   </div>
                 </div>
-                <div data-speed="-0.1" style={{ position: "absolute", right: "10%", top: "-12%", height: "88%", pointerEvents: "none" }}>
-                  <div data-depth=".35" style={{ height: "18%", marginTop: "60vh" }}><img decoding="async" data-spin="90" src="/assets/asteroid.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO }} /></div>
+                <div data-speed="-0.1" className="hp-asteroid">
+                  <div data-depth=".35" className="hp-asteroid-rock"><img decoding="async" data-spin="90" src="/assets/asteroid.webp" alt="" style={{ height: "100%", width: "auto", filter: MONO }} /></div>
                 </div>
               </>
             )}
@@ -205,7 +206,7 @@ export default function DetailView({ v }: { v: V }) {
             )}
             {v.isHighpoint && (
               <div data-speed="-0.03" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
-                <div data-depth=".3" style={{ position: "absolute", left: "calc(50% - 58vh)", bottom: "0", width: "116vh", height: "58vh" }}>
+                <div data-depth=".3" className="hp-wave">
                   <WaveScene />
                 </div>
               </div>
