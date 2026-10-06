@@ -241,6 +241,23 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 @media (max-width:519px){.hud-wordmark-detail{display:none}}
 @media (max-width:419px){.hud-bar,.hud-group{gap:12px !important}.hud-register{padding:10px 14px !important}}
 @media (max-width:419px){.hud-wordmark{display:none}}
+@media (max-width:379px){.hud-back-label{display:none}}
+
+/* ---------- highpoint wave (DetailView.tsx) ---------- */
+/* Landscape: the wave fills the lower half of the screen, centred on the frame. */
+.hp-wave{position:absolute;left:calc(50% - 58vh);bottom:0;width:116vh;height:58vh}
+.hp-asteroid{position:absolute;right:10%;top:-12%;height:88%;pointer-events:none}
+.hp-asteroid-rock{height:18%;margin-top:60vh}
+/* Portrait: sized and centred on the curl and surfer (viewBox x 660-1400, centred on 1030) so they stay on screen,
+   scaled down until the surfer (from y -150) clears the title and the curl (y 250) clears the worlds nav.
+   --s is one viewBox unit in px; 6vw is about half the fitted title's height. */
+@media (orientation:portrait){
+  .hp-wave{--s:max(.2px,min(calc(100vw / 740),calc((50vh - 6vw - 157px) / 400)));left:calc(50% - var(--s) * 1030);top:calc(50% + 6vw + 12px + var(--s) * 150);bottom:auto;width:calc(var(--s) * 1600);height:calc(var(--s) * 800)}
+  /* The asteroid drifts in the open sky left of the surfer, below the title; the caption would run off the right edge. */
+  .hp-asteroid{left:6%;right:auto;top:calc(50% + 6vw + 36px);height:min(11vh,22vw)}
+  .hp-asteroid-rock{height:100%;margin-top:0}
+  .hp-freeze{display:none}
+}
 
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
