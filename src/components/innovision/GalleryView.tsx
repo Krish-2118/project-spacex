@@ -7,7 +7,7 @@ import type { V } from './types';
 export default function GalleryView({ v }: { v: V }) {
   return (
     <section data-view="gallery" data-screen-label="Gallery" aria-label="Gallery" onWheel={v.gWheel} onTouchStart={v.gTouchStart} onTouchMove={v.gTouchMove} style={{ position: "absolute", inset: "0", overflow: "hidden", visibility: "hidden", background: "#0e0d0c", color: "#ECE8DF", touchAction: "none" }}>
-      <img data-g-stars="" src="/assets/stars.webp" alt="" style={{ position: "absolute", left: "-5%", top: "-5%", width: "110%", height: "110%", objectFit: "cover", opacity: ".85", pointerEvents: "none" }} />
+      <img decoding="async" data-g-stars="" src="/assets/stars.webp" alt="" style={{ position: "absolute", left: "-5%", top: "-5%", width: "110%", height: "110%", objectFit: "cover", opacity: ".85", pointerEvents: "none" }} />
       <div data-g-glow="" style={{ position: "absolute", left: "calc(50% - 5vmin)", top: "calc(50% - 5vmin)", width: "10vmin", height: "10vmin", borderRadius: "50%", background: "#ECE8DF", boxShadow: "0 0 60px 20px rgba(236,232,223,.2),0 0 160px 60px rgba(201,162,74,.14)", pointerEvents: "none" }}></div>
       <div style={{ position: "absolute", inset: "0", perspective: "1000px", perspectiveOrigin: "50% 50%", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: "0", transformStyle: "preserve-3d" }}>
@@ -33,9 +33,9 @@ export default function GalleryView({ v }: { v: V }) {
       </div>
       <div data-g-ui="" style={{ position: "absolute", left: "clamp(16px,2.6vw,44px)", bottom: "calc(clamp(16px,2.6vw,44px) + 56px)", pointerEvents: "none", mixBlendMode: "difference", color: "#fff" }}>
         <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 10px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.84 0.09 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />THE ARCHIVE</p>
-        <h1 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(48px,7vw,112px)", lineHeight: ".9" }}>Gallery</h1>
+        <h1 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,7vw,112px)", lineHeight: ".9" }}>Gallery</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: "14px", marginTop: "18px", fontSize: "13px", letterSpacing: ".18em" }}>
-          <span style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "28px", letterSpacing: "0" }}>{v.gCur.no}</span>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "28px", letterSpacing: "0" }}>{v.gCur.no}</span>
           <span style={{ opacity: ".6" }}>/ {v.gTotal}</span>
           <span>{v.gCur.titleU}</span>
         </div>
@@ -51,7 +51,7 @@ export default function GalleryView({ v }: { v: V }) {
       </div>
       <div data-g-end="" style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "0 20px", textAlign: "center", color: "#141312", opacity: "0", pointerEvents: "none", transition: "opacity .6s" }}>
         <p style={{ margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em" }}>END OF THE ARCHIVE</p>
-        <h2 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(34px,5vw,72px)", lineHeight: "1.02" }}>More memories land<br />after the fest.</h2>
+        <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,5vw,72px)", lineHeight: "1.02" }}>More memories land<br />after the fest.</h2>
         <button type="button" onClick={v.gRestart} onMouseEnter={v.hover} style={{ marginTop: "10px", padding: "16px 28px", border: "0", background: "#141312", color: "#ECE8DF", fontWeight: "700", fontSize: "14px", letterSpacing: ".06em", cursor: "pointer", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }}>
           <span data-scr="">BACK TO THE START</span>
         </button>

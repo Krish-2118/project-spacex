@@ -18,7 +18,7 @@ export default function WorldsView({ v }: { v: V }) {
           {w.deco && (
             <div data-depth=".55" aria-hidden="true" style={{ position: "absolute", left: w.decoL, top: w.decoT, height: w.decoH, pointerEvents: "none" }}>
               <div style={{ height: "100%", transform: `rotate(${w.decoR})` }}>
-                <img src={w.deco} alt="" style={{ height: "100%", width: "auto", mixBlendMode: "multiply", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
+                <img decoding="async" src={w.deco} alt="" style={{ height: "100%", width: "auto", mixBlendMode: "multiply", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
               </div>
             </div>
           )}
@@ -51,7 +51,7 @@ export default function WorldsView({ v }: { v: V }) {
                 </span>
                 Hover over the planet to enter
               </span>
-              <a href={w.href} aria-label={"Enter " + w.name} onMouseEnter={v.beep} className="world-cta-round" style={{ ["--cta-accent" as string]: w.accentL, gridArea: "1 / 1", position: "relative", placeItems: "center", width: "clamp(72px, 19vw, 88px)", aspectRatio: "1", borderRadius: "50%", textDecoration: "none", color: "#ECE8DF", background: "#141312", boxShadow: "0 0 0 1.5px rgba(236,232,223,.55)", WebkitTapHighlightColor: "transparent" }}>
+              <a href={w.href} aria-label={"Enter " + w.name} className="world-cta-round" style={{ ["--cta-accent" as string]: w.accentL, gridArea: "1 / 1", position: "relative", placeItems: "center", width: "clamp(72px, 19vw, 88px)", aspectRatio: "1", borderRadius: "50%", textDecoration: "none", color: "#ECE8DF", background: "#141312", boxShadow: "0 0 0 1.5px rgba(236,232,223,.55)", WebkitTapHighlightColor: "transparent" }}>
                 <span data-cta-ping="" aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", border: `1.5px solid ${w.accentL}` }}></span>
                 <span aria-hidden="true" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: "700", letterSpacing: ".18em" }}>
                   <span style={{ paddingLeft: ".18em" }}>ENTER</span>
@@ -66,29 +66,29 @@ export default function WorldsView({ v }: { v: V }) {
           </div>
           <div data-s-hero="" style={{ position: "absolute", left: "50%", top: "54%", width: "min(112vw, 150vh)", aspectRatio: "1", marginLeft: "calc(min(112vw, 150vh) / -2)" }}>
             <div data-s-rot="" onClick={w.onExplore} style={{ position: "absolute", inset: "0", cursor: "pointer" }}>
-              <img data-spin="140" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+              <img decoding="async" data-spin="140" src={w.planet} alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
               {w.rover && <Rover />}
               {w.uplink && <SignalLink accent={w.accent} />}
             </div>
             <div data-s-astro="" style={{ position: "absolute", left: "0", right: "0", bottom: w.astroBottom, height: w.astroH, display: "flex", justifyContent: "center", alignItems: "flex-end", pointerEvents: "none" }}>
               {w.astro && (wI === 0 ? (
                 <div data-orbit-fast="" data-arc-orbit="85" data-dur="35" style={{ height: "100%", width: "100%", display: "flex", justifyContent: "center", alignItems: "flex-end", transformOrigin: `50% calc(100% + min(56vw, 75vh) - ${w.astroSit ? '7vh' : '3.5vh'})` }}>
-                  <img src={w.astro} alt="" style={{ height: "45%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))" }} />
+                  <img decoding="async" src={w.astro} alt="" style={{ height: "45%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))" }} />
                 </div>
               ) : (
-                <img src={w.astro} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))", ...w.astroStyle }} />
+                <img decoding="async" src={w.astro} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.3) brightness(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))", ...w.astroStyle }} />
               ))}
             </div>
           </div>
         </article>
       ))}
       <CornerFrame color="rgba(20,19,18,.5)" rulers={['24%', '28%']} style={{ zIndex: 4 }} />
-      <button type="button" aria-label="Previous world" onClick={v.prevSlide} onMouseEnter={v.beep} style={{ position: "absolute", top: "64%", left: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
+      <button type="button" aria-label="Previous world" onClick={v.prevSlide} style={{ position: "absolute", top: "64%", left: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
         <svg viewBox="0 0 24 24" style={{ width: "24px", height: "24px" }}>
           <path d="M14 6l-6 6 6 6M8 12h12" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
         </svg>
       </button>
-      <button type="button" aria-label="Next world" onClick={v.nextSlide} onMouseEnter={v.beep} style={{ position: "absolute", top: "64%", right: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
+      <button type="button" aria-label="Next world" onClick={v.nextSlide} style={{ position: "absolute", top: "64%", right: "clamp(16px,2.6vw,44px)", zIndex: "5", display: v.arrowsDisplay, placeItems: "center", width: "64px", height: "64px", borderRadius: "50%", border: "1.5px solid rgba(20,19,18,.8)", background: "rgba(236,232,223,.4)", color: "#141312", cursor: "pointer", opacity: ".6", transition: "opacity .4s,background-color .4s,color .4s" }} className="hv-arrow">
         <svg viewBox="0 0 24 24" style={{ width: "24px", height: "24px" }}>
           <path d="M10 6l6 6-6 6M16 12H4" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
         </svg>

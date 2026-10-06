@@ -100,8 +100,8 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
             id="phone-modal-title"
             style={{
               margin: '0 0 8px',
-              fontFamily: 'var(--font-cinzel), serif',
-              fontWeight: 900,
+              fontFamily: 'var(--font-display)',
+              fontWeight: 400,
               fontSize: '24px',
               letterSpacing: '.02em',
             }}
@@ -159,7 +159,7 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
                     padding: '0 14px',
                     border: '1.5px solid rgba(236,232,223,0.28)',
                     fontSize: '15px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     background: 'rgba(236,232,223,0.04)',
                   }}
                 >

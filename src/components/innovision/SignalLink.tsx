@@ -51,12 +51,12 @@ function Scene({ fit, accent, id, className }: { fit: Fit; accent: string; id: s
   return (
     <div className={className} style={{ position: "absolute", inset: "0" }}>
       <div style={{ position: "absolute", inset: "0", transform: `rotate(${fit.tilt}deg)` }}>
-        <img src="/assets/receiver.webp" alt="" style={{ position: "absolute", left: pct(g.rLeft), top: pct(g.rTop), width: pct(fit.rW), height: "auto", filter: `${MONO} drop-shadow(0 10px 14px rgba(20,19,18,.22))` }} />
+        <img decoding="async" src="/assets/receiver.webp" alt="" style={{ position: "absolute", left: pct(g.rLeft), top: pct(g.rTop), width: pct(fit.rW), height: "auto", filter: `${MONO} drop-shadow(0 10px 14px rgba(20,19,18,.22))` }} />
       </div>
 
       {/* The satellite turns about its horn tip, so the waves always leave from the tip as it sways. */}
       <div style={{ position: "absolute", left: pct(g.sLeft), top: pct(g.sTop), width: pct(fit.sW), transformOrigin: origin, transform: `rotate(${fit.satRot}deg)` }}>
-        <img data-link-sat="" src="/assets/satellite.webp" alt="" style={{ display: "block", width: "100%", height: "auto", transformOrigin: origin, filter: `${MONO} drop-shadow(0 18px 24px rgba(20,19,18,.18))` }} />
+        <img decoding="async" data-link-sat="" src="/assets/satellite.webp" alt="" style={{ display: "block", width: "100%", height: "auto", transformOrigin: origin, filter: `${MONO} drop-shadow(0 18px 24px rgba(20,19,18,.18))` }} />
       </div>
 
       <svg data-s-link="" viewBox="0 0 1000 600" style={{ position: "absolute", left: "0", top: VB_TOP + "%", width: "100%", height: "60%", overflow: "visible" }}>

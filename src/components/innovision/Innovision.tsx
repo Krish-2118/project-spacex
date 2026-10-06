@@ -1,34 +1,28 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
+// @ts-nocheck
+"use client";
+import { CLICKABLE, preloadClick, unlockClick, playClick } from './clickSound';
 /* eslint-disable @typescript-eslint/no-explicit-any -- view-model is dynamically constructed and consumed across many child views */
 /* eslint-disable @typescript-eslint/no-unused-vars -- some destructured vars are kept for future use */
-// @ts-nocheck
-'use client';
 
 import { Component, createRef, memo, type ComponentType, type FormEvent, type MouseEvent, type TouchEvent, type WheelEvent } from 'react';
+import dynamic from 'next/dynamic';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
-import type { Howl } from 'howler';
 import {
-  A, WORLDS, PRELOAD, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
-  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, PILLS, SCHED, SCHED_DAYS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
+  A, WORLDS, PRELOAD_CRITICAL, PRELOAD_DEFERRED, HERO_SPARKS, LOADER_SPARKS, STATUS, SCRAMBLE, GAP, GALLERY, G_MAX,
+  LINKS, TUNNEL, TUNNEL_C, PRODUCTS, BRIEF, SCHED, SCHED_DAYS, SCHED_BLOCKS, SPONSOR_TIERS, TITLE_SPONSOR, inr, type Product, type WorldKey,
 } from './data';
 import HomeView from './HomeView';
 import WorldsView from './WorldsView';
-import DetailView from './DetailView';
-import GalleryView from './GalleryView';
-import MerchView from './MerchView';
-import ScheduleView from './ScheduleView';
 import Hud from './Hud';
 import WorldNav from './WorldNav';
 import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
-import MenuOverlay from './MenuOverlay';
-import AuthOverlay from './AuthOverlay';
 import ProfileOverlay from './ProfileOverlay';
 import PhoneModal from './PhoneModal';
 import AdminDashboard from './AdminDashboard';
-import BagPanel from './BagPanel';
 import CartPill from './CartPill';
 import Toast from './Toast';
 import Cursor from './Cursor';
@@ -53,9 +47,47 @@ import {
   type EventItem,
   type GalleryPhoto,
 } from '@/lib/supabase';
-import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE, isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS } from '@/lib/validation';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
+
+// Views and overlays the first screen never shows: each is its own chunk and mounts the first time it is
+// needed (Innovision#mount), hidden, under the curtain, loader or a closed overlay. Once mounted it stays.
+// sel: the mounted root. load: the one import() of the chunk, shared by dynamic() below and by prefetching
+// (a second import() of the same file would make the bundler emit, and the browser fetch, a second chunk).
+const LAZY = {
+  detail: { sel: '[data-view="detail"]', load: () => import('./DetailView') },
+  gallery: { sel: '[data-view="gallery"]', load: () => import('./GalleryView') },
+  merch: { sel: '[data-view="merch"]', load: () => import('./MerchView') },
+  schedule: { sel: '[data-view="schedule"]', load: () => import('./ScheduleView') },
+  menu: { sel: '[data-menu]', load: () => import('./MenuOverlay') },
+  auth: { sel: '[data-auth-root]', load: () => import('./AuthOverlay') },
+  bag: { sel: '[data-bag]', load: () => import('./BagPanel') },
+};
+type LazyKey = keyof typeof LAZY;
+const DetailView = dynamic(LAZY.detail.load, { ssr: false });
+const GalleryView = dynamic(LAZY.gallery.load, { ssr: false });
+const MerchView = dynamic(LAZY.merch.load, { ssr: false });
+const ScheduleView = dynamic(LAZY.schedule.load, { ssr: false });
+const MenuOverlay = dynamic(LAZY.menu.load, { ssr: false });
+const AuthOverlay = dynamic(LAZY.auth.load, { ssr: false });
+const BagPanel = dynamic(LAZY.bag.load, { ssr: false });
+/** Save-Data or a 2G-class connection: nothing is fetched ahead of need. */
+const slowNet = () => {
+  const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !!c && (!!c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g');
+};
+const LOAD_FAIL = "Couldn't load that part of the site. Check your connection and try again.";
+/**
+ * Devices that start in low-power mode: few cores or little memory, Save-Data, or reduced motion.
+ * iOS Safari reports 2-4 cores whatever the phone (anti-fingerprinting), so there only the frame-rate check judges.
+ */
+const lowPowerDevice = () => {
+  const n = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  const ios = /iP(hone|ad|od)/.test(n.userAgent) || (n.platform === 'MacIntel' && n.maxTouchPoints > 1);
+  return (!ios && !!n.hardwareConcurrency && n.hardwareConcurrency <= 4) || (!!n.deviceMemory && n.deviceMemory <= 4)
+    || matchMedia('(prefers-reduced-motion: reduce)').matches || !!n.connection?.saveData;
+};
 
 type PureProps = { v: V; deps: readonly unknown[] };
 /**
@@ -71,18 +103,13 @@ type Route = { view: Exclude<ViewName, 'loading'>; index: number; section?: stri
 /** A bag line: product id, colour index (-1 if none), size ('' if none), quantity. */
 type BagLine = { id: string; key: string; c: number; s: string; qty: number };
 type Sel = { color?: number; size?: string };
-type MusicKey = 'home' | WorldKey;
-type Track = { h: Howl; vol: number; seek?: number; started?: boolean; waiting?: boolean };
 type SlideParts = { hero: HTMLElement | null; rot: HTMLElement | null; astro: HTMLElement[]; link: HTMLElement[]; outline: HTMLElement | null; labels: HTMLElement[] };
 type El = HTMLElement & { _tw?: gsap.core.Tween };
-/** Schedule timeline parts; each node remembers whether it is lit. */
-type SchedParts = { list: HTMLElement; rows: HTMLElement[]; nodes: (HTMLElement & { _on?: boolean })[]; fill: HTMLElement; rocket: HTMLElement };
 type Attracted = HTMLElement & { _a: { x: number; y: number; tx: number; ty: number; s: number; on: boolean } };
 
 interface Props {
   /** Minimum loader duration in seconds. */
   loaderSeconds?: number;
-  startMuted?: boolean;
   skipLoader?: boolean;
   /** Google OAuth client ID for "Continue with Google" (defaults to NEXT_PUBLIC_GOOGLE_CLIENT_ID). */
   googleClientId?: string;
@@ -94,11 +121,15 @@ interface Props {
 
 interface State {
   /** dIndex: world shown by the detail page; it only follows index when that page is prepared. */
-  view: ViewName; index: number; dIndex: number; muted: boolean; about: boolean; compact: boolean; narrow: boolean;
+  view: ViewName; index: number; dIndex: number; about: boolean; compact: boolean; narrow: boolean;
   menu: boolean; toastOn: boolean; toastMsg: string; curtainLabel: string; curtainKicker: string;
   gIdx: number; sel: Record<string, Sel>; bag: BagLine[]; bagOpen: boolean; added: string | null;
-  /** Schedule: selected day index, filter ('all' | 'saved' | world index as a string), starred event ids. */
-  schedDay: number; schedFilter: string; saved: string[];
+  /** Schedule: selected day index, starred event ids. */
+  schedDay: number; saved: string[];
+  /** Lighter rendering (see goLowPower); only ever switches on. */
+  lowPower: boolean;
+  /** Lazy views and overlays (LAZY) that have been mounted. */
+  lazy: Partial<Record<LazyKey, boolean>>;
   /** The active page has scrolled under the HUD, which then sits on a frosted bar. */
   hudSolid: boolean;
   /** Continue with Google: popup in progress, the last problem to show, and the account it returned. */
@@ -111,9 +142,15 @@ interface State {
   phoneModalOpen: boolean;
   registration: Registration | null;
   user: UserProfile | null;
+  authReady: boolean; auth: boolean; authMode: string; step: number; err: any; busyLbl: string; files: any; drag: string; copied: boolean; schedFilter: string;
   dbGallery: GalleryPhoto[];
   dbEvents: EventItem[];
 }
+
+/** Bag lines read back from storage, minus anything malformed (unknown shape, bad quantity, unknown product). */
+const cleanBag = (raw: unknown): BagLine[] => (Array.isArray(raw) ? raw : [])
+  .filter((l) => l && typeof l.id === 'string' && typeof l.key === 'string' && PRODUCTS.some((p) => p.id === l.key) && Number.isFinite(l.qty) && l.qty > 0)
+  .map((l) => ({ id: l.id, key: l.key, c: Number.isInteger(l.c) ? l.c : -1, s: typeof l.s === 'string' ? l.s : '', qty: Math.min(99, Math.floor(l.qty)) }));
 
 const BAG_KEY = 'innovisionCart';
 const SAVED_KEY = 'iv26-schedule-saved';
@@ -131,16 +168,20 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 
 export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
-  state: State = { view: 'loading', index: 0, dIndex: 0, muted: false, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false,
-    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, dbGallery: [], dbEvents: [] };
+  state: State = { view: 'loading', index: 0, dIndex: 0, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
+  /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
+  _authReady = (() => { let res = () => {}; const p = new Promise<void>((r) => { res = r; }); return { p, res, done: false }; })();
+  /** Bumped on every sign-out, so a profile lookup still in flight can't put a logged-out visitor back. */
+  _authEpoch = 0;
   _toast: any; _copy: any; reg: any; pass: any; _rEls: any; _rift: any; authO: any; _warpRaf: any; _warpTw: any; _stars: any;
   // flagship rover ticker; _rvReseq is set when roverPauses changes so the drive sequence is rebuilt
   _rvTick: ((time: number, dms: number) => void) | null = null; _rvReseq = false;
-  // schedule timeline: measured list parts, pending scroll frame, day/filter swap in progress
-  _sc: SchedParts | null = null; _scRaf = 0; _dayBusy = false;
+  // schedule: day swap in progress
+  _dayBusy = false;
   // new-visitor guidance: the worlds guide has been seen/dismissed, and its delayed appearance
   hintSeen = false; _hintT?: ReturnType<typeof setTimeout>;
   /** Home section to scroll to once the home view has been prepared. */
@@ -158,11 +199,6 @@ export default class Innovision extends Component<Props, State> {
   $$: (s: string) => HTMLElement[] = () => [];
   reduce = false;
 
-  // sound (Howler is fetched after boot: nothing can play before the first tap or key press)
-  hw?: typeof import('howler');
-  sfx?: Record<string, Howl>;
-  music?: Record<MusicKey, Track>;
-  unlocked = false; wanted?: MusicKey; curMusic?: MusicKey;
 
   // gallery page engine
   gEls: HTMLElement[] = []; dEls: HTMLElement[] = [];
@@ -198,14 +234,14 @@ export default class Innovision extends Component<Props, State> {
 
   componentDidMount() {
     this.alive = true;
-    let m = !!this.props.startMuted;
-    try { const v = localStorage.getItem('innovisionMuted'); if (v !== null) m = v === 'true'; } catch {}
     let bag: BagLine[] = [];
-    try { bag = JSON.parse(localStorage.getItem(BAG_KEY) || '[]') || []; } catch {}
+    // Stored values may be from an older version or edited by hand: keep only well-formed entries.
+    try { bag = cleanBag(JSON.parse(localStorage.getItem(BAG_KEY) || '[]')); } catch {}
     let saved: string[] = [];
-    try { const sv = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); if (Array.isArray(sv)) saved = sv; } catch {}
+    try { const sv = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); if (Array.isArray(sv)) saved = sv.filter((x) => typeof x === 'string'); } catch {}
     try { this.hintSeen = localStorage.getItem(HINT_KEY) === '1'; } catch {}
-    this.setState({ muted: m, bag, saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
+    this.setState({ bag, saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
+    if (lowPowerDevice()) this.goLowPower();
     // Resize work forces layout (title fit, map panels), so it runs at most once per frame.
     let rz = 0;
     this.listen(window, 'resize', () => {
@@ -216,27 +252,27 @@ export default class Innovision extends Component<Props, State> {
         if (c !== this.state.compact || n !== this.state.narrow) this.setState({ compact: c, narrow: n }, () => { if (this.state.view === 'detail') this.setupDetailScroll(true); });
         this.fitTitle();
         if (this.ctx) this.openMap(this.mapOpen);
-        if (this.state.view === 'schedule') this.schedMeasure();
       });
     });
     this.cleanups.push(() => cancelAnimationFrame(rz));
     this.boot();
+    this.watchFrames();
     this.initSupabaseAuth();
     this.fetchPublicData();
   }
 
   componentWillUnmount() {
     this.alive = false;
+    // A remount (dev strict mode) reuses this instance: low-power mode and the view tickers are set up again.
+    document.documentElement.removeAttribute('data-lowpower'); this.lowPower = false; this.viewTicks = [];
     clearTimeout(this._toast); clearTimeout(this._added); clearTimeout(this._hintT);
-    cancelAnimationFrame(this._scRaf); this._scRaf = 0; this._sc = null; this._dayBusy = false;
+    this._dayBusy = false;
     this.cleanups.splice(0).forEach((fn) => fn());
     this.io?.disconnect(); this.io = undefined; this.off.clear(); this.amb.clear();
     this.ctx?.revert();
     this.ctx = undefined;
     ScrollTrigger.getAll().forEach((t) => t.kill());
     gsap.globalTimeline.clear();
-    this.hw?.Howler.unload();
-    this.sfx = undefined; this.music = undefined;
   }
 
   boot() {
@@ -275,6 +311,7 @@ export default class Innovision extends Component<Props, State> {
       if (this.props.skipLoader) { this.hideLoader(); this.firstPaint(); return; }
       this.loaderIntro();
     }, R);
+    this.cleanups.push(() => { R.setAttribute('data-booting', ''); R.querySelectorAll('[data-idle]').forEach((el) => el.removeAttribute('data-idle')); });
     if (!this.props.skipLoader) this.runLoader().then(() => { if (this.alive) this.loaderExit(); });
 
     // Auth Middleware Route Inspector: Check for middleware redirects (?auth=login, ?required=register, ?open=register, or #register)
@@ -339,7 +376,6 @@ export default class Innovision extends Component<Props, State> {
     // force3D keeps the line on its own layer, so the opacity half of the loop doesn't repaint the page behind it.
     this.$$('[data-hint-line]').forEach((el) => add(el, () => g.timeline({ repeat: -1 }).fromTo(el, { scaleY: 0, opacity: 1, transformOrigin: 'top' }, { scaleY: 1, duration: 1.1, ease: 'expo.out', force3D: true }).to(el, { opacity: 0, duration: .7 })));
     this.$$('[data-c-spark]').forEach((el) => add(el, () => g.to(el, { rotation: 360, duration: 6, ease: 'none', repeat: -1 })));
-    this.waveLoop();
   }
   /** Tracks which home-page loop elements are near the viewport; the page is many screens tall. */
   watchHome() {
@@ -359,7 +395,8 @@ export default class Innovision extends Component<Props, State> {
     const now = gsap.globalTimeline.time();
     this.amb.forEach((tw, el) => {
       if (!el.isConnected) { tw.kill(); this.amb.delete(el); this.off.delete(el); this.io?.unobserve(el); return; }
-      const on = !this.off.has(el) && !el.closest('[data-idle]');
+      // In low-power mode the decorations that sit out ([data-lp-skip]) don't loop either.
+      const on = !this.off.has(el) && !el.closest('[data-idle]') && !(this.lowPower && el.closest('[data-lp-skip]'));
       if (tw.paused() !== on) return;
       // Resume in phase, as if the loop had never stopped (they all repeat forever).
       if (on) tw.totalTime(Math.max(0, now - (this.born.get(tw) ?? now)), true);
@@ -371,7 +408,9 @@ export default class Innovision extends Component<Props, State> {
     gsap.set(l, { display: 'none' });
     l?.setAttribute('data-idle', '');
     this.syncLoops();
+    this.warmDeferred();
   }
+
   waveLoop() {
     const w = this.$('[data-wave]') as El | null;
     if (w && !w._tw) { w._tw = gsap.to(w, { scaleY: .35, transformOrigin: 'center', duration: 1.1, ease: 'sine.inOut', repeat: -1, yoyo: true }); }
@@ -383,6 +422,7 @@ export default class Innovision extends Component<Props, State> {
       this.gEls = this.$$('[data-g-item]');
     }
   }
+
 
   /* ---------- flagship rover ---------- */
   /**
@@ -495,57 +535,69 @@ export default class Innovision extends Component<Props, State> {
       if (nextBlink <= 0) { nextBlink = 3 + Math.random() * 4; blink(); }
     };
     this._rvTick = tick;
-    gsap.ticker.add(tick);
-    this.cleanups.push(() => { gsap.ticker.remove(tick); this._rvTick = null; });
+    this.tickFor('worlds', tick);
+    this.cleanups.push(() => { this._rvTick = null; });
+  }
+
+  /* ---------- low-power mode ---------- */
+  lowPower = false;
+  /** Ticker callbacks that only matter while one view is shown. */
+  viewTicks: { view: ViewName; fn: gsap.TickerCallback; prio: boolean; on: boolean }[] = [];
+  /** Adds a view's per-frame callback; in low-power mode it leaves the ticker while that view is hidden. */
+  tickFor(view: ViewName, fn: gsap.TickerCallback, prio = false) {
+    const t = { view, fn, prio, on: false };
+    this.viewTicks.push(t);
+    this.syncTicks();
+    this.cleanups.push(() => { if (t.on) gsap.ticker.remove(fn); t.on = false; });
+  }
+  syncTicks() {
+    for (const t of this.viewTicks) {
+      const want = !this.lowPower || this.state.view === t.view;
+      if (want && !t.on) { gsap.ticker.add(t.fn, false, t.prio); t.on = true; }
+      else if (!want && t.on) { gsap.ticker.remove(t.fn); t.on = false; }
+    }
+  }
+  /**
+   * Switches to the lighter rendering for good: <html data-lowpower> (globals.css drops the drop shadows and
+   * half the sparks, dust and curtain clouds), their loops pause, and hidden views' ticker callbacks stop.
+   */
+  goLowPower() {
+    if (this.lowPower || !this.alive) return;
+    this.lowPower = true;
+    document.documentElement.setAttribute('data-lowpower', '');
+    this.setState({ lowPower: true });
+    this.syncLoops();
+    this.syncTicks();
+  }
+  /** Measures the first ~3 s of frames (after hydration settles) and downgrades if they average under ~40 fps. */
+  watchFrames() {
+    if (this.lowPower) return;
+    let raf = 0, t0 = 0, n = 0;
+    const from = performance.now() + 500;
+    // A tab in the background has no frames: coming back restarts the window instead of counting the gap.
+    this.listen(document, 'visibilitychange', () => { t0 = 0; });
+    const step = (t: number) => {
+      if (!this.alive || this.lowPower) return;
+      if (document.hidden) t0 = 0;
+      else if (t >= from) {
+        if (!t0) { t0 = t; n = 0; } else n++;
+        if (t - t0 >= 3000) { if ((t - t0) / n > 25) this.goLowPower(); return; }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    this.cleanups.push(() => cancelAnimationFrame(raf));
   }
 
   /* ---------- sound ---------- */
+  /** The only sound is the click (clickSound.ts): every button, link or tab clicked anywhere answers with a tick. */
   sound() {
-    this.unlocked = false;
-    const un = () => { if (this.unlocked) return; this.unlocked = true; if (this.wanted) this.playMusic(this.wanted, true); };
-    ['pointerdown', 'keydown'].forEach((ev) => this.listen(window, ev, un, { once: true, capture: true }));
-    this.listen(document, 'visibilitychange', () => this.hw?.Howler.mute(this.state.muted || document.hidden));
-    // Howler (36 kB) loads as its own chunk after hydration instead of with the critical bundle.
-    import('howler').then((hw) => {
-      if (!this.alive) return;
-      const { Howl, Howler } = hw;
-      this.hw = hw;
-      const html5 = location.protocol === 'file:';
-      const h = (f: string, v: number, o: Partial<ConstructorParameters<typeof Howl>[0]> = {}) => new Howl(Object.assign({ src: [A + f], volume: v, html5 }, o));
-      this.sfx = { beep: h('beep.mp3', .05), swoosh: h('swoosh.mp3', .5), thump: h('thump.mp3', .6), thumpSoft: h('thump.mp3', .2), vanish: h('vanish.mp3', .2), fx: h('splash-fx.mp3', .4) };
-      // The songs (~7 MB) stream when first needed (playMusic) instead of competing with the loader's images.
-      const song = (f: string) => h(f, 0, { loop: true, html5: true, preload: false });
-      this.music = {
-        home: { h: song('splash.mp3'), vol: .6 },
-        takeoff: { h: song('song-takeoff.mp3'), vol: .7 },
-        touchdown: { h: song('song-touchdown.mp3'), vol: .9, seek: 4 },
-        highpoint: { h: song('song-highpoint.mp3'), vol: .5 },
-      };
-      Howler.mute(this.state.muted);
-      // A track asked for (or an unlock) before Howler arrived starts now.
-      if (this.wanted) this.playMusic(this.wanted, true);
-    });
-  }
-  play(n: string) { if (this.unlocked && this.sfx && this.sfx[n]) this.sfx[n].play(); }
-  playMusic(key: MusicKey, force?: boolean) {
-    this.wanted = key;
-    const m = this.music?.[key];
-    if (m && m.h.state() === 'unloaded') m.h.load();
-    if (!this.unlocked || !this.music || !m || (!force && this.curMusic === key)) return;
-    const music = this.music;
-    (Object.keys(music) as MusicKey[]).forEach((k) => {
-      if (k === key) return;
-      const o = music[k].h;
-      if (o.playing()) { o.fade(o.volume(), 0, 900); o.once('fade', () => { if (this.curMusic !== k) o.pause(); }); }
-    });
-    this.curMusic = key;
-    // Still buffering: start once it can play, unless another track has been asked for by then.
-    if (m.h.state() !== 'loaded') {
-      if (!m.waiting) { m.waiting = true; m.h.once('load', () => { m.waiting = false; if (this.curMusic === key) this.playMusic(key, true); }); }
-      return;
-    }
-    if (!m.h.playing()) { if (m.seek && !m.started) m.h.seek(m.seek); m.started = true; m.h.play(); }
-    m.h.fade(m.h.volume(), m.vol, 1400);
+    preloadClick();
+    ['pointerdown', 'keydown'].forEach((ev) => this.listen(window, ev, unlockClick, { once: true, capture: true }));
+    this.listen(document, 'click', (e) => {
+      const t = (e.target as Element | null)?.closest?.(CLICKABLE);
+      if (t && !t.matches(':disabled, [aria-disabled="true"]')) playClick();
+    }, { capture: true });
   }
 
   /* ---------- loader ---------- */
@@ -560,11 +612,99 @@ export default class Innovision extends Component<Props, State> {
     const el = this.$('[data-l-status]');
     if (el) gsap.to(el, { duration: .6, scrambleText: { text: t, chars: SCRAMBLE, speed: .5 }, overwrite: true });
   }
+  /** Runs fn when the browser is idle (or soon, where requestIdleCallback is missing); returns a canceller. */
+  idle(fn: () => void) {
+    if (typeof requestIdleCallback === 'function') { const id = requestIdleCallback(fn, { timeout: 4000 }); return () => cancelIdleCallback(id); }
+    const id = setTimeout(fn, 200); return () => clearTimeout(id);
+  }
+  _warmed = false;
+  /**
+   * Warms the cache for art the first screen doesn't show, three files per idle period, once the loader
+   * is gone. Skipped when the visitor asked to save data or is on a 2G-class connection.
+   */
+  warmDeferred() {
+    if (!this.alive || this._warmed) return;
+    this._warmed = true;
+    if (slowNet()) return;
+    // The overlay and view a visitor is most likely to open next are fetched ahead too (their own hover/tap also does).
+    this.cleanups.push(this.idle(() => { this.prefetch('auth'); this.prefetch('detail'); }));
+    const queue = [...PRELOAD_DEFERRED];
+    let cancel = () => {}, live = true;
+    const batch = () => {
+      const files = queue.splice(0, 3);
+      let left = files.length;
+      files.forEach((f) => { const im = new Image(); im.onload = im.onerror = () => { if (--left === 0 && live && queue.length) cancel = this.idle(batch); }; im.src = A + f; });
+    };
+    cancel = this.idle(batch);
+    this.cleanups.push(() => { live = false; cancel(); });
+  }
+  /* ---------- lazily mounted views and overlays ---------- */
+  /** Fetches a lazy component's chunk without mounting it. */
+  prefetch(k: LazyKey) { LAZY[k].load().catch(() => {}); }
+  prefetchAuth = () => this.prefetch('auth');
+  _attached = new Set<LazyKey>();
+  /**
+   * Mounts a lazy view or overlay (hidden) and resolves true once its markup is in the DOM and wired up,
+   * or false when its chunk can't be fetched (offline): callers then stay where they are.
+   */
+  async mount(k: LazyKey): Promise<boolean> {
+    if (this._attached.has(k)) return true;
+    try { await LAZY[k].load(); } catch { return false; }
+    if (!this.alive) return false;
+    if (!this.state.lazy[k]) this.setState((s) => ({ lazy: { ...s.lazy, [k]: true } }));
+    // dynamic() renders its chunk a frame or so after the state change; wait for the markup itself.
+    return new Promise((res) => {
+      const t0 = performance.now();
+      const check = () => {
+        if (!this.alive) return res(false);
+        if (this.$(LAZY[k].sel)) { this.attach(k); return res(true); }
+        if (performance.now() - t0 > 8000) return res(false);
+        requestAnimationFrame(check);
+      };
+      check();
+    });
+  }
+  /** Gives a freshly mounted view what boot() gives the views that exist from the start. */
+  attach(k: LazyKey) {
+    if (this._attached.has(k)) return;
+    this._attached.add(k);
+    if (k !== 'detail' && k !== 'gallery' && k !== 'merch' && k !== 'schedule') return;
+    const el = this.$(LAZY[k].sel)!;
+    // Hidden views pause their loops (see syncLoops); the loops for its [data-spin] etc. start paused.
+    el.setAttribute('data-idle', '');
+    this.ctx?.add(() => { gsap.set(el, { autoAlpha: 0 }); this.loops(); });
+    this.syncLoops();
+    if (k === 'detail') this.smoothWheel(this.$('[data-d-scroller]'));
+    if (k === 'gallery') this.galleryQuery();
+  }
+  /** Mounts an overlay closed, then opens it a frame later so its CSS entrance transition plays. */
+  async openLazy(k: LazyKey, open: Partial<State>) {
+    const fresh = !this._attached.has(k);
+    if (!(await this.mount(k))) { this.toast(LOAD_FAIL); return; }
+    if (fresh) requestAnimationFrame(() => { if (this.alive) this.setState(open as State); });
+    else this.setState(open as State);
+  }
+  /** Resolves once the images on the first screen of a view are decoded (at most ms), so a view never opens half-drawn. */
+  imagesReady(view: string, ms = 3000) {
+    const root = this.$('[data-view="' + view + '"]');
+    if (!root) return Promise.resolve();
+    const H = innerHeight, W = innerWidth;
+    const imgs = [...root.querySelectorAll('img')].filter((im) => {
+      // Inactive world slides are [data-idle] and stay hidden.
+      if (im.complete || im.closest('[data-idle]')) return false;
+      const r = im.getBoundingClientRect();
+      return r.bottom > 0 && r.top < H && r.right > 0 && r.left < W;
+    });
+    if (!imgs.length) return Promise.resolve();
+    return Promise.race([Promise.all(imgs.map((im) => im.decode().catch(() => {}))), new Promise((r) => setTimeout(r, ms))]).then(() => {});
+  }
   runLoader() {
     return new Promise<void>((res) => {
       let loaded = 0, shown = 0, last = 0;
-      const N = PRELOAD.length;
-      PRELOAD.forEach((f) => { const im = new Image(); im.onload = im.onerror = () => { loaded++; }; im.src = A + f; });
+      // Only the first home screen's art holds the loader; a deep-linked view waits for its own
+      // first-screen images under the loader instead (prepView → imagesReady).
+      const N = PRELOAD_CRITICAL.length;
+      PRELOAD_CRITICAL.forEach((f) => { const im = new Image(); im.onload = im.onerror = () => { ++loaded; }; im.src = A + f; });
       const minMs = (this.props.loaderSeconds ?? 2.8) * 1000;
       const t0 = performance.now();
       const cap9 = setTimeout(() => { loaded = N; }, 9000);
@@ -608,14 +748,16 @@ export default class Innovision extends Component<Props, State> {
   }
   async loaderExit() {
     const g = gsap;
-    const to = this.parse();
+    let to = this.parse();
     this.setStatus('ORBITS ALIGNED');
     g.fromTo(this.$('[data-l-flare]'), { scale: .9, autoAlpha: 1 }, { scale: 2.6, autoAlpha: 0, duration: 1.3, ease: 'expo.out' });
     g.fromTo(this.$('[data-l-link]'), { attr: { 'stroke-width': .45 } }, { attr: { 'stroke-width': 1.4 }, duration: .25, yoyo: true, repeat: 1 });
     await new Promise((r) => setTimeout(r, 380));
     if (!this.alive) return;
+    // A deep-linked view whose chunk can't be fetched opens home instead.
+    if (to.view !== 'home' && !(await this.prepView(to))) to = this.fallHome();
+    if (!this.alive) return;
     if (to.view !== 'home') {
-      await this.prepView(to);
       g.timeline()
         .to(this.$$('[data-l-fade]'), { autoAlpha: 0, duration: .5 }, 0)
         .to(this.$$('[data-l-ring]'), { scale: 2, autoAlpha: 0, duration: 1.2, ease: 'power3.in', stagger: .05 }, 0)
@@ -635,46 +777,58 @@ export default class Innovision extends Component<Props, State> {
       .to(this.$$('[data-l-ring]'), { scale: 2.4, autoAlpha: 0, duration: 1.4, ease: 'power3.in', stagger: .06 }, 0)
       .to(disc, { x: (b.left + b.width / 2) - (a.left + a.width / 2), y: (b.top + b.height / 2) - (a.top + a.height / 2), scale: b.width / a.width, duration: 1.6, ease: 'expo.inOut' }, .35)
       .to(this.$('[data-loader-bg]'), { autoAlpha: 0, duration: 1, ease: 'power2.inOut' }, .95)
-      .add(() => { this.play('fx'); this.playMusic('home'); he.play(); }, 1.25)
+      .add(() => { he.play(); }, 1.25)
       .add(() => { g.set(target, { autoAlpha: 1 }); this.hideLoader(); }, 1.96);
   }
   async firstPaint() {
-    const to = this.parse();
-    await this.prepView(to);
+    let to = this.parse();
+    if (!(await this.prepView(to))) { to = this.fallHome(); await this.prepView(to); }
+    if (!this.alive) return;
     this.enterView(to);
     gsap.to(this.$$('[data-hud]'), { autoAlpha: 1, duration: .6 });
   }
+  /** The address of a route, for putting the hash back without a hashchange. */
+  hashOf(r: Route) {
+    const w = WORLDS[r.index];
+    return r.view === 'home' ? '#/' : r.view === 'worlds' ? '#/worlds/' + w.slug : r.view === 'detail' ? '#/world/' + w.slug : '#/' + r.view;
+  }
+  fallHome(): Route { history.replaceState(null, '', '#/'); this.toast(LOAD_FAIL); return { view: 'home', index: this.state.index }; }
+  /** Readies a view behind the curtain or loader; false when a lazy view's chunk couldn't be fetched (nothing changed). */
   async prepView(to: Route) {
+    if (to.view in LAZY && !(await this.mount(to.view as LazyKey))) return false;
     if (to.view === 'home') { gsap.set(this.$('[data-hero-disc]'), { autoAlpha: 1, scale: 1 }); this.$('[data-view="home"]')!.scrollTop = 0; }
     else if (to.view === 'merch') this.$('[data-view="merch"]')!.scrollTop = 0;
     else if (to.view === 'schedule') this.$('[data-view="schedule"]')!.scrollTop = 0;
     else if (to.view === 'gallery') { this.gZ = -2600; this.gTarget = -2600; }
     else { await this.setSlide(to.index); if (to.view === 'detail') await this.prepDetail(to.index); }
     await this.showView(to.view);
+    await this.imagesReady(to.view);
+    return true;
   }
   enterView(to: Route): gsap.core.Timeline {
     if (to.view === 'gallery' || to.view === 'detail' || to.view === 'worlds') {
       this.fetchPublicData();
     }
-    if (to.view === 'home') { this.playMusic('home'); return this.homeEnter(); }
-    if (to.view === 'gallery') { this.playMusic('touchdown'); return this.galleryEnter(); }
-    if (to.view === 'schedule') { this.playMusic('home'); return this.schedEnter(); }
-    if (to.view === 'merch') { this.playMusic('home'); return gsap.timeline().fromTo(this.$$('[data-view="merch"] [data-m-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .06 }, .1); }
-    this.playMusic(WORLDS[to.index].music);
+    if (to.view === 'home') return this.homeEnter();
+    if (to.view === 'gallery') return this.galleryEnter();
+    if (to.view === 'schedule') return this.schedEnter();
+    if (to.view === 'merch') return gsap.timeline().fromTo(this.$('[data-view="merch"] [data-m-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .06 }, .1);
     if (to.view === 'worlds') this.queueHint();
     return to.view === 'detail' ? this.detailEnter() : this.worldsEnter(to.index);
   }
 
   /* ---------- gallery page ---------- */
   galleryInit() {
+    this.galleryQuery();
+    this.tickFor('gallery', () => this.galleryTick());
+  }
+  /** Reads the gallery's elements; the view mounts on the first visit (attach), after boot. */
+  galleryQuery() {
     this.gEls = this.$$('[data-g-item]');
     this.dEls = this.$$('[data-g-dust]');
-    this.gZ = 0; this.gTarget = 0;
+    this.gZ = 0; this.gTarget = 0; this.gDrawn = '';
     this.dust = this.dEls.map((_, k) => ({ x: (((k * 73) % 100) / 100 - .5) * 1.6, y: (((k * 41) % 100) / 100 - .5) * 1.4, z: (k * 997) % 6000 }));
     this.gBar = this.$('[data-g-bar]'); this.gGlow = this.$('[data-g-glow]'); this.gEnd = this.$('[data-g-end]'); this.gStars = this.$('[data-g-stars]'); this.gHint = this.$('[data-g-hint]');
-    const tick = () => this.galleryTick();
-    gsap.ticker.add(tick);
-    this.cleanups.push(() => gsap.ticker.remove(tick));
   }
   galleryTick() {
     if (this.state.view !== 'gallery' || !this.gEls.length) return;
@@ -694,7 +848,9 @@ export default class Innovision extends Component<Props, State> {
       if (el.style.visibility !== vis) el.style.visibility = vis;
       if (el.style.pointerEvents !== pe) el.style.pointerEvents = pe;
     });
+    const lp = this.lowPower;
     this.dEls.forEach((el, k) => {
+      if (lp && k % 2) return; // hidden in low-power mode ([data-lp-skip])
       const d = this.dust[k], z = ((d.z + this.gZ * 1.2) % 6000 + 6000) % 6000 - 5200;
       el.style.transform = 'translate3d(' + (d.x * W).toFixed(1) + 'px,' + (d.y * H).toFixed(1) + 'px,' + z.toFixed(1) + 'px)';
       el.style.opacity = z > 500 ? '0' : Math.min(.9, Math.max(0, (z + 5200) / 2000)).toFixed(3);
@@ -747,9 +903,8 @@ export default class Innovision extends Component<Props, State> {
   }
   saveBag(bag: BagLine[]) { try { localStorage.setItem(BAG_KEY, JSON.stringify(bag)); } catch {} }
   setBag(bag: BagLine[]) { this.setState({ bag }); this.saveBag(bag); }
-  pick(id: string, patch: Sel) { this.play('beep'); this.setState((st) => ({ sel: { ...st.sel, [id]: { ...(st.sel[id] || {}), ...patch } } })); }
+  pick(id: string, patch: Sel) { this.setState((st) => ({ sel: { ...st.sel, [id]: { ...(st.sel[id] || {}), ...patch } } })); }
   addToCart(p: Product, size: string | null, color: number) {
-    this.play('thumpSoft');
     const c = p.colors ? color : -1, s = size || '', id = p.id + '|' + c + '|' + s;
     const bag = this.state.bag.map((l) => ({ ...l })), f = bag.find((l) => l.id === id);
     if (f) f.qty += 1; else bag.push({ id, key: p.id, c, s, qty: 1 });
@@ -844,6 +999,7 @@ export default class Innovision extends Component<Props, State> {
     // The detail scene is rendered per world: start its loops and drop the previous world's.
     this.ctx?.add(() => this.loops());
     this.syncLoops();
+    this.syncTicks();
     this.hudSync();
   }
   /** Puts the HUD on its frosted bar once the active view's page has scrolled under it. */
@@ -876,8 +1032,6 @@ export default class Innovision extends Component<Props, State> {
     const g = gsap, sl = this.$$('[data-slide]'), from = this.state.index;
     const a = sl[from], b = sl[to], pa = parts(a), pb = parts(b);
     const W = innerWidth, H = innerHeight;
-    this.play('swoosh'); this.play('thumpSoft');
-    this.playMusic(WORLDS[to].music);
     this.setState({ index: to });
     this.clr(partList(pb));
     g.set(a, { zIndex: 1 }); g.set(b, { zIndex: 2, autoAlpha: 0 });
@@ -957,8 +1111,7 @@ export default class Innovision extends Component<Props, State> {
       ScrollTrigger.update();
     };
     // Prioritised: the scroll moves before this frame's tweens render, so nothing lags it by a frame.
-    gsap.ticker.add(tick, false, true);
-    this.cleanups.push(() => gsap.ticker.remove(tick));
+    this.tickFor('detail', tick, true);
   }
   detailEnter() {
     const root = this.$('[data-view="detail"]')!;
@@ -1009,17 +1162,16 @@ export default class Innovision extends Component<Props, State> {
   /* ---------- schedule ---------- */
   schedEnter() {
     const v = this.$('[data-view="schedule"]')!;
-    return gsap.timeline({ onStart: () => this.schedMeasure() })
+    return gsap.timeline()
       .fromTo(v.querySelectorAll('[data-sc-reveal]'), { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out', stagger: .08 }, 0)
       .fromTo(v.querySelectorAll('[data-sc-tab]'), { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'expo.out', stagger: .08 }, .2)
       .fromTo(v.querySelector('[data-sc-planet]'), { scale: .8, rotation: -12, autoAlpha: 0 }, { scale: 1, rotation: 0, autoAlpha: 1, duration: 2, ease: 'expo.out' }, 0)
       .fromTo(v.querySelectorAll('[data-sc-row]'), { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: .9, ease: 'expo.out', stagger: .05 }, .35);
   }
-  /** Fades the list out, applies a day/filter change, then slides the new list in (dir: -1, 0 or 1). */
+  /** Fades the day out, applies a day change, then slides the new day in (dir: -1 or 1). */
   schedSwap(patch: Partial<State>, dir: number) {
     if (this._dayBusy) return;
     this._dayBusy = true;
-    this.play('thumpSoft');
     const v = this.$('[data-view="schedule"]'), list = this.$('[data-sc-list]');
     const out = [this.$('[data-sc-title]'), ...this.$$('[data-sc-row]')].filter(Boolean);
     const go = () => this.setState(patch as State, () => {
@@ -1032,78 +1184,52 @@ export default class Innovision extends Component<Props, State> {
   }
   schedIn(dir: number) {
     const title = this.$('[data-sc-title]'), rows = this.$$('[data-sc-row]');
-    (this._sc?.nodes || []).forEach((n) => { n._on = false; });
-    this.schedMeasure();
     if (this.reduce) { gsap.set([title, ...rows], { autoAlpha: 1, x: 0, y: 0 }); return; }
     gsap.fromTo(title, { autoAlpha: 0, x: 40 * dir, y: dir ? 0 : 16 }, { autoAlpha: 1, x: 0, y: 0, duration: .8, ease: 'expo.out' });
     gsap.fromTo(rows, { autoAlpha: 0, x: 52 * dir, y: dir ? 0 : 24 }, { autoAlpha: 1, x: 0, y: 0, duration: .85, ease: 'expo.out', stagger: .04, delay: .05 });
   }
   pickDay(k: number) { const d = this.state.schedDay; if (k !== d) this.schedSwap({ schedDay: k }, k > d ? 1 : -1); }
-  pickFilter(f: string) { if (f !== this.state.schedFilter) this.schedSwap({ schedFilter: f }, 0); }
   toggleSave(id: string, e?: MouseEvent<HTMLButtonElement>) {
     const on = this.state.saved.includes(id), saved = on ? this.state.saved.filter((x) => x !== id) : [...this.state.saved, id];
-    this.play(on ? 'beep' : 'thumpSoft');
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch {}
     const svg = e?.currentTarget?.querySelector('svg');
     if (svg && !this.reduce) gsap.fromTo(svg, { scale: on ? .8 : .4, rotation: on ? 0 : -72 }, { scale: 1, rotation: 0, duration: .7, ease: 'elastic.out(1,.45)' });
-    this.setState({ saved }, () => { if (this.state.schedFilter === 'saved') this.schedMeasure(); });
-  }
-  schedMeasure() {
-    const list = this.$('[data-sc-list]'); if (!list) return;
-    this._sc = { list, rows: this.$$('[data-sc-list] article[data-sc-row]'), nodes: this.$$('[data-sc-node]'), fill: this.$('[data-sc-fill]'), rocket: this.$('[data-sc-rocket]') };
-    this.schedPaint();
-  }
-  schedScroll = () => { if (this._scRaf) return; this._scRaf = requestAnimationFrame(() => { this._scRaf = 0; this.schedPaint(); }); };
-  /** Fills the timeline and moves the rocket down to the reading line (62% of the viewport); passed nodes light up. */
-  schedPaint() {
-    const S = this._sc; if (!S || !S.list.isConnected) return;
-    const r = S.list.getBoundingClientRect(), H = Math.max(1, r.height), y = Math.max(0, Math.min(H, innerHeight * .62 - r.top));
-    S.fill.style.transform = 'scaleY(' + (y / H).toFixed(4) + ')';
-    S.rocket.style.transform = 'translateY(' + y.toFixed(1) + 'px)';
-    S.rocket.style.opacity = y > 2 && y < H - 2 ? '1' : '0';
-    S.rows.forEach((row, i) => {
-      const n = S.nodes[i]; if (!n) return;
-      const on = row.offsetTop + 30 <= y;
-      if (n._on === on) return;
-      n._on = on;
-      if (this.reduce) { n.style.background = on ? 'oklch(0.8 0.12 85)' : '#ECE8DF'; return; }
-      gsap.to(n, { backgroundColor: on ? 'oklch(0.8 0.12 85)' : '#ECE8DF', scale: on ? 1.3 : 1, duration: on ? .55 : .3, ease: on ? 'back.out(3)' : 'power2.out' });
-    });
+    this.setState({ saved });
   }
   schedVals(s: State) {
-    const day = s.schedDay, f = s.schedFilter, list = SCHED[day].map((e, i) => ({ e, id: 'd' + (day + 1) + '-' + i }));
-    const rows = list.filter(({ e, id }) => f === 'all' || (f === 'saved' ? s.saved.includes(id) : e[3] === +f));
+    const day = s.schedDay, list = SCHED[day].map((e, i) => ({ e, id: 'd' + (day + 1) + '-' + i }));
     const fmt = (t: string) => { const [h, m] = t.split(':').map(Number); return [(h % 12 || 12) + ':' + String(m).padStart(2, '0'), h < 12 ? 'AM' : 'PM']; };
+    const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
     const dur = (m: number) => m >= 600 ? Math.round(m / 60) + ' HRS' : m >= 120 && m % 60 === 0 ? m / 60 + ' HRS' : m + ' MIN';
+    const count = (n: number) => n + (n === 1 ? ' event' : ' events');
     const names = ['FLAGSHIP', 'MAIN', 'DTS & FUN'];
     const nar = s.narrow;
-    const chips = [['all', 'All', ''], ['0', 'Flagship', WORLDS[0].accent], ['1', 'Main', WORLDS[1].accent], ['2', 'DTS & Fun', WORLDS[2].accent], ['saved', 'Starred', '']].map(([k, label, dot]) => {
-      const n = k === 'all' ? list.length : k === 'saved' ? list.filter((x) => s.saved.includes(x.id)).length : list.filter((x) => x.e[3] === +k).length, on = f === k;
-      return { label, n: String(n), on, bg: on ? '#141312' : 'transparent', fg: on ? '#ECE8DF' : '#141312', dot: dot || 'transparent', dotD: dot ? 'block' : 'none', pick: () => this.pickFilter(k) };
-    });
+    const starred = list.filter((x) => s.saved.includes(x.id)).length;
     return {
-      schedScroll: this.schedScroll,
+      schedTotal: SCHED.reduce((n, d) => n + d.length, 0),
       schedDays: SCHED_DAYS.map(([theme, img], k) => {
         const on = k === day;
         return {
-          no: 'DAY ' + String(k + 1).padStart(2, '0'), theme, img: A + img, meta: nar ? SCHED[k].length + ' events' : SCHED[k].length + ' events · from ' + fmt(SCHED[k][0][0]).join(' '),
+          no: 'DAY ' + String(k + 1).padStart(2, '0'), theme, img: A + img, meta: nar ? count(SCHED[k].length) : count(SCHED[k].length) + ' · from ' + fmt(SCHED[k][0][0]).join(' '),
           sel: on, o: on ? 1 : .55, ps: on ? 1.12 : .86, pr: on ? '-14deg' : '0deg', bar: on ? 1 : 0, barO: k > day ? 'left' : 'right', sep: k ? 'rgba(236,232,223,.18)' : 'transparent', imgD: nar ? 'none' : 'block',
           pick: () => this.pickDay(k),
         };
       }),
-      schedKicker: 'DAY ' + String(day + 1).padStart(2, '0') + ' · ' + rows.length + (rows.length === 1 ? ' EVENT' : ' EVENTS'),
       schedHeading: SCHED_DAYS[day][0],
-      schedDayName: 'Day ' + (day + 1),
-      schedChips: chips,
-      schedEmpty: !rows.length,
-      schedRows: rows.map(({ e, id }) => {
-        const [t, ap] = fmt(e[0]), on = s.saved.includes(id);
-        return { id, t, ap, dur: dur(e[1]), title: e[2], wn: names[e[3]], wc: WORLDS[e[3]].accent, venue: e[4], on, star: on ? 'oklch(0.8 0.12 85)' : 'transparent', aria: (on ? 'Remove ' : 'Star ') + e[2], toggle: (ev: MouseEvent<HTMLButtonElement>) => this.toggleSave(id, ev) };
-      }),
-      rowCols: nar ? '78px 26px minmax(0,1fr) 44px' : '132px 40px minmax(0,1fr) minmax(0,280px) 56px',
-      lineL: nar ? '91px' : '152px',
-      timeFs: nar ? '19px' : 'clamp(26px,2.4vw,34px)',
-      venueColD: nar ? 'none' : 'flex', venueInD: nar ? 'flex' : 'none',
+      schedMeta: 'Day ' + (day + 1) + ' · ' + count(list.length),
+      schedStarred: starred ? starred + ' starred' : '',
+      // Morning, afternoon and evening rows (SCHED_BLOCKS), keyed by day so each row starts scrolled to its first event.
+      schedBlocks: SCHED_BLOCKS.map(([name, from, to]) => {
+        const items = list.filter(({ e }) => mins(e[0]) >= from && mins(e[0]) < to);
+        return {
+          key: day + '-' + name.toLowerCase(), name, lower: name.toLowerCase(),
+          meta: count(items.length) + (items.length ? ' · from ' + fmt(items[0].e[0]).join(' ') : ''),
+          cards: items.map(({ e, id }) => {
+            const [t, ap] = fmt(e[0]), on = s.saved.includes(id);
+            return { id, t, ap, dur: dur(e[1]), title: e[2], wn: names[e[3]], wc: WORLDS[e[3]].accent, venue: e[4], on, star: on ? 'oklch(0.8 0.12 85)' : 'transparent', aria: (on ? 'Remove ' : 'Star ') + e[2], toggle: (ev: MouseEvent<HTMLButtonElement>) => this.toggleSave(id, ev) };
+          }),
+        };
+      }).filter((b) => b.cards.length),
     };
   }
 
@@ -1118,9 +1244,9 @@ export default class Innovision extends Component<Props, State> {
       const tl = g.timeline({ delay, onComplete: () => { g.set(c, { pointerEvents: 'none' }); c?.setAttribute('data-idle', ''); this.syncLoops(); resolve(); } });
       tl.to(L, { yPercent: -100 / 3, duration: 1.3, ease: 'power3.inOut', stagger: .09 })
         .add(() => {
-          this.play('thump');
           tl.pause();
-          Promise.resolve(covered && covered()).then(() => requestAnimationFrame(() => tl.resume()));
+          // Whatever happens while covered, the curtain lifts again.
+          Promise.resolve().then(() => covered && covered()).catch((e) => console.warn('curtain', e)).then(() => requestAnimationFrame(() => tl.resume()));
         })
         .add(() => { if (reveal) reveal(); }, '+=0.35')
         .to(L, { yPercent: -100, duration: 1.4, ease: 'power3.inOut', stagger: { each: .09, from: 'end' } }, '<');
@@ -1161,12 +1287,11 @@ export default class Innovision extends Component<Props, State> {
     const from = this.state.view, w = WORLDS[to.index];
     if (to.view === 'detail') this.dismissHint();
     if (to.view === 'home') {
-      this.play('vanish');
       if (to.section) this.pendingSec = to.section;
       let he: gsap.core.Timeline | undefined;
       await this.curtain('RETURNING TO', 'INNOVISION', {
         covered: async () => { await this.prepView(to); if (this.pendingSec) { this.scrollHome(this.pendingSec); this.pendingSec = null; } he = this.homeEnter().pause(0); },
-        reveal: () => { this.playMusic('home'); if (he) he.play(); },
+        reveal: () => { if (he) he.play(); },
       });
       return;
     }
@@ -1174,12 +1299,20 @@ export default class Innovision extends Component<Props, State> {
       await this.slideTo(to.index, this.slideDir || (to.index > this.state.index ? 1 : -1));
       return;
     }
-    const label = to.view === 'worlds' ? 'THE WORLDS' : to.view === 'merch' ? 'THE STORE' : to.view === 'gallery' ? 'THE GALLERY' : to.view === 'schedule' ? 'THE SCHEDULE' : w.name.toUpperCase();
-    if (from === 'home') this.homeLeave(); else this.play('vanish');
+    const label = to.view === 'worlds' ? 'The Worlds' : to.view === 'merch' ? 'The Store' : to.view === 'gallery' ? 'The Gallery' : to.view === 'schedule' ? 'The Schedule' : w.name;
+    // A lazy view's chunk downloads while the curtain falls.
+    if (to.view in LAZY) this.prefetch(to.view as LazyKey);
+    const back: Route = { view: from as Route['view'], index: this.state.index };
+    if (from === 'home') this.homeLeave();
     let tlIn: gsap.core.Timeline | undefined;
     await this.curtain('NOW ENTERING', label, {
       delay: from === 'home' ? .55 : 0,
-      covered: async () => { await this.prepView(to); tlIn = this.enterView(to); tlIn.pause(0); },
+      covered: async () => {
+        let at = to;
+        // Its chunk couldn't be fetched: the curtain lifts on the view it fell over, and the address goes back.
+        if (!(await this.prepView(to))) { at = back; history.replaceState(null, '', this.hashOf(back)); this.toast(LOAD_FAIL); await this.prepView(back); }
+        tlIn = this.enterView(at); tlIn.pause(0);
+      },
       reveal: () => { if (tlIn) tlIn.play(); },
     });
   }
@@ -1304,27 +1437,28 @@ export default class Innovision extends Component<Props, State> {
         a.on = true; el.style.translate = a.x.toFixed(2) + 'px ' + a.y.toFixed(2) + 'px';
       }
     };
-    gsap.ticker.add(tick);
-    this.cleanups.push(() => { gsap.ticker.remove(tick); els.forEach((el) => { el.style.translate = ''; }); });
+    this.tickFor('home', tick);
+    this.cleanups.push(() => { els.forEach((el) => { el.style.translate = ''; }); });
   }
   refreshParallax() {
     const v = this.$('[data-view="' + this.state.view + '"]');
     this.pEls = v ? [...v.querySelectorAll<HTMLElement>('[data-depth]')].filter((el) => { const s = el.closest<HTMLElement>('[data-slide]'); return !s || +(s.dataset.slide || 0) === this.state.index; }) : [];
   }
   hover = (e: MouseEvent<HTMLElement>) => {
-    this.play('beep');
     if (this.reduce || !this.ctx) return;
     const sp = e.currentTarget.querySelector<HTMLElement>('[data-scr]');
     if (!sp) return;
     sp.dataset.text = sp.dataset.text || sp.textContent || '';
     gsap.to(sp, { duration: .5, scrambleText: { text: sp.dataset.text, chars: SCRAMBLE, speed: .6 }, overwrite: true });
   };
-  beep = () => this.play('beep');
   /* ---------- auth: register / login ---------- */
   RN = 22;
   // @ts-ignore
-  register = (e) => { 
+  register = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    const t = e && e.currentTarget;
+    // A click before the session check finishes waits for it, so a signed-in visitor isn't sent to log in.
+    if (!this._authReady.done) await this._authReady.p;
     if (!this.state.user) {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('inv_pending_action', 'register');
@@ -1337,19 +1471,57 @@ export default class Innovision extends Component<Props, State> {
       this.openAuth('pass');
       return;
     }
-    const t = e && e.currentTarget, disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
+    const disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
     this.openAuth('register', disc || t, !!disc);
   };
   // @ts-ignore
-  loginClick = (e) => {
+  loginClick = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (this.state.user) {
-      this.setState({ profileOpen: true });
-      return;
-    }
     const src = e && e.currentTarget;
+    if (!this._authReady.done) await this._authReady.p;
+    if (this.state.user) { this.openProfile(); return; }
     if (this.state.about) this.setState({ about: false });
     this.openAuth('login', src);
+  };
+  /** Opens the profile panel (closing the menu or About on the way) and refreshes the profile behind it. */
+  // @ts-ignore
+  openProfile = (e?) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const u = this.state.user;
+    if (!u) return;
+    if (u.id) this.refreshUserProfile(u.id);
+    this.setState({ profileOpen: true, menu: false, about: false });
+  };
+  /** HUD and menu labels for the signed-in visitor: first name, initials, and an accessible name. */
+  accountVals(s: State) {
+    const u = s.user;
+    const full = u ? ((u.full_name || '').trim() || this.nameFrom(u.email || '')) : '';
+    const words = full.split(/\s+/).filter(Boolean);
+    return {
+      authReady: s.authReady,
+      profileName: (words[0] || 'Profile').toUpperCase(),
+      profileInitials: (words.slice(0, 2).map((w) => w[0]).join('') || 'IV').toUpperCase(),
+      profileAria: 'Open your profile' + (full ? ', ' + full : ''),
+      menuLogout: (e: MouseEvent) => { e.preventDefault(); this.setState({ menu: false }); this.logout(); },
+    };
+  }
+
+  /* ---------- Public Events & Gallery Data Fetching ---------- */
+  fetchPublicData = async () => {
+    try {
+      const [gRes, eRes] = await Promise.all([
+        fetch('/api/gallery').then((r) => r.json()).catch(() => null),
+        fetch('/api/events').then((r) => r.json()).catch(() => null),
+      ]);
+      if (gRes?.success && Array.isArray(gRes.gallery) && gRes.gallery.length > 0) {
+        this.setState({ dbGallery: gRes.gallery });
+      }
+      if (eRes?.success && Array.isArray(eRes.events) && eRes.events.length > 0) {
+        this.setState({ dbEvents: eRes.events });
+      }
+    } catch (e) {
+      console.warn('Error fetching public fest data:', e);
+    }
   };
 
   /* ---------- Public Events & Gallery Data Fetching ---------- */
@@ -1371,44 +1543,46 @@ export default class Innovision extends Component<Props, State> {
   };
 
   /* ---------- Supabase Auth & Google OAuth (Cookie-Backed Sessions) ---------- */
+  /** The first session check is over: show LOG IN or the profile, and release clicks waiting on it. */
+  markAuthReady = () => {
+    if (this._authReady.done) return;
+    this._authReady.done = true;
+    this._authReady.res();
+    if (this.alive) this.setState({ authReady: true });
+  };
+
   initSupabaseAuth = async () => {
+    const slow = setTimeout(this.markAuthReady, 4000);
+    this.cleanups.push(() => clearTimeout(slow));
     try {
       purgeLocalStorageTokens();
       const supabase = getSupabase();
 
-      // 1. Exchange PKCE code if returning from Google OAuth redirect
-      if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
-        const searchParams = new URLSearchParams(window.location.search);
-        const code = searchParams.get('code');
-        if (code) {
-          try {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) {
-              console.warn('PKCE exchange warning:', error.message);
-            }
-          } catch (e) {
-            console.warn('exchangeCodeForSession error:', e);
-          } finally {
-            cleanAuthUrl();
-          }
+      // 1. Check the active session. getSession waits for the client to start, which (detectSessionInUrl) already
+      //    exchanges the PKCE code when returning from Google, so the code is only exchanged by hand as a fallback.
+      let { data: { session } } = await supabase.auth.getSession();
+      const code = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('code') : null;
+      if (!session && code) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) console.warn('PKCE exchange warning:', error.message);
+          session = data?.session ?? null;
+        } catch (e) {
+          console.warn('exchangeCodeForSession error:', e);
         }
-      } else {
-        cleanAuthUrl();
       }
-
-      // 2. Check active session from cookies / client
-      const { data: { session } } = await supabase.auth.getSession();
+      cleanAuthUrl();
       purgeLocalStorageTokens();
 
       if (session?.user) {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
           console.warn('Cached session is invalid or user was removed. Signing out...');
+          this._authEpoch++;
           await signOutUser();
           return;
         }
-        await saveSessionToDatabase(session);
-        await this.handleUserSession(user);
+        await Promise.all([saveSessionToDatabase(session), this.handleUserSession(user)]);
       } else {
         // 3. Fall back to Server/Database session via cookies (ZERO localStorage)
         const dbAuth = await fetchSessionFromDatabase();
@@ -1427,37 +1601,54 @@ export default class Innovision extends Component<Props, State> {
         }
       }
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Supabase awaits this callback while holding its auth lock, so it must not await Supabase calls itself
+      // (that deadlocks the client, and a later signOut then never finishes). The work runs on the next tick.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         cleanAuthUrl();
         purgeLocalStorageTokens();
-        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-          await saveSessionToDatabase(session);
-          await this.handleUserSession(session.user);
-        } else if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
+          this._authEpoch++;
           this.reg = null;
           this.pass = null;
-          purgeLocalStorageTokens();
-          this.setState({
-            user: null,
-            registration: null,
-            adminOpen: false,
-            profileOpen: false,
-            phoneModalOpen: false,
-          });
+          if (this.alive) {
+            this.setState({
+              user: null,
+              registration: null,
+              adminOpen: false,
+              profileOpen: false,
+              phoneModalOpen: false,
+            });
+          }
+          return;
+        }
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+          const epoch = this._authEpoch;
+          const known = this.state.user?.id === session.user.id;
+          setTimeout(() => {
+            if (!this.alive || epoch !== this._authEpoch) return;
+            saveSessionToDatabase(session);
+            // A refreshed token or a re-focused tab for the same account needs no profile reload.
+            if (!known) this.handleUserSession(session.user);
+          }, 0);
         }
       });
       this.cleanups.push(() => subscription.unsubscribe());
     } catch (err) {
       console.warn('initSupabaseAuth error:', err);
+    } finally {
+      clearTimeout(slow);
+      this.markAuthReady();
     }
   };
 
   handleUserSession = async (authUser: any) => {
+    const epoch = this._authEpoch;
     const intent = typeof window !== 'undefined' ? sessionStorage.getItem('inv_login_intent') : null;
     const isNitEmail = authUser.email?.toLowerCase().endsWith('@nitrkl.ac.in');
 
     if (intent === 'internal' && !isNitEmail) {
       if (typeof window !== 'undefined') sessionStorage.removeItem('inv_login_intent');
+      this._authEpoch++;
       await signOutUser();
       this.setState({
         user: null,
@@ -1468,13 +1659,16 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    const profile = await getOrCreateUserProfile(authUser);
+    const [profile, registration] = await Promise.all([
+      getOrCreateUserProfile(authUser),
+      fetchUserRegistration(authUser.id, authUser.email),
+    ]);
+    // Signed out (or signed in as someone else) while these were loading: this result is stale.
+    if (!this.alive || epoch !== this._authEpoch) return;
     if (!profile) {
       this.setState({ user: null, registration: null });
       return;
     }
-
-    const registration = await fetchUserRegistration(authUser.id, authUser.email);
 
     if (registration) {
       this.pass = {
@@ -1521,6 +1715,7 @@ export default class Innovision extends Component<Props, State> {
   };
 
   refreshUserProfile = async (userId: string) => {
+    const epoch = this._authEpoch;
     try {
       const supabase = getSupabase();
       const { data, error } = await supabase
@@ -1529,6 +1724,7 @@ export default class Innovision extends Component<Props, State> {
         .eq('id', userId)
         .maybeSingle();
 
+      if (!this.alive || epoch !== this._authEpoch || this.state.user?.id !== userId) return;
       if (data && !error) {
         this.setState({ user: data as UserProfile });
       }
@@ -1551,7 +1747,6 @@ export default class Innovision extends Component<Props, State> {
   googleLogin = async (isInternal: boolean = false) => {
     const s = this.state;
     if (s.gBusy || s.busyLbl) return;
-    this.play('thumpSoft');
     this.setState({ gBusy: true, gErr: '' });
     try {
       const { error } = await signInWithGoogle({ internalOnly: isInternal });
@@ -1564,17 +1759,17 @@ export default class Innovision extends Component<Props, State> {
   };
 
   gFail(msg: string) {
-    this.play('beep');
     this.setState({ gErr: msg });
     const b = this.$('[data-g-btn]');
     if (b && !this.reduce) gsap.fromTo(b, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
   }
 
   logout = async () => {
+    // Flip the HUD back to LOG IN straight away; the server and Supabase sign-out finish in the background.
+    this._authEpoch++;
     this.reg = null;
     this.pass = null;
     this.dropFiles();
-    await signOutUser();
     const f = this.$ && this.$('[data-auth-form]');
     if (f) f.reset();
     this.setState({
@@ -1591,8 +1786,12 @@ export default class Innovision extends Component<Props, State> {
       gUser: null,
       gErr: '',
     });
-    this.play('thumpSoft');
     this.toast('Logged out. See you in orbit.');
+    try {
+      await signOutUser();
+    } catch (err) {
+      console.warn('signOutUser error:', err);
+    }
   };
   // @ts-ignore
   emailOk(x) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(x); }
@@ -1703,13 +1902,16 @@ export default class Innovision extends Component<Props, State> {
 
     if (this.state.auth) { this.switchMode(mode); return; }
     this.authBusy = true;
+    // The overlay is a lazy chunk (LAZY.auth): mount it before animating it. The rift opens from the button as it
+    // is now, even if mounting takes a moment.
+    const origin = this.originOf(src, fromDisc);
+    if (!(await this.mount('auth'))) { this.authBusy = false; this.toast(LOAD_FAIL); return; }
     const g = gsap, root = this.$('[data-auth-root]'), sec = this.$('[data-auth]');
-    this.page = this.livePage(); this.authO = this.originOf(src, fromDisc);
+    this.page = this.livePage(); this.authO = origin;
     await this.set({ auth: true, authMode: mode, err: {}, gErr: '' });
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
     const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
     g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
-    this.play('swoosh');
     this.authSpin(true);
     g.set(planet, { rotation: -Math.min(this.state.step, 4) * 26 });
     if (this.reduce) {
@@ -1733,7 +1935,6 @@ export default class Innovision extends Component<Props, State> {
       .fromTo(sec, { autoAlpha: fromDisc ? 0 : 1 }, { autoAlpha: 1, duration: fromDisc ? .35 : .01, ease: 'power1.out' }, 0)
       .to(r, { p: 1, duration: 1.3, ease: fromDisc ? 'power3.inOut' : 'expo.inOut' }, fromDisc ? .15 : 0)
       .to(r, { z: 1, duration: 1.3, ease: 'power2.inOut' }, 0)
-      .add(() => this.play('thumpSoft'), .6)
       .to(planet, { autoAlpha: 1, scale: 1, yPercent: 0, duration: 2, ease: 'expo.out' }, .55)
       .to(ui, { scale: 1, duration: 1.5, ease: 'expo.out' }, .6)
       .to(ins, { autoAlpha: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .07 }, .7);
@@ -1756,7 +1957,6 @@ export default class Innovision extends Component<Props, State> {
       this.setState({ auth: false, err: {}, busyLbl: '', drag: '' });
       if (after) after();
     };
-    this.play('vanish');
     if (this.reduce) { g.to(sec, { autoAlpha: 0, duration: .3, onComplete: () => { g.set(sec, { autoAlpha: 1 }); done(); } }); return; }
     const r = this._rift = this.riftNew(1, 1, 0, 1);
     this.riftDraw();
@@ -1819,7 +2019,6 @@ export default class Innovision extends Component<Props, State> {
 
     // Strict Auth Middleware: Intercept switching to register without login
     if (m === 'register' && !s.user) {
-      this.play('beep');
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('inv_pending_action', 'register');
       }
@@ -1827,7 +2026,8 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    this.play('thumpSoft');
+
+    playClick();
     this.setState({ authMode: m, step: m === 'pass' ? 4 : s.step, err: {}, gErr: '' }, () => {
       if (m === 'pass') {
         this.passReveal();
@@ -1836,11 +2036,11 @@ export default class Innovision extends Component<Props, State> {
         this.focusAuth();
       }
     });
+
   };
   // @ts-ignore
   toStep(n) {
     const dir = n > this.state.step ? 1 : -1;
-    this.play('thumpSoft');
     this.setState({ step: n, err: {} }, () => {
       const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
       this.animPane(dir); this.focusAuth();
@@ -1848,7 +2048,7 @@ export default class Innovision extends Component<Props, State> {
       gsap.to(this.$('[data-a-planet-wrap]'), { rotation: -n * 26, duration: 1.8, ease: 'expo.out' });
       const node = this.$$('[data-rail-node]')[n];
       if (node) gsap.fromTo(node, { scale: .5 }, { scale: 1, duration: .8, ease: 'back.out(3)' });
-      if (n === 2) setTimeout(() => this.scan('qr'), 380);
+      if (n === 1) setTimeout(() => this.scan('qr'), 380);
     });
   }
   railGo(k) { const s = this.state; if (s.authMode === 'register' && k < s.step && !s.busyLbl) this.toStep(k); }
@@ -1865,8 +2065,7 @@ export default class Innovision extends Component<Props, State> {
     this.setState({ err });
     const k = Object.keys(err)[0];
     if (!k) return false;
-    this.play('beep');
-    if (k !== 'idfile' && k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
+    if (k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
     const row = this.$('[data-auth-act]');
     if (row && !this.reduce) gsap.fromTo(row, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
     return true;
@@ -1879,19 +2078,18 @@ export default class Innovision extends Component<Props, State> {
   dropFile(kind) { return (e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.setState({ drag: '' }); if (f) this.takeFile(kind, f); }; }
   // @ts-ignore
   takeFile = async (kind, f) => {
-    const ek = kind === 'id' ? 'idfile' : 'payfile';
+    const ek = 'payfile';
     const isImg = /^image\//.test(f.type);
-    const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
 
-    if (kind === 'pay' ? !isImg : !(isImg || isPdf)) {
-      this.fail({ [ek]: kind === 'pay' ? 'Upload the screenshot as an image (JPG or PNG).' : 'Use a JPG, PNG or PDF file.' });
+    if (!isImg) {
+      this.fail({ [ek]: 'Upload the screenshot as an image (JPG or PNG).' });
       return;
     }
 
     // 2MB max size limit requirement
     const MAX_SIZE = 2 * 1024 * 1024;
     if (f.size > MAX_SIZE) {
-      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller photo or PDF (max 2MB).' });
+      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller image (max 2MB).' });
       return;
     }
 
@@ -1899,7 +2097,6 @@ export default class Innovision extends Component<Props, State> {
     if (old && old.url && old.url.startsWith('blob:')) URL.revokeObjectURL(old.url);
 
     const previewUrl = isImg ? URL.createObjectURL(f) : '';
-    this.play('beep');
     this.setState(
       (st) => ({
         files: { ...st.files, [kind]: { name: f.name, size: f.size, url: previewUrl, pdf: !isImg, status: 'up' } },
@@ -1912,10 +2109,12 @@ export default class Innovision extends Component<Props, State> {
     try {
       const formData = new FormData();
       formData.append('file', f);
-      formData.append('folder', kind === 'id' ? '/innovision/id_cards' : '/innovision/payments');
+      formData.append('folder', '/innovision/payments');
 
+      const { data: { session } } = await getSupabase().auth.getSession();
       const res = await fetch('/api/upload', {
         method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         body: formData,
       });
 
@@ -1930,7 +2129,10 @@ export default class Innovision extends Component<Props, State> {
           [kind]: {
             name: f.name,
             size: f.size,
-            url: data.url, // Real ImageKit CDN URL
+            // The ImageKit file is private (its URL doesn't load without a signature), so keep showing the
+            // local preview and submit the stored ImageKit URL with the registration.
+            url: previewUrl,
+            remoteUrl: data.url,
             fileId: data.fileId,
             pdf: !isImg,
             status: 'done',
@@ -1954,7 +2156,6 @@ export default class Innovision extends Component<Props, State> {
     paint();
   // @ts-ignore
     this._up[kind] = gsap.to(o, { v: 100, duration: this.reduce ? .3 : 1.3, ease: 'power2.inOut', onUpdate: paint, onComplete: () => {
-      this.play('thumpSoft');
       this.setState((st) => (st.files[kind] ? { files: { ...st.files, [kind]: { ...st.files[kind], status: 'done' } } } : null), () => this.scan(kind));
     } });
   }
@@ -1969,16 +2170,15 @@ export default class Innovision extends Component<Props, State> {
   // @ts-ignore
     const f = (this.state.files || {})[kind]; if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url);
     if (this._up && this._up[kind]) this._up[kind].kill();
-    this.play('beep');
     this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
   }
-  replaceFile(kind) { const i = this.$('[data-auth] [name="' + (kind === 'id' ? 'idfile' : 'payfile') + '"]'); if (i) i.click(); }
+  replaceFile() { const i = this.$('[data-auth] [name="payfile"]'); if (i) i.click(); }
   dropFiles() { Object.values(this.state.files || {}).forEach((f: any) => { if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); }); }
   // @ts-ignore
   copyUpi = () => {
     const t = this.upi();
   // @ts-ignore
-    const ok = () => { this.play('beep'); this.setState({ copied: true }); clearTimeout(this._copy); this._copy = setTimeout(() => this.setState({ copied: false }), 1600); };
+    const ok = () => { this.setState({ copied: true }); clearTimeout(this._copy); this._copy = setTimeout(() => this.setState({ copied: false }), 1600); };
   // @ts-ignore
     const no = () => this.toast('UPI ID: ' + t);
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, no); else no(); } catch (e) { no(); }
@@ -2049,8 +2249,10 @@ export default class Innovision extends Component<Props, State> {
       const email = user.email; // LOCKED - CANNOT BE ALTERED
       const phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
       const enrollment_no = v('enrollment_no');
+      const gender = v('gender');
 
       if (name.length < 2) err.name = 'Tell us your full name.';
+      if (!GENDERS.some((g) => g.value === gender)) err.gender = 'Select your gender.';
       if (!isInternal && college.length < 3) {
         err.college = 'Which college are you from?';
       } else if (!isInternal && (isIterSoaCollege(college) || isIterSoaEmail(email))) {
@@ -2060,9 +2262,9 @@ export default class Innovision extends Component<Props, State> {
       if (isInternal && !enrollment_no) err.enrollment_no = 'Enter your NIT Rourkela Roll / Enrollment number.';
 
       if (this.fail(err)) return;
-      this.reg = { name, college, email, phone, enrollment_no };
+      this.reg = { name, college, email, phone, enrollment_no, gender };
 
-      // INTERNAL NIT RKL STUDENTS: NO ID CARD NEEDED & AUTO-CONFIRMED (NO ADMIN APPROVAL)
+      // INTERNAL NIT RKL STUDENTS: AUTO-CONFIRMED (NO PAYMENT OR ADMIN APPROVAL)
       if (isInternal) {
         this.wait('CONFIRMING', 1000).then(async () => {
           const regId = this.newId();
@@ -2074,8 +2276,8 @@ export default class Innovision extends Component<Props, State> {
             college: 'National Institute of Technology, Rourkela',
             phone,
             enrollment_no,
+            gender,
             student_type: 'internal' as const,
-            id_card_url: '', // Zero ID card required for internal students!
             amount: 0,
             status: 'confirmed' as const, // Auto-confirmed! No approval needed!
           };
@@ -2095,8 +2297,10 @@ export default class Innovision extends Component<Props, State> {
             email: user.email,
             status: 'CONFIRMED',
           };
-          this.play('fx');
+
+          playClick();
           this.toast(saveRes.alreadyRegistered ? 'You are already registered! Here is your pass.' : '🎉 Registration confirmed! Welcome to Innovision 2026.');
+
           this.setState(
             {
               authMode: 'pass',
@@ -2110,22 +2314,14 @@ export default class Innovision extends Component<Props, State> {
         return;
       }
 
-      // External students proceed to Step 1 (ID card upload)
+      // External students proceed to Step 1 (payment)
       this.toStep(1);
     } else if (s.step === 1) {
-      const fi = files.id;
-      if (!fi) err.idfile = 'Upload your college ID to continue.';
-      else if (fi.status !== 'done') err.idfile = 'Hold on, your ID is still uploading to ImageKit.';
-      if (this.fail(err)) return;
-
-      // External students proceed to payment
       this.toStep(2);
     } else if (s.step === 2) {
-      this.toStep(3);
-    } else if (s.step === 3) {
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
-      else if (fp.status !== 'done') err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
+      else if (fp.status !== 'done' || !fp.remoteUrl) err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
       if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
       if (this.fail(err)) return;
 
@@ -2140,9 +2336,9 @@ export default class Innovision extends Component<Props, State> {
           college: r.college,
           phone: r.phone,
           enrollment_no: r.enrollment_no,
+          gender: r.gender,
           student_type: 'external' as const,
-          id_card_url: files.id.url,
-          payment_screenshot_url: fp.url,
+          payment_screenshot_url: fp.remoteUrl,
           utr,
           amount: 499,
           status: 'pending' as const, // PENDING FOR EXTERNAL
@@ -2174,7 +2370,6 @@ export default class Innovision extends Component<Props, State> {
           status: (savedReg.status || 'PAYMENT UNDER REVIEW').toUpperCase(),
           utr,
         };
-        this.play('fx');
         this.setState(
           {
             authMode: 'pass',
@@ -2209,7 +2404,7 @@ export default class Innovision extends Component<Props, State> {
   authVals(s) {
   // @ts-ignore
     const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.8 0.12 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
-    const E = Object.assign({ name: '', college: '', email: '', phone: '', enrollment_no: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
+    const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', payfile: '', utr: '', lemail: '', lid: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
     Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });
@@ -2222,6 +2417,7 @@ export default class Innovision extends Component<Props, State> {
       email: user?.email || '',
       phone: user?.phone || R.phone || '',
       enrollment_no: user?.enrollment_no || s.registration?.enrollment_no || R.enrollment_no || '',
+      gender: R.gender || s.registration?.gender || '',
     };
   // @ts-ignore
     const up = (kind, ek, prompt) => {
@@ -2234,36 +2430,36 @@ export default class Innovision extends Component<Props, State> {
       };
     };
     const showRail = reg || (am === 'pass' && st === 4);
-    const notes = [regVals.name, files.id && files.id.name, 'by UPI', 'Submitted'];
+    const notes = [regVals.name, 'by UPI', 'Submitted'];
 
     // Rail steps differ for internal vs external students:
-    // Internal students do not require an ID card or admin approval (1 direct step)
+    // Internal students do not pay or need admin approval (1 direct step)
     const railSteps = isInternal
       ? [['DETAILS', 'Roll no & phone number', 'DETAILS']]
-      : [['DETAILS', 'Name, college, email, phone', 'DETAILS'], ['COLLEGE ID', 'Photo or PDF of your ID card', 'ID'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
+      : [['DETAILS', 'Name, gender, college, phone', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
 
     return {
       noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
       authHidden: String(!s.auth),
       authAria: reg ? 'Register for Innovision 2026' : am === 'login' ? 'Log in to Innovision' : 'Your boarding pass',
       authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
-      authTitle: reg ? 'CLAIM YOUR SEAT' : am === 'login' ? 'WELCOME BACK' : "YOU'RE ON BOARD",
+      authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : "You're on board",
       authSub: reg
-        ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Four short stops to register for Innovision 2026 at NIT Rourkela.')
+        ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Three short stops to register for Innovision 2026 at NIT Rourkela.')
         : am === 'login' ? 'Sign in using your Google account or institute webmail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
       railD: show(showRail && !s.narrow && !isInternal), hprogD: showRail && s.narrow && !isInternal ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
         return {
-          label, short, note: done ? (k === 2 ? 'by UPI' : notes[k] || hint) : hint, cur: cur ? 'step' : 'false',
+          label, short, note: done ? notes[k] || hint : hint, cur: cur ? 'step' : 'false',
           c: done || cur ? cream : 'rgba(236,232,223,.6)', bc: done || cur ? gold : 'rgba(236,232,223,.3)', fill: done ? gold : 'transparent', chk: done ? 1 : 0, dot: cur ? 1 : 0, dotS: cur ? 1 : .2,
           lineD: k < railSteps.length - 1 ? 'block' : 'none', lineS: done ? 1 : 0, segS: done ? 1 : cur ? .5 : 0,
           lock: !back || !!s.busyLbl, cursor: back ? 'pointer' : 'default', go: () => this.railGo(k), aria: label + (done ? ', done. Go back to edit' : cur ? ', current step' : ''),
         };
       }),
-      d: { s0: show(reg && st === 0 && !!s.user), s1: show(reg && st === 1 && !isInternal && !!s.user), s2: show(reg && st === 2 && !isInternal && !!s.user), s3: show(reg && st === 3 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
-      err: E, bc, inv,
-      upId: up('id', 'idfile', 'Drop your ID card here or browse (Max 2MB)'), upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
+      d: { s0: show(reg && st === 0 && !!s.user), s2: show(reg && st === 1 && !isInternal && !!s.user), s3: show(reg && st === 2 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
+      err: E, bc, inv, genderOptions: GENDERS,
+      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
@@ -2273,7 +2469,7 @@ export default class Innovision extends Component<Props, State> {
       switchLbl: !s.user ? 'SIGN IN' : 'REGISTER',
       switchQD: s.narrow ? 'none' : 'inline',
       canBack: reg && st > 0 && !isInternal, stepBack: this.stepBack,
-      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE', 'CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
+      submitLbl: s.busyLbl || (am === 'login' ? 'LOG IN' : isInternal ? 'CONFIRM REGISTRATION (FREE)' : ['CONTINUE TO PAYMENT', "I'VE PAID", 'SUBMIT REGISTRATION'][st] || 'CONTINUE'),
       busy: !!s.busyLbl, busyO: s.busyLbl ? .72 : 1,
       passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || P.registration_id || '', passStatus: P.status ? P.status.toUpperCase() : (isInternal ? 'CONFIRMED' : 'PAYMENT UNDER REVIEW'),
       passNote: (P.status === 'CONFIRMED' || (isInternal && !P.status)) ? 'Show this pass at the registration desk when you arrive at NIT Rourkela.' : (P.status === 'REJECTED' ? 'Your registration was declined. Please contact the helpdesk.' : 'We will email ' + (P.email || 'you') + ' once your payment is verified by the IT-Team.'),
@@ -2285,18 +2481,12 @@ export default class Innovision extends Component<Props, State> {
       user: s.user,
     };
   }
-  checkout = () => { this.play('thumpSoft'); this.toast('Pre-orders open with registrations. Stay in orbit.'); };
+  checkout = () => { this.toast('Pre-orders open with registrations. Stay in orbit.'); };
   linkGo = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const href = e.currentTarget.getAttribute('href') || '#/';
     this.setState({ menu: false, about: false, bagOpen: false });
     this.go(href);
-  };
-  toggleSound = () => {
-    const m = !this.state.muted;
-    this.hw?.Howler.mute(m);
-    try { localStorage.setItem('innovisionMuted', String(m)); } catch {}
-    this.setState({ muted: m });
   };
   onWheel = (e: WheelEvent) => {
     const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -2335,11 +2525,11 @@ export default class Innovision extends Component<Props, State> {
       navLinks, footLinks: navLinks.slice(0, 5), wide: !s.compact,
       // Wide screens open the About drawer; compact screens open the full-screen menu.
       // The MENU button only exists on compact screens; wide screens show LOG IN in its place.
-      menuButton: () => { this.play('thumpSoft'); this.setState({ menu: true }); },
+      menuButton: () => { this.openLazy('menu', { menu: true }); },
       menuExpanded: s.menu,
       menuLogin: (e: MouseEvent<HTMLAnchorElement>) => { this.setState({ menu: false }); this.loginClick(e); },
       goHome: (e: MouseEvent) => { e.preventDefault(); this.goSection(null); },
-      topNav: navLinks.map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, onClick: l.onClick })),
+      topNav: navLinks.map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, cur: l.cur === 'true', onClick: l.onClick })),
       linkGo: this.linkGo,
       menuVis: (s.menu ? 'visible' : 'hidden') as 'visible' | 'hidden', menuDelay: s.menu ? '0s' : '.9s', menuClip: s.menu ? 'circle(150% at 100% 0%)' : 'circle(0% at 100% 0%)', menuHidden: !s.menu,
       closeMenu: () => this.setState({ menu: false }),
@@ -2387,23 +2577,23 @@ export default class Innovision extends Component<Props, State> {
       cartCountL: count + (count === 1 ? ' item' : ' items'), cartTotal: inr(total),
       clearCart: () => this.setBag([]),
       checkout: this.checkout,
-      bagLines: lines.map((l) => ({ name: l.p.name, meta: [l.c >= 0 && l.p.colors ? l.p.colors[l.c][0] : '', l.s].filter(Boolean).join(' · '), qty: l.qty, lineStr: inr(l.qty * l.p.price), inc: () => this.setQty(l.id, 1), dec: () => this.setQty(l.id, -1), remove: () => this.setQty(l.id, -l.qty) })),
+      bagLines: lines.map((l) => ({ name: l.p.name, meta: [l.c >= 0 && l.p.colors?.[l.c] ? l.p.colors[l.c][0] : '', l.s].filter(Boolean).join(' · '), qty: l.qty, lineStr: inr(l.qty * l.p.price), inc: () => this.setQty(l.id, 1), dec: () => this.setQty(l.id, -1), remove: () => this.setQty(l.id, -l.qty) })),
       bagCountStr: String(count), subtotalStr: inr(total), bagEmpty: count === 0,
       bagVis: (s.bagOpen ? 'visible' : 'hidden') as 'visible' | 'hidden', bagDelay: s.bagOpen ? '0s' : '.8s', bagO: s.bagOpen ? 1 : 0, bagX: s.bagOpen ? '0%' : '100%', bagHidden: !s.bagOpen,
-      openBag: () => { this.play('thumpSoft'); this.setState({ bagOpen: true }); },
+      openBag: () => { this.openLazy('bag', { bagOpen: true }); },
       closeBag: () => this.setState({ bagOpen: false }),
       subscribe: (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const f = e.currentTarget, email = f.elements.namedItem('email') as HTMLInputElement | null;
         if (!email || !email.value) return;
-        f.reset(); this.play('thumpSoft'); this.toast("You're on the mission list.");
+        f.reset(); this.toast("You're on the mission list.");
       },
-      sponsorCta: (e: MouseEvent) => { e.preventDefault(); this.play('thumpSoft'); this.toast('Partnership deck drops soon. Reach us on Instagram.'); },
+      sponsorCta: (e: MouseEvent) => { e.preventDefault(); this.toast('Partnership deck drops soon. Reach us on Instagram.'); },
       toastMsg: s.toastMsg,
       bandA: Array.from({ length: 6 }, () => ({ t: "EASTERN INDIA'S LARGEST TECH FEST" })),
       bandB: Array.from({ length: 6 }, () => ({ t: 'INNOVISION 2026 · NIT ROURKELA' })),
       heroChars: 'INNOVISION'.split('').map((ch) => ({ ch })),
-      briefWords: BRIEF.split(' ').map((t) => { const m = t.match(/^\[(\w+)\]$/); return m ? { isImg: true as const, img: A + PILLS[m[1]][0], pos: PILLS[m[1]][1], t: '' } : { isImg: false as const, img: '', pos: '', t }; }),
+      briefWords: BRIEF.split(' '),
       heroSparks: HERO_SPARKS,
       loaderSparks: LOADER_SPARKS,
       worlds: WORLDS.map((x, k) => ({
@@ -2411,8 +2601,9 @@ export default class Innovision extends Component<Props, State> {
         href: '#/world/' + x.slug, stroke: 'color-mix(in oklab, ' + x.ink + ' 36%, transparent)', statLU: x.statL.toUpperCase(), categoryU: x.category.toUpperCase(),
         astroBottom: x.astroSit ? 'calc(100% - 7vh)' : 'calc(100% - 3.5vh)', astroH: x.astroSit ? (s.narrow ? '32vh' : '42vh') : (s.narrow ? '30vh' : '40vh'),
         onExplore: () => this.go('#/world/' + x.slug),
-        onEnter: () => { if (this.mapOpen !== k) this.play('beep'); this.openMap(k); },
+        onEnter: () => this.openMap(k),
       })),
+
       cw: (() => {
         const catEvents = (s.dbEvents || []).filter((ev) => {
           if (!ev.category) return true;
@@ -2439,7 +2630,7 @@ export default class Innovision extends Component<Props, State> {
               dur: '',
               img: A + dw.gates[k % dw.gates.length],
               posterUrl: ev.poster_url || '',
-              brochureUrl: ev.brochure_url || '',
+              brochureUrl: ev.brochure_url && isValidGoogleDriveUrl(ev.brochure_url) ? ev.brochure_url : '',
             }))
           : dw.missions.map(([name, text], k) => ({
               no: String(k + 1).padStart(2, '0'),
@@ -2468,6 +2659,7 @@ export default class Innovision extends Component<Props, State> {
         };
       })(),
       nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
+
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
       isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
@@ -2491,19 +2683,15 @@ export default class Innovision extends Component<Props, State> {
       hintMain: s.coarse ? 'Swipe left or right to visit all three worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all three worlds' : 'Use the side arrows or ← → keys to visit all three worlds',
       hintSub: s.coarse ? 'Tap Enter, or the planet itself, to step inside one.' : 'Hover over a planet, then click Enter to step inside.',
       dismissHint: this.dismissHint,
-      muted: s.muted, soundOn: !s.muted, soundLabel: s.muted ? 'Turn sound on' : 'Turn sound off', toggleSound: this.toggleSound,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',
       aboutHidden: !s.about,
-      openAbout: (e?: MouseEvent) => { if (e) e.preventDefault(); this.play('thumpSoft'); this.setState({ about: true, menu: false }); },
+      openAbout: (e?: MouseEvent) => { if (e) e.preventDefault(); this.setState({ about: true, menu: false }); },
       closeAbout: () => this.setState({ about: false }),
       toTop: (e: MouseEvent) => { e.preventDefault(); const h = this.$('[data-view="home"]'); if (h) h.scrollTo({ top: 0, behavior: 'smooth' }); },
       toastO: s.toastOn ? 1 : 0, toastY: s.toastOn ? '0px' : '16px',
-      register: this.register, hover: this.hover, beep: this.beep,
-      openProfile: (e?: any) => {
-        if (e) e.preventDefault();
-        if (s.user?.id) this.refreshUserProfile(s.user.id);
-        this.setState({ profileOpen: true });
-      },
+      register: this.register, hover: this.hover, prefetchAuth: this.prefetchAuth,
+      openProfile: this.openProfile,
+      ...this.accountVals(s),
       openAdmin: (e?: any) => {
         if (e) e.preventDefault();
         if (s.user?.id) this.refreshUserProfile(s.user.id);
@@ -2518,6 +2706,7 @@ export default class Innovision extends Component<Props, State> {
       prevSlide: () => this.stepSlide(-1), nextSlide: () => this.stepSlide(1),
       onWheel: this.onWheel, onTouchStart: this.onTouchStart, onTouchEnd: this.onTouchEnd,
       // gallery page
+
       ...(() => {
         const galleryList =
           s.dbGallery && s.dbGallery.length > 0
@@ -2538,7 +2727,7 @@ export default class Innovision extends Component<Props, State> {
           gallery: galleryList.map((g, k) => ({
             ...g,
             onFocus: () => {
-              this.play('beep');
+              playClick();
               this.gTarget = k * GAP + 200;
             },
           })),
@@ -2547,6 +2736,7 @@ export default class Innovision extends Component<Props, State> {
           gTotal: String(galleryList.length).padStart(2, '0'),
         };
       })(),
+
       gRestart: () => { this.gTarget = 0; },
       gWheel: this.gWheel, gTouchStart: this.gTouchStart, gTouchMove: this.gTouchMove,
       ...this.schedVals(s),
@@ -2558,21 +2748,21 @@ export default class Innovision extends Component<Props, State> {
     // The big views re-render only when what they show changes (the home page never does; its footer
     // reads the live values through LiveV). Small overlays render with every update.
     return (
-      <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-grotesk),'Segoe UI',system-ui,sans-serif" }}>
+      <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-sans)" }}>
         <LiveV value={v}>
         <HomeV v={v} deps={[s.dbGallery]} />
         <WorldsV v={v} deps={[s.narrow, s.compact, s.dbEvents]} />
-        <DetailV v={v} deps={[s.dIndex, s.compact, s.dbEvents]} />
-        <GalleryV v={v} deps={[s.gIdx, s.dbGallery]} />
-        <MerchV v={v} deps={[s.sel, s.added]} />
-        <ScheduleV v={v} deps={[s.schedDay, s.schedFilter, s.saved, s.narrow]} />
+        {s.lazy.detail && <DetailV v={v} deps={[s.dIndex, s.compact, s.dbEvents]} />}
+        {s.lazy.gallery && <GalleryV v={v} deps={[s.gIdx, s.dbGallery]} />}
+        {s.lazy.merch && <MerchV v={v} deps={[s.sel, s.added]} />}
+        {s.lazy.schedule && <ScheduleV v={v} deps={[s.schedDay, s.schedFilter, s.saved, s.narrow]} />}
         <Hud v={v} />
         <WorldNav v={v} />
         <WorldHint v={v} />
         <Curtain v={v} />
         <AboutPanel v={v} />
-        <MenuOverlay v={v} />
-        <AuthOverlay v={v} />
+        {s.lazy.menu && <MenuOverlay v={v} />}
+        {s.lazy.auth && <AuthOverlay v={v} />}
         <ProfileOverlay
           isOpen={s.profileOpen}
           onClose={() => this.setState({ profileOpen: false })}
@@ -2597,7 +2787,7 @@ export default class Innovision extends Component<Props, State> {
             currentUser={s.user}
           />
         )}
-        <BagPanel v={v} />
+        {s.lazy.bag && <BagPanel v={v} />}
         <CartPill v={v} />
         <Toast v={v} />
         <Cursor />

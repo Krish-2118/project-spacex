@@ -29,7 +29,7 @@ export interface Registration {
   phone: string;
   enrollment_no?: string | null;
   student_type: 'internal' | 'external';
-  id_card_url: string;
+  gender: 'male' | 'female' | 'others';
   payment_screenshot_url?: string | null;
   utr?: string | null;
   amount: number;
@@ -252,9 +252,20 @@ export function getSupabaseAdmin(token?: string): SupabaseClient {
  * - passes `hd: nitrkl.ac.in` to hint Google to select @nitrkl.ac.in account
  * - records the internal intent to validate upon callback (in sessionStorage, NEVER localStorage)
  */
+/** Public site OAuth returns to. Must also be listed in Supabase -> Authentication -> URL Configuration. */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://project-spacex-seven.vercel.app').replace(/\/+$/, '');
+
+/** Where Google sends the visitor back: the deployed site, or this machine when running locally (the PKCE verifier cookie lives there). */
+export function getAuthRedirectUrl(): string {
+  if (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)) {
+    return `${window.location.origin}/`;
+  }
+  return `${SITE_URL}/`;
+}
+
 export async function signInWithGoogle(options?: { internalOnly?: boolean }) {
   const supabase = getSupabase();
-  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/` : '';
+  const redirectTo = getAuthRedirectUrl();
 
   const queryParams: Record<string, string> = {
     prompt: 'select_account',
@@ -288,9 +299,14 @@ export async function signInWithGoogle(options?: { internalOnly?: boolean }) {
  */
 export async function signOutUser() {
   const supabase = getSupabase();
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-  } catch {}
+  // The logout request captures the auth cookies when it is sent, so the server can still drop the DB session.
+  const serverLogout = fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
+  // Revoke the Supabase session, but never let a slow network or a held auth lock keep the visitor signed in.
+  const clientLogout = supabase.auth.signOut().catch((err) => ({ error: err }));
+  const result = await Promise.race([
+    Promise.all([serverLogout, clientLogout]).then(([, r]) => r),
+    new Promise<{ error: null }>((res) => setTimeout(() => res({ error: null }), 3000)),
+  ]);
 
   deleteCookie('inn_access_token');
   deleteCookie('inn_refresh_token');
@@ -310,8 +326,15 @@ export async function signOutUser() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('inv_login_intent');
     purgeLocalStorageTokens();
+    // Cached registrations hold personal data (phone, UTR, proof URLs): don't leave them on shared computers.
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('inv_reg_')) localStorage.removeItem(k);
+      }
+    } catch {}
   }
-  return await supabase.auth.signOut();
+  return result;
 }
 
 /**
@@ -399,9 +422,13 @@ export async function getOrCreateUserProfile(user: User | null): Promise<UserPro
 
     // If not found via client select, use server API to securely initialize/fetch profile
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/auth/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userId: user.id,
           email,

@@ -114,8 +114,8 @@ export default function ProfileOverlay({
             />
             <span
               style={{
-                fontFamily: 'var(--font-cinzel), serif',
-                fontWeight: 900,
+                fontFamily: 'var(--font-display)',
+                fontWeight: 400,
                 fontSize: '18px',
                 letterSpacing: '.06em',
               }}
@@ -137,7 +137,7 @@ export default function ProfileOverlay({
               background: 'transparent',
               color: '#ECE8DF',
               fontSize: '12px',
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: '.14em',
               cursor: 'pointer',
               transition: 'background-color .2s',
@@ -188,8 +188,8 @@ export default function ProfileOverlay({
                     border: '2px solid oklch(0.8 0.12 85)',
                     display: 'grid',
                     placeItems: 'center',
-                    fontFamily: 'var(--font-cinzel), serif',
-                    fontWeight: 900,
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 400,
                     fontSize: '24px',
                     color: 'oklch(0.8 0.12 85)',
                   }}
@@ -203,8 +203,8 @@ export default function ProfileOverlay({
                   <h3
                     style={{
                       margin: 0,
-                      fontFamily: 'var(--font-cinzel), serif',
-                      fontWeight: 900,
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 400,
                       fontSize: '20px',
                       lineHeight: 1.2,
                     }}
@@ -238,7 +238,7 @@ export default function ProfileOverlay({
                     display: 'inline-block',
                     marginTop: '6px',
                     fontSize: '11px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     letterSpacing: '.08em',
                     color: isInternal ? 'oklch(0.8 0.12 85)' : 'rgba(236,232,223,0.6)',
                   }}
@@ -324,7 +324,7 @@ export default function ProfileOverlay({
                         border: 0,
                         color: 'oklch(0.8 0.12 85)',
                         fontSize: '11px',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         padding: 0,
@@ -417,7 +417,7 @@ export default function ProfileOverlay({
                   }}
                 >
                   <span style={{ fontSize: '12px', color: 'rgba(236,232,223,0.7)' }}>REGISTRATION ID</span>
-                  <span style={{ fontFamily: 'var(--font-cinzel), serif', fontWeight: 900, fontSize: '18px', letterSpacing: '.06em' }}>
+                  <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: '18px', letterSpacing: '.06em' }}>
                     {registration.registration_id}
                   </span>
                 </div>

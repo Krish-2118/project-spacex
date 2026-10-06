@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaff, isValidGoogleDriveUrl, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
+import { isUuid } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +15,17 @@ export const ALLOWED_EVENT_CATEGORIES = [
 ] as const;
 
 export type AllowedEventCategory = typeof ALLOWED_EVENT_CATEGORIES[number];
+
+const TEXT_LIMITS = { title: 200, description: 5000, format: 100, duration: 100, venue: 200 } as const;
+
+/** Returns an error message if any provided text field exceeds its maximum length. */
+function textLimitError(fields: Partial<Record<keyof typeof TEXT_LIMITS, string | null | undefined>>): string | null {
+  for (const [key, max] of Object.entries(TEXT_LIMITS)) {
+    const value = fields[key as keyof typeof TEXT_LIMITS];
+    if (typeof value === 'string' && value.length > max) return `Event ${key} must be at most ${max} characters.`;
+  }
+  return null;
+}
 
 // GET all events (Staff access)
 export async function GET(req: NextRequest) {
@@ -38,12 +50,14 @@ export async function GET(req: NextRequest) {
           notice: "Table 'events' not yet migrated in Supabase. Please run supabase/schema.sql."
         });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('/api/admin/events database error:', error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, events: events || [] });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch events';
+    console.error('/api/admin/events error:', err);
+    const message = 'Failed to fetch events';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -76,6 +90,11 @@ export async function POST(req: NextRequest) {
       );
     }
     const category = rawCategory as AllowedEventCategory;
+
+    const lengthErr = textLimitError({ title, description, format, duration, venue });
+    if (lengthErr) {
+      return NextResponse.json({ error: lengthErr }, { status: 400 });
+    }
 
     // 1. Validate Event Name
     if (!title) {
@@ -187,7 +206,7 @@ export async function POST(req: NextRequest) {
         {
           error: dbErr.message?.includes('does not exist')
             ? "Table 'events' does not exist in Supabase yet. Please execute the SQL in supabase/schema.sql in your Supabase SQL Editor."
-            : dbErr.message,
+            : 'Failed to save changes.',
         },
         { status: 500 }
       );
@@ -200,7 +219,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('Error creating event:', err);
-    const message = err instanceof Error ? err.message : 'Failed to create event';
+    const message = 'Failed to create event';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -237,7 +256,7 @@ export async function PATCH(req: NextRequest) {
       newPosterFile = formData.get('file') as File | null;
     } else {
       const body = await req.json();
-      eventId = (body.id || '').trim();
+      eventId = typeof body.id === 'string' ? body.id.trim() : '';
       title = body.title !== undefined ? String(body.title).trim() : undefined;
       description = body.description !== undefined ? String(body.description).trim() : undefined;
       brochureUrl = body.brochure_url !== undefined ? String(body.brochure_url).trim() : undefined;
@@ -247,11 +266,16 @@ export async function PATCH(req: NextRequest) {
       venue = body.venue !== undefined ? String(body.venue).trim() : undefined;
     }
 
-    if (!eventId) {
+    if (!eventId || !isUuid(eventId)) {
       return NextResponse.json(
         { error: 'Missing required event ID.' },
         { status: 400 }
       );
+    }
+
+    const patchLengthErr = textLimitError({ title, description, format, duration, venue });
+    if (patchLengthErr) {
+      return NextResponse.json({ error: patchLengthErr }, { status: 400 });
     }
 
     // Validate brochure link if supplied
@@ -364,7 +388,8 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      console.error('/api/admin/events database error:', updateErr);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -374,7 +399,7 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('Error updating event:', err);
-    const message = err instanceof Error ? err.message : 'Failed to update event';
+    const message = 'Failed to update event';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -397,7 +422,7 @@ export async function DELETE(req: NextRequest) {
       } catch {}
     }
 
-    if (!id) {
+    if (!id || !isUuid(id)) {
       return NextResponse.json({ error: 'Missing event ID.' }, { status: 400 });
     }
 
@@ -405,7 +430,8 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabase.from('events').delete().eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('/api/admin/events database error:', error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -413,7 +439,8 @@ export async function DELETE(req: NextRequest) {
       message: 'Event deleted successfully.',
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to delete event';
+    console.error('/api/admin/events error:', err);
+    const message = 'Failed to delete event';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

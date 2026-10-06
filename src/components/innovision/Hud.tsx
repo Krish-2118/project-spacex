@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Logo } from './icons';
 import type { V } from './types';
 
@@ -9,16 +10,16 @@ const FROST = "rgba(236,232,223,.86)";
 const EASE = "cubic-bezier(.25,1,.1,1)";
 
 /**
- * Fixed top bar (back, logo, nav, register, about/menu) and bottom bar (Instagram, sound).
+ * Fixed top bar: back, logo, nav, register / my pass, log in or profile, menu.
  * At the top of a page the bars float over the scene and invert against it (mix-blend difference).
  * Once the page scrolls under them (v.hudSolid) that would invert the content too, so the top bar
- * settles onto a frosted paper strip with ink text and the bottom items onto matching chips.
+ * settles onto a frosted paper strip with ink text.
  */
 export default function Hud({ v }: { v: V }) {
   const solid = v.hudSolid, fg = solid ? INK : "#fff";
   const blend = solid ? "normal" : "difference";
-  // The chips keep the bottom items' text where it always sat (6px inset): the negative margin cancels the extra padding.
-  const chip = { padding: "8px 14px", margin: "-2px -14px", borderRadius: "999px", border: `1px solid ${solid ? "rgba(20,19,18,.12)" : "transparent"}`, background: solid ? FROST : "transparent", backdropFilter: solid ? "blur(14px) saturate(1.2)" : "none", WebkitBackdropFilter: solid ? "blur(14px) saturate(1.2)" : "none", transition: "background-color .4s, border-color .4s" };
+  const ghost: CSSProperties = { position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)", textDecoration: "none", fontWeight: "700", fontSize: LABEL, letterSpacing: ".08em", color: "inherit", background: "currentColor", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" };
+  const ghostFill: CSSProperties = { position: "absolute", inset: "1.5px", zIndex: "-1", background: solid ? PAPER : "#000", clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)", transition: "background-color .4s" };
   return (
     <>
       <header data-hud="" data-hud-solid={solid ? "" : undefined} className="hud-bar" style={{ position: "fixed", left: "0", right: "0", top: "0", zIndex: "50", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", padding: solid ? "clamp(10px,1.05vw,16px) clamp(16px,2.6vw,44px)" : "clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)", pointerEvents: "none", color: fg, mixBlendMode: blend, transition: `padding .5s ${EASE}` }}>
@@ -35,9 +36,9 @@ export default function Hud({ v }: { v: V }) {
               <span style={{ width: "1px", height: "22px", background: "currentColor", opacity: ".4" }}></span>
             </>
           )}
-          <a data-magnet="" href="#/" onClick={v.goHome} aria-label="Innovision home" onMouseEnter={v.beep} className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", color: "inherit", textDecoration: "none" }}>
+          <a data-magnet="" href="#/" onClick={v.goHome} aria-label="Innovision home" className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", color: "inherit", textDecoration: "none" }}>
             <Logo style={{ width: "clamp(24px,2vw,32px)", height: "auto" }} />
-            <span className={v.isDetail ? "hud-wordmark hud-wordmark-detail" : "hud-wordmark"} style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(17px,1.6vw,24px)", letterSpacing: ".04em" }}>INNOVISION</span>
+            <span className={v.isDetail ? "hud-wordmark hud-wordmark-detail" : "hud-wordmark"} style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(17px,1.6vw,24px)", letterSpacing: ".04em" }}>INNOVISION</span>
           </a>
         </div>
         {v.wide && (
@@ -106,46 +107,35 @@ export default function Hud({ v }: { v: V }) {
               transition: "background-color .4s, color .4s",
             }}
           >
-            <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
+            <span key={v.noUser || !v.hasRegistered ? "register" : "pass"} data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
           </a>
 
-          {/* Secondary Action: LOG IN if not logged in, PROFILE if logged in */}
-          {v.showLogin && (
-            <a
-              id="hud-auth-profile-btn"
-              data-magnet=""
-              href={v.noUser ? "#login" : "#profile"}
-              onClick={v.noUser ? v.loginClick : v.openProfile}
-              onMouseEnter={v.hover}
-              className="hud-register hud-ghost"
-              style={{
-                position: "relative",
-                isolation: "isolate",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "clamp(12px,.8vw,14px) clamp(20px,1.3vw,24px)",
-                textDecoration: "none",
-                fontWeight: "700",
-                fontSize: LABEL,
-                letterSpacing: ".08em",
-                color: "inherit",
-                background: "currentColor",
-                clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)",
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: "1.5px",
-                  zIndex: "-1",
-                  background: solid ? PAPER : "#000",
-                  clipPath: "polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)",
-                  transition: "background-color .4s",
-                }}
-              ></span>
-              <span data-scr="" style={{ color: fg }}>{v.noUser ? "LOG IN" : "PROFILE"}</span>
+          {/* Account slot. Signed out: LOG IN. Signed in: the visitor's profile (initials badge + first name; the badge
+              alone on phones, where LOG IN lives in the menu). Until the first session check finishes, the frame holds
+              its place empty, so a signed-in visitor never sees LOG IN flash first. The badge uses initials rather than
+              the account photo: the bar blends with difference over the scene, which would show a photo as a negative. */}
+          {v.showLogin && !v.authReady && (
+            <span aria-hidden="true" className="hud-register hud-ghost hud-auth-pending" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span style={{ visibility: "hidden" }}>LOG IN</span>
+            </span>
+          )}
+          {v.showLogin && v.authReady && v.noUser && (
+            <a id="hud-auth-profile-btn" data-magnet="" href="#login" onClick={v.loginClick} onMouseEnter={v.hover} onPointerEnter={v.prefetchAuth} onFocus={v.prefetchAuth} className="hud-register hud-ghost" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span key="login" data-scr="" style={{ color: fg }}>LOG IN</span>
+            </a>
+          )}
+          {v.showLogin && v.authReady && !v.noUser && (
+            <a id="hud-auth-profile-btn" data-magnet="" href="#profile" onClick={v.openProfile} onMouseEnter={v.hover} aria-label={v.profileAria} title={v.profileAria} className="hud-register hud-ghost hud-profile" style={ghost}>
+              <span aria-hidden="true" style={ghostFill}></span>
+              <span className="hud-avatar" aria-hidden="true" style={{ background: fg, color: solid ? PAPER : "#000" }}>{v.profileInitials}</span>
+              <span key={"p-" + v.profileName} data-scr="" className="hud-profile-name" style={{ color: fg }}>{v.profileName}</span>
+            </a>
+          )}
+          {!v.showLogin && v.authReady && !v.noUser && (
+            <a href="#profile" onClick={v.openProfile} aria-label={v.profileAria} title={v.profileAria} className="hud-avatar-btn">
+              <span className="hud-avatar" aria-hidden="true" style={{ background: fg, color: solid ? PAPER : "#000" }}>{v.profileInitials}</span>
             </a>
           )}
           {!v.wide && (
@@ -155,28 +145,6 @@ export default function Hud({ v }: { v: V }) {
           )}
         </div>
       </header>
-      <footer data-hud="" style={{ position: "fixed", left: "0", right: "0", bottom: "0", zIndex: "50", display: "flex", justifyContent: "space-between", alignItems: "end", padding: "clamp(16px,2.6vw,44px)", pointerEvents: "none", color: fg, mixBlendMode: blend }}>
-        <a href="https://www.instagram.com/" target="_blank" rel="noopener" onMouseEnter={v.hover} className="hud-link" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", fontWeight: "500", fontSize: "clamp(13px,1vw,15px)", letterSpacing: ".02em", color: "inherit", pointerEvents: "auto", ...chip }}>
-          <span data-scr="">INSTAGRAM</span>
-        </a>
-        <button type="button" onClick={v.toggleSound} onMouseEnter={v.hover} aria-pressed={v.soundOn} aria-label={v.soundLabel} className="hud-link" style={{ display: "inline-flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: "500", fontSize: "clamp(13px,1vw,15px)", letterSpacing: ".02em", color: "inherit", pointerEvents: "auto", ...chip }}>
-          <svg width="40" height="9" viewBox="0 0 73 9" aria-hidden="true">
-            <g fill="none" stroke="currentColor" strokeMiterlimit="10">
-              {v.muted && (
-                <path d="M0 4.5h73"></path>
-              )}
-              {v.soundOn && (
-                <g data-wave="">
-                  <path d="M0 .5C3.33.5 3.33 8.5 6.66 8.5 9.99 8.5 10 .5 13.33.5c3.33 0 3.33 8 6.67 8"></path>
-                  <path d="M53 .5c3.33 0 3.33 8 6.66 8 3.33 0 3.34-8 6.67-8 3.33 0 3.33 8 6.67 8"></path>
-                  <path d="M20 8.5c2.5 0 3-6.5 6-7.5 3-1 3.33 5.5 6.66 5.5S36 3 39.33 3s3.33 5 6.67 5c3 0 3.8-7.5 7-7.5"></path>
-                </g>
-              )}
-            </g>
-          </svg>
-          <span data-scr="">SOUND</span>
-        </button>
-      </footer>
     </>
   );
 }

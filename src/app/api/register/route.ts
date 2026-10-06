@@ -1,58 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin, getSupabase } from '@/lib/supabase';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { getAuthenticatedUser } from '@/lib/auth-server';
 import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+import {
+  createRateLimiter,
+  generateRegistrationId,
+  isFilterSafeEmail,
+  validateRegistrationInput,
+} from '@/lib/security';
 
-/**
- * Helper to authenticate user from Bearer header or cookie tokens
- */
-async function getAuthenticatedUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  const token = authHeader?.startsWith('Bearer ')
-    ? authHeader.substring(7)
-    : req.cookies.get('inn_access_token')?.value || null;
+const registerLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
 
-  let user = null;
-  let authToken = token;
-
-  if (token) {
-    const supabase = getSupabase();
-    const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data?.user) {
-      user = data.user;
-    }
-  }
-
-  // Fallback: check session from cookie if available
-  if (!user) {
-    const allCookies = req.cookies.getAll();
-    for (const cookie of allCookies) {
-      if (cookie.name.includes('-auth-token') || cookie.name === 'sb-access-token') {
-        try {
-          let parsedToken = cookie.value;
-          if (cookie.value.startsWith('{') || cookie.value.startsWith('base64-')) {
-            const decoded = cookie.value.startsWith('base64-')
-              ? Buffer.from(cookie.value.slice(7), 'base64').toString('utf-8')
-              : cookie.value;
-            const json = JSON.parse(decoded);
-            parsedToken = json.access_token || json[0]?.access_token || parsedToken;
-          }
-          if (parsedToken) {
-            const supabase = getSupabase();
-            const { data } = await supabase.auth.getUser(parsedToken);
-            if (data?.user) {
-              user = data.user;
-              authToken = parsedToken;
-              break;
-            }
-          }
-        } catch {
-          // Ignore parse errors and keep trying
-        }
-      }
-    }
-  }
-
-  return { user, authToken };
+/** Latest registration owned by this user (by id, or by their verified email for legacy rows). */
+async function findExistingRegistration(client: SupabaseClient, user: User, verifiedEmail: string) {
+  const filter = isFilterSafeEmail(verifiedEmail)
+    ? `user_id.eq.${user.id},email.eq.${verifiedEmail}`
+    : `user_id.eq.${user.id}`;
+  return client
+    .from('registrations')
+    .select('*')
+    .or(filter)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 }
 
 /**
@@ -61,29 +32,24 @@ async function getAuthenticatedUser(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const { user, authToken } = await getAuthenticatedUser(req);
+    const auth = await getAuthenticatedUser(req);
 
-    if (!user || !user.email) {
+    if (!auth || !auth.user.email) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const adminClient = getSupabaseAdmin(authToken || undefined);
-    const verifiedEmail = user.email.toLowerCase().trim();
+    const { user, token } = auth;
+    const adminClient = getSupabaseAdmin(token);
+    const verifiedEmail = user.email!.toLowerCase().trim();
 
-    const { data: registration, error } = await adminClient
-      .from('registrations')
-      .select('*')
-      .or(`user_id.eq.${user.id},email.eq.${verifiedEmail}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: registration, error } = await findExistingRegistration(adminClient, user, verifiedEmail);
 
     if (error) {
       console.warn('Error fetching registration in /api/register GET:', error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch registration.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -92,8 +58,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('API /api/register GET error:', err);
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -105,10 +70,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate Request
-    const { user, authToken } = await getAuthenticatedUser(req);
+    const auth = await getAuthenticatedUser(req);
 
     // STRICT AUTH GUARD
-    if (!user || !user.email) {
+    if (!auth || !auth.user.email) {
       return NextResponse.json(
         {
           error: 'Unauthorized',
@@ -117,72 +82,57 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    const { user, token } = auth;
 
-    // 2. Parse and Validate Form Payload
-    const body = await req.json();
-    const {
-      name,
-      college,
-      phone,
-      enrollment_no,
-      id_card_url,
-      payment_screenshot_url,
-      utr,
-    } = body;
-
-    // Determine student type
-    const verifiedEmail = user.email.toLowerCase().trim();
-    const isInternal = verifiedEmail.endsWith('@nitrkl.ac.in');
-    const studentType = isInternal ? 'internal' : 'external';
-
-    // Mandatory fields
-    if (!name || !college || !phone) {
+    if (!registerLimiter.hit(user.id)) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, college, and phone are mandatory.' },
-        { status: 400 }
+        { error: 'Too many registration attempts. Please wait a few minutes and try again.' },
+        { status: 429 }
       );
     }
 
+    // Determine student type from the identity provider's verified email, never from the request body.
+    const verifiedEmail = user.email!.toLowerCase().trim();
+    const isInternal = verifiedEmail.endsWith('@nitrkl.ac.in');
+    const studentType = isInternal ? 'internal' : 'external';
+
+    // The free, auto-confirmed internal tier is only for addresses the identity provider has verified.
+    if (isInternal && !user.email_confirmed_at) {
+      return NextResponse.json(
+        { error: 'Please verify your @nitrkl.ac.in email address before registering.' },
+        { status: 403 }
+      );
+    }
+
+    // 2. Parse and Validate Form Payload
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
+    }
+
+    const parsed = validateRegistrationInput(body, {
+      isInternal,
+      imagekitEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || '',
+    });
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const input = parsed.data;
+
     // Exclusion rule: Students from ITER - SOA are not allowed to register
-    if (!isInternal && (isIterSoaCollege(college) || isIterSoaEmail(verifiedEmail))) {
+    if (!isInternal && (isIterSoaCollege(input.college) || isIterSoaEmail(verifiedEmail))) {
       return NextResponse.json(
         { error: ITER_SOA_ERROR_MESSAGE },
         { status: 403 }
       );
     }
 
-    // External students require college ID card and payment proof
-    if (!isInternal) {
-      if (!id_card_url) {
-        return NextResponse.json(
-          { error: 'College ID card photo is required for external student registration.' },
-          { status: 400 }
-        );
-      }
-      if (!payment_screenshot_url) {
-        return NextResponse.json(
-          { error: 'Payment screenshot is required for external students.' },
-          { status: 400 }
-        );
-      }
-      if (!utr || utr.trim().length < 8) {
-        return NextResponse.json(
-          { error: 'A valid UPI transaction ID (UTR) is required.' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const adminClient = getSupabaseAdmin(authToken || undefined);
+    const adminClient = getSupabaseAdmin(token);
 
     // 3. Prevent duplicate registrations for the same authenticated user
-    const { data: existingReg } = await adminClient
-      .from('registrations')
-      .select('*')
-      .or(`user_id.eq.${user.id},email.eq.${verifiedEmail}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: existingReg } = await findExistingRegistration(adminClient, user, verifiedEmail);
 
     if (existingReg) {
       return NextResponse.json(
@@ -196,43 +146,76 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A UPI transaction can only pay for one registration.
+    if (input.utr) {
+      const { data: utrOwner } = await adminClient
+        .from('registrations')
+        .select('id')
+        .eq('utr', input.utr)
+        .neq('status', 'rejected')
+        .limit(1)
+        .maybeSingle();
+      if (utrOwner) {
+        return NextResponse.json(
+          { error: 'This UPI transaction ID (UTR) has already been used for another registration.' },
+          { status: 409 }
+        );
+      }
+    }
+
     // 4. Status and Fee Logic:
-    // Internal students: ₹0 fee, auto-CONFIRMED, no ID card or approval required!
+    // Internal students: ₹0 fee, auto-CONFIRMED, no payment or approval required!
     // External students: ₹499 fee, pending review by IT-Team.
     const status = isInternal ? 'confirmed' : 'pending';
     const amount = isInternal ? 0 : 499;
 
-    // Generate unique Registration ID: IV26-XXXX
-    const randomDigits = Math.floor(1000 + Math.random() * 9000);
-    const registration_id = `IV26-${randomDigits}`;
-
-    // 5. Insert Registration into Database
-    const regPayload = {
-      registration_id,
+    // 5. Insert Registration into Database (retrying if the random IV26-XXXX id collides)
+    const basePayload = {
       user_id: user.id,
-      name: name.trim(),
+      name: input.name,
       email: verifiedEmail,
-      college: isInternal ? 'National Institute of Technology Rourkela' : college.trim(),
-      phone: phone.trim(),
-      enrollment_no: enrollment_no ? enrollment_no.trim() : null,
+      college: isInternal ? 'National Institute of Technology Rourkela' : input.college,
+      phone: input.phone,
+      enrollment_no: input.enrollment_no,
+      gender: input.gender,
       student_type: studentType,
-      id_card_url: isInternal ? (id_card_url || null) : id_card_url,
-      payment_screenshot_url: isInternal ? null : payment_screenshot_url,
-      utr: isInternal ? null : (utr || '').trim(),
+      payment_screenshot_url: input.payment_screenshot_url,
+      utr: input.utr,
       amount,
       status,
     };
 
-    const { data: newReg, error: regError } = await adminClient
-      .from('registrations')
-      .insert(regPayload)
-      .select()
-      .single();
+    let newReg = null;
+    let regError = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const result = await adminClient
+        .from('registrations')
+        .insert({ ...basePayload, registration_id: generateRegistrationId() })
+        .select()
+        .single();
+      newReg = result.data;
+      regError = result.error;
+      if (!regError) break;
+      if (regError.code !== '23505') break;
+      // Unique violation on user_id (concurrent double submit): return the registration that won.
+      if (!/registration_id/i.test(`${regError.message} ${regError.details ?? ''}`)) {
+        const { data: winner } = await findExistingRegistration(adminClient, user, verifiedEmail);
+        if (winner) {
+          return NextResponse.json({
+            success: true,
+            alreadyRegistered: true,
+            message: 'You have already registered for Innovision 2026.',
+            registration: winner,
+          });
+        }
+        break;
+      }
+    }
 
-    if (regError) {
+    if (regError || !newReg) {
       console.error('Error inserting registration:', regError);
       return NextResponse.json(
-        { error: regError.message || 'Failed to record registration.' },
+        { error: 'Failed to record registration. Please try again.' },
         { status: 500 }
       );
     }
@@ -241,8 +224,8 @@ export async function POST(req: NextRequest) {
     await adminClient
       .from('profiles')
       .update({
-        phone: phone.trim(),
-        enrollment_no: enrollment_no ? enrollment_no.trim() : null,
+        phone: input.phone,
+        enrollment_no: input.enrollment_no,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
@@ -256,9 +239,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('Registration API error:', err);
-    const message = err instanceof Error ? err.message : 'Internal server error processing registration.';
     return NextResponse.json(
-      { error: message },
+      { error: 'Internal server error processing registration.' },
       { status: 500 }
     );
   }

@@ -18,6 +18,10 @@
 -- DROP TABLE IF EXISTS public.events CASCADE;
 -- DROP TABLE IF EXISTS public.tickets CASCADE;
 
+-- The college ID card upload was removed from registration. To also delete the old column (and any stored
+-- ID-card URLs) from a database created with an earlier version of this script, uncomment:
+-- ALTER TABLE public.registrations DROP COLUMN IF EXISTS id_card_url;
+
 
 -- 1. CREATE PROFILES TABLE (Safe IF NOT EXISTS)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -48,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   phone TEXT NOT NULL,
   enrollment_no TEXT,
   student_type TEXT NOT NULL CHECK (student_type IN ('internal', 'external')),
-  id_card_url TEXT, -- Nullable: Internal students do NOT need an ID card
+  gender TEXT NOT NULL, -- 'male' | 'female' | 'others' (see registrations_gender_check)
   payment_screenshot_url TEXT,
   utr TEXT,
   amount NUMERIC DEFAULT 0,
@@ -59,8 +63,17 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure id_card_url is nullable if table already existed
-ALTER TABLE public.registrations ALTER COLUMN id_card_url DROP NOT NULL;
+-- Upgrade tables created by earlier versions of this script.
+ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS gender TEXT;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'registrations' AND column_name = 'id_card_url'
+  ) THEN
+    ALTER TABLE public.registrations ALTER COLUMN id_card_url DROP NOT NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_registrations_user_id ON public.registrations(user_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations(status);
@@ -81,6 +94,69 @@ BEGIN
     ) NOT VALID;
   END IF;
 END $$;
+
+
+-- Field validation in the database itself, so it also applies to direct Supabase API writes that skip /api/register.
+-- NOT VALID: enforced for new/updated rows without failing on legacy data.
+DO $$
+BEGIN
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_id_card_url_check;
+  -- NULL is tolerated only on legacy rows created before the column existed (so staff can still review them);
+  -- trg_require_registration_gender makes it mandatory for every new registration.
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_gender_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_gender_check
+    CHECK (gender IS NULL OR gender IN ('male', 'female', 'others'));
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_payment_screenshot_url_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_payment_screenshot_url_check
+    CHECK (payment_screenshot_url IS NULL OR payment_screenshot_url = '' OR (payment_screenshot_url ~* '^https://[^\s"''<>]+$' AND char_length(payment_screenshot_url) <= 2048)) NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_name_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_name_check
+    CHECK (char_length(name) BETWEEN 1 AND 100) NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_college_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_college_check
+    CHECK (char_length(college) BETWEEN 1 AND 200) NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_phone_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_phone_check
+    CHECK (phone ~ '^[6-9][0-9]{9}$') NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_utr_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_utr_check
+    CHECK (utr IS NULL OR utr ~ '^[0-9]{12}$') NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_enrollment_no_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_enrollment_no_check
+    CHECK (enrollment_no IS NULL OR char_length(enrollment_no) <= 50) NOT VALID;
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_registration_id_format_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_registration_id_format_check
+    CHECK (registration_id ~ '^IV26-[0-9]{4}$') NOT VALID;
+
+  ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_full_name_check;
+  ALTER TABLE public.profiles ADD CONSTRAINT profiles_full_name_check
+    CHECK (full_name IS NULL OR char_length(full_name) <= 120) NOT VALID;
+  ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_avatar_url_check;
+  ALTER TABLE public.profiles ADD CONSTRAINT profiles_avatar_url_check
+    CHECK (avatar_url IS NULL OR avatar_url = '' OR (avatar_url ~* '^https://[^\s"''<>]+$' AND char_length(avatar_url) <= 2048)) NOT VALID;
+  ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_phone_check;
+  ALTER TABLE public.profiles ADD CONSTRAINT profiles_phone_check
+    CHECK (phone IS NULL OR char_length(phone) <= 20) NOT VALID;
+  ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_enrollment_no_check;
+  ALTER TABLE public.profiles ADD CONSTRAINT profiles_enrollment_no_check
+    CHECK (enrollment_no IS NULL OR char_length(enrollment_no) <= 50) NOT VALID;
+END $$;
+
+
+-- Gender is required on every new registration, whoever inserts it (API with service role or a direct API call).
+CREATE OR REPLACE FUNCTION public.require_registration_gender() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.gender IS NULL THEN
+    RAISE EXCEPTION 'gender is required (male, female or others)' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_require_registration_gender ON public.registrations;
+CREATE TRIGGER trg_require_registration_gender
+  BEFORE INSERT ON public.registrations
+  FOR EACH ROW EXECUTE FUNCTION public.require_registration_gender();
 
 
 -- 3. HELPER FUNCTIONS FOR SECURITY (SECURITY DEFINER to avoid RLS recursion)
@@ -115,23 +191,26 @@ BEGIN
     v_student_type := 'external';
   END IF;
 
-  v_full_name := COALESCE(
+  v_full_name := left(COALESCE(
     NEW.raw_user_meta_data->>'full_name',
     NEW.raw_user_meta_data->>'name',
     split_part(NEW.email, '@', 1)
-  );
+  ), 120);
 
   v_avatar := COALESCE(
     NEW.raw_user_meta_data->>'avatar_url',
     NEW.raw_user_meta_data->>'picture',
     ''
   );
+  IF v_avatar !~* '^https://[^\s"''<>]+$' OR char_length(v_avatar) > 2048 THEN
+    v_avatar := '';
+  END IF;
 
-  v_phone := COALESCE(
+  v_phone := left(COALESCE(
     NEW.raw_user_meta_data->>'phone',
     NEW.phone,
     NULL
-  );
+  ), 20);
 
   INSERT INTO public.profiles (
     id,
@@ -172,26 +251,53 @@ ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Users can view own profile or staff can view all" ON public.profiles;
-CREATE POLICY "Users can view own profile or staff can view all" ON public.profiles FOR
-SELECT TO authenticated USING (auth.uid() = id OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "Users can view own profile or admins can view all" ON public.profiles;
+CREATE POLICY "Users can view own profile or admins can view all" ON public.profiles FOR
+SELECT TO authenticated USING (auth.uid() = id OR public.is_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR
-INSERT TO authenticated WITH CHECK (auth.uid() = id);
+INSERT TO authenticated WITH CHECK (auth.uid() = id AND role = 'user');
 
 DROP POLICY IF EXISTS "Users can update own details" ON public.profiles;
 CREATE POLICY "Users can update own details" ON public.profiles FOR
 UPDATE TO authenticated USING (auth.uid() = id OR public.is_admin(auth.uid()))
 WITH CHECK (auth.uid() = id OR public.is_admin(auth.uid()));
 
--- Protect role column: regular users cannot alter their role
-CREATE OR REPLACE FUNCTION public.protect_profile_role() RETURNS TRIGGER AS $$
+-- Protect privileged profile columns from end-user API calls (role, email, student_type, id, created_at).
+-- Rules mirrored from /api/admin/users:
+--   * regular users can never change role / email / student_type;
+--   * admins may switch other users between 'user' and 'it-team' only;
+--   * the 'admin' role can only be granted or revoked directly in the database.
+-- Writes from the Supabase Dashboard / SQL Editor / service_role backend (auth.role() <> 'authenticated') are trusted.
+DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
+DROP FUNCTION IF EXISTS public.protect_profile_role();
+
+CREATE OR REPLACE FUNCTION public.protect_profile_fields() RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
 BEGIN
-  IF (OLD.role IS DISTINCT FROM NEW.role) THEN
-    -- If the update is executed by an authenticated client user who is not an admin, revert it.
-    -- Updates made directly via Supabase Dashboard, Table Editor, SQL Editor, or backend service_role
-    -- have auth.role() IS NULL or 'service_role' (not 'authenticated'), and are safely allowed.
-    IF auth.role() = 'authenticated' AND NOT public.is_admin(auth.uid()) THEN
+  IF COALESCE(auth.role(), '') <> 'authenticated' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    SELECT email INTO v_email FROM auth.users WHERE id = NEW.id;
+    NEW.role := 'user';
+    NEW.email := COALESCE(v_email, NEW.email);
+    NEW.student_type := CASE WHEN lower(COALESCE(v_email, '')) LIKE '%@nitrkl.ac.in' THEN 'internal' ELSE 'external' END;
+    RETURN NEW;
+  END IF;
+
+  NEW.id := OLD.id;
+  NEW.created_at := OLD.created_at;
+  NEW.email := OLD.email;
+  NEW.student_type := OLD.student_type;
+
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF NOT public.is_admin(auth.uid())
+       OR OLD.role = 'admin'
+       OR NEW.role = 'admin' THEN
       NEW.role := OLD.role;
     END IF;
   END IF;
@@ -199,10 +305,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
-CREATE TRIGGER trg_protect_profile_role
-  BEFORE UPDATE ON public.profiles
-  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_role();
+DROP TRIGGER IF EXISTS trg_protect_profile_fields ON public.profiles;
+CREATE TRIGGER trg_protect_profile_fields
+  BEFORE INSERT OR UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_fields();
 
 -- Registrations Policies
 DROP POLICY IF EXISTS "Users can view own registrations or staff can view all" ON public.registrations;
@@ -216,6 +322,93 @@ INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 DROP POLICY IF EXISTS "Staff can review pending registrations" ON public.registrations;
 CREATE POLICY "Staff can review pending registrations" ON public.registrations FOR
 UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+
+-- Registrations inserted directly through the Supabase API by an end user can't choose their own status, fee,
+-- student type or email: these are derived from the verified auth account exactly like /api/register does.
+CREATE OR REPLACE FUNCTION public.enforce_registration_insert() RETURNS TRIGGER AS $$
+DECLARE
+  v_email TEXT;
+  v_confirmed TIMESTAMPTZ;
+BEGIN
+  IF COALESCE(auth.role(), '') <> 'authenticated' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT lower(email), email_confirmed_at INTO v_email, v_confirmed FROM auth.users WHERE id = auth.uid();
+
+  NEW.user_id := auth.uid();
+  NEW.email := COALESCE(v_email, '');
+  NEW.registration_id := 'IV26-' || (1000 + (('x' || substr(md5(gen_random_uuid()::text), 1, 7))::bit(28)::int % 9000))::text;
+  NEW.reviewed_by := NULL;
+  NEW.reviewed_at := NULL;
+  IF v_email LIKE '%@nitrkl.ac.in' AND v_confirmed IS NOT NULL THEN
+    NEW.student_type := 'internal';
+    NEW.status := 'confirmed';
+    NEW.amount := 0;
+  ELSE
+    NEW.student_type := 'external';
+    NEW.status := 'pending';
+    NEW.amount := 499;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_enforce_registration_insert ON public.registrations;
+CREATE TRIGGER trg_enforce_registration_insert
+  BEFORE INSERT ON public.registrations
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_registration_insert();
+
+-- Staff reviewing through the Supabase API may only move a PENDING registration to confirmed/rejected
+-- ("once done cannot be altered"); every other column stays as submitted.
+CREATE OR REPLACE FUNCTION public.enforce_registration_review() RETURNS TRIGGER AS $$
+DECLARE
+  v_status TEXT;
+BEGIN
+  IF COALESCE(auth.role(), '') <> 'authenticated' THEN
+    RETURN NEW;
+  END IF;
+
+  IF OLD.user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Staff cannot review their own registration' USING ERRCODE = '42501';
+  END IF;
+
+  IF OLD.status <> 'pending' OR NEW.status NOT IN ('confirmed', 'rejected') THEN
+    RAISE EXCEPTION 'Registration % is already % and cannot be altered', OLD.registration_id, OLD.status
+      USING ERRCODE = '42501';
+  END IF;
+
+  v_status := NEW.status;
+  NEW := OLD;
+  NEW.status := v_status;
+  NEW.reviewed_by := auth.uid();
+  NEW.reviewed_at := now();
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_enforce_registration_review ON public.registrations;
+CREATE TRIGGER trg_enforce_registration_review
+  BEFORE UPDATE ON public.registrations
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_registration_review();
+
+-- One registration per user, and one registration per UPI transaction (UTR).
+-- Wrapped so the script still runs if legacy duplicate rows exist; clean them up and re-run to add the index.
+DO $$
+BEGIN
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_registrations_user_id ON public.registrations(user_id);
+EXCEPTION WHEN unique_violation THEN
+  RAISE NOTICE 'uq_registrations_user_id not created: duplicate user_id rows exist in registrations';
+END $$;
+
+DO $$
+BEGIN
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_registrations_utr ON public.registrations(utr)
+    WHERE utr IS NOT NULL AND status <> 'rejected';
+EXCEPTION WHEN unique_violation THEN
+  RAISE NOTICE 'uq_registrations_utr not created: duplicate UTR rows exist in registrations';
+END $$;
 
 
 -- 6. USER SESSIONS TABLE (Stores ONLY refresh_token in database; access_token is in cookies)
@@ -242,10 +435,6 @@ UPDATE TO authenticated USING (user_id = auth.uid());
 DROP POLICY IF EXISTS "Users can delete own sessions" ON public.user_sessions;
 CREATE POLICY "Users can delete own sessions" ON public.user_sessions FOR
 DELETE TO authenticated USING (user_id = auth.uid());
-
-DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
-DROP FUNCTION IF EXISTS public.protect_profile_role();
-
 
 -- 7. EVENTS TABLE
 CREATE TABLE IF NOT EXISTS public.events (
@@ -276,6 +465,13 @@ BEGIN
     ALTER TABLE public.events ALTER COLUMN venue DROP NOT NULL;
     ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_category_check;
     ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events'));
+    -- Brochure links are rendered as public hrefs: only Google Drive/Docs URLs (never javascript:/data:).
+    ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_poster_url_check;
+    ALTER TABLE public.events ADD CONSTRAINT events_poster_url_check
+      CHECK (poster_url ~* '^https://[^\s"''<>]+$') NOT VALID;
+    ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_brochure_url_check;
+    ALTER TABLE public.events ADD CONSTRAINT events_brochure_url_check
+      CHECK (brochure_url IS NULL OR brochure_url ~* '^https?://([a-z0-9-]+\.)*(drive|docs)\.google\.com/.+') NOT VALID;
   END IF;
 END $$;
 
@@ -315,6 +511,10 @@ CREATE TABLE IF NOT EXISTS public.gallery (
 
 CREATE INDEX IF NOT EXISTS idx_gallery_created_at ON public.gallery(created_at DESC);
 
+ALTER TABLE public.gallery DROP CONSTRAINT IF EXISTS gallery_image_url_check;
+ALTER TABLE public.gallery ADD CONSTRAINT gallery_image_url_check
+  CHECK (image_url ~* '^https://[^\s"''<>]+$') NOT VALID;
+
 ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can view gallery images
@@ -335,4 +535,64 @@ UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.i
 -- Authorized IT team member and admin can delete gallery images
 DROP POLICY IF EXISTS "Staff can delete gallery" ON public.gallery;
 CREATE POLICY "Staff can delete gallery" ON public.gallery FOR
-DELETE TO authenticated USING (public.is_staff(auth.uid()));
+DELETE TO authenticated USING (public.is_staff(auth.uid()));
+
+
+-- 9. FUNCTION PRIVILEGES
+-- The role-helper functions are SECURITY DEFINER; don't let anonymous callers probe arbitrary users' roles via RPC.
+-- (authenticated keeps EXECUTE because the RLS policies above call is_admin / is_staff.)
+REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_admin(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_staff(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_staff(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_role(UUID) TO authenticated;
+
+
+-- 10. AUTHORSHIP STAMPING FOR STAFF CONTENT
+-- created_by / updated_by on events and gallery come from the caller's JWT; they can't be forged through the API.
+CREATE OR REPLACE FUNCTION public.stamp_content_author() RETURNS TRIGGER AS $$
+BEGIN
+  IF COALESCE(auth.role(), '') <> 'authenticated' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_by := auth.uid();
+  ELSE
+    NEW.created_by := OLD.created_by;
+    NEW.created_at := OLD.created_at;
+    IF TG_TABLE_NAME = 'gallery' THEN
+      -- Only the title is editable; the image and its storage file id are fixed at upload time.
+      NEW.image_url := OLD.image_url;
+      NEW.file_id := OLD.file_id;
+    END IF;
+  END IF;
+
+  IF TG_TABLE_NAME = 'events' THEN
+    NEW.updated_by := auth.uid();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_stamp_events_author ON public.events;
+CREATE TRIGGER trg_stamp_events_author
+  BEFORE INSERT OR UPDATE ON public.events
+  FOR EACH ROW EXECUTE FUNCTION public.stamp_content_author();
+
+DROP TRIGGER IF EXISTS trg_stamp_gallery_author ON public.gallery;
+CREATE TRIGGER trg_stamp_gallery_author
+  BEFORE INSERT OR UPDATE ON public.gallery
+  FOR EACH ROW EXECUTE FUNCTION public.stamp_content_author();
+
+
+-- 11. TABLE PRIVILEGES (defense in depth on top of RLS)
+-- Supabase grants every table to anon/authenticated by default; RLS is then the only barrier. Remove what no client
+-- needs so a future policy mistake can't expose private data. TRUNCATE/REFERENCES/TRIGGER are never needed by clients.
+REVOKE ALL ON public.profiles, public.registrations, public.user_sessions FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.events, public.gallery FROM anon;
+REVOKE TRUNCATE, REFERENCES, TRIGGER
+  ON public.profiles, public.registrations, public.user_sessions, public.events, public.gallery
+  FROM authenticated;
+REVOKE DELETE ON public.profiles, public.registrations FROM authenticated;

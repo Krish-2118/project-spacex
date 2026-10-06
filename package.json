@@ -7,21 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "husky"
+    "test": "node --experimental-strip-types --no-warnings --test \"tests/unit/*.test.mjs\"",
+    "prepare": "husky",
+    "check:assets": "node scripts/check-assets.mjs"
   },
   "dependencies": {
     "@imagekit/next": "^2.1.6",
     "@supabase/supabase-js": "^2.117.2",
     "gsap": "^3.15.0",
-    "howler": "^2.2.4",
     "imagekit": "^6.0.0",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
-    "@types/howler": "^2.2.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -36,5 +37,10 @@
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix"
     ]
+  },
+  "overrides": {
+    "imagekit": {
+      "uuid": "^11.1.1"
+    }
   }
 }

@@ -1,6 +1,13 @@
 /* ---------- base (from the Innovision 2026 design) ---------- */
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-grotesk),'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+/* ---------- typography ----------
+   Two families, one role each (fonts load in app/layout.tsx):
+   --font-display  DM Serif Display, single weight 400: headings, titles, the wordmark and large display figures.
+   --font-sans     Manrope, variable: subheadings, eyebrow labels, buttons, navigation, body copy and data (IDs, prices
+                   in lists). Weights by role: 400 body, 500 navigation and secondary text, 700 labels, buttons and
+                   subheadings, 800 small badges and ID numbers. Display text is never bolded (the face has no bold). */
+:root{--font-display:var(--font-dm-serif),'Times New Roman',serif;--font-sans:var(--font-manrope),'Segoe UI',system-ui,sans-serif}
+html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 img{display:block;max-width:none;user-select:none;-webkit-user-drag:none}
 button{font:inherit;color:inherit}
 a{color:#141312}
@@ -134,11 +141,106 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 @media (prefers-reduced-motion:reduce){.sp-row{overflow-x:auto;scrollbar-width:none;-webkit-mask-image:none;mask-image:none}.sp-row::-webkit-scrollbar{display:none}.sp-strip{animation:none}}
 @media (max-width:719px){.sp-title{grid-template-columns:minmax(0,1fr) !important}.sp-title-art{display:none}}
 
+/* ---------- home hero ---------- */
+/* --d is the disc's diameter and --cy its centre. Rings, disc, orbiters, copy and astronaut all hang off the two,
+   so the composition holds together at any screen shape. Wide screens keep the copy centred over the disc. */
+.hero{--d:min(84vh,72vw);--cy:53%}
+.hero-ring{position:absolute;left:calc(50% - var(--d) * var(--r));top:calc(var(--cy) - var(--d) * var(--r));width:calc(var(--d) * var(--r) * 2);height:calc(var(--d) * var(--r) * 2);border-radius:50%}
+.hero-disc{position:absolute;left:calc(50% - var(--d) / 2);top:calc(var(--cy) - var(--d) / 2);width:var(--d);height:var(--d)}
+.hero-asteroid{width:calc(var(--d) * .131);margin:calc(var(--d) * -.0655) 0 0 calc(var(--d) * -.0655)}
+.hero-ringed{width:calc(var(--d) * .286);height:calc(var(--d) * .286);margin:calc(var(--d) * -.143) 0 0 calc(var(--d) * -.143)}
+.hero-planet{position:absolute;left:-14vh;bottom:-26vh;width:60vh;height:60vh}
+.hero-astro{position:absolute;right:clamp(12px,5vw,110px);bottom:max(7vh,48px);width:38vh;height:38vh}
+.hero-copy{position:absolute;inset:0;justify-content:center;padding:6vh 16px 0}
+.hero-copy-disc{display:contents}
+/* --ls is the tracking; the same amount of left padding balances the trailing letter-space so the text centres. */
+.hero-track{padding-left:var(--ls)}
+.hero-kicker{--ls:.42em;gap:14px;font-size:clamp(11px,1.05vw,16px);letter-spacing:var(--ls)}
+.hero-kicker-star{width:14px;height:14px;flex:none}
+.hero-title{margin:clamp(10px,2vh,22px) 0 clamp(8px,1.4vh,16px);font-size:clamp(36px,12.4vw,224px)}
+.hero-sub{--ls:.32em;gap:18px;font-size:clamp(12px,1.35vw,21px);letter-spacing:var(--ls)}
+.hero-sub-rule{width:clamp(24px,4vw,64px);flex:none}
+.hero-ctas{gap:14px;flex-wrap:wrap;margin:clamp(18px,3.6vh,46px) 0 clamp(96px,14vh,150px)}
+.hero-cta{display:inline-flex;align-items:center;justify-content:center;padding:17px 30px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:.06em;white-space:nowrap}
+.hero-cta-primary{min-width:184px;color:#141312;background:#ECE8DF}
+.hero-cta-secondary{min-width:168px;color:#ECE8DF;background:rgba(236,232,223,.85)}
+.hero-cta-fill{background:#141312}
+.hero-scroll{display:flex}
+.hero-cta:active{transform:translateY(1px)}
+/* Stacked screens (portrait, or narrower than 720px): the kicker, title and subtitle fit inside the disc, the buttons
+   sit on the paper below it, the astronaut drifts off the disc's upper right and the storm planet tucks into the
+   bottom-left corner. The disc + buttons group is centred between the top HUD bar (72px) and a 24px bottom margin. */
+@media (max-aspect-ratio:1/1),(max-width:719px) and (min-height:520px){
+  .hero{--cta-h:48px;--ctas:var(--cta-h);--d:min(80vw,100vh - 220px,640px);--cy:calc(50% + 12px - var(--ctas) / 2)}
+  .hero-copy{top:calc(var(--cy) - var(--d) / 2);bottom:auto;justify-content:flex-start;padding:0 16px}
+  .hero-copy-disc{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;height:var(--d)}
+  .hero-kicker{--ls:.26em;gap:8px;font-size:clamp(9.5px,calc(var(--d) * .033),15px)}
+  .hero-kicker-star{width:9px;height:9px}
+  .hero-title{margin:calc(var(--d) * .03) 0 calc(var(--d) * .026);font-size:calc(var(--d) * .122)}
+  .hero-sub{--ls:.18em;gap:10px;font-size:clamp(10px,calc(var(--d) * .034),17px)}
+  .hero-sub-rule{width:calc(var(--d) * .05)}
+  .hero-ctas{gap:10px;flex-wrap:nowrap;margin:24px 0 0}
+  .hero-cta{height:var(--cta-h);padding:0 26px;font-size:13.5px}
+  /* On paper the light primary would vanish, so the pair flips: ink fill first, ink outline second. */
+  .hero-cta-primary{min-width:0;color:#ECE8DF;background:#141312}
+  .hero-cta-secondary{min-width:0;color:#141312;background:#141312}
+  .hero-cta-fill{background:#ECE8DF}
+  .hero-cta-secondary.hv-gold:hover{color:#8a6a2a !important}
+  .hero-astro{top:calc(var(--cy) - var(--d) * .56);bottom:auto;right:max(4px,50% - var(--d) * .62);width:calc(var(--d) * .36);height:calc(var(--d) * .36)}
+  .hero-planet{--p:min(60vw,38vh);left:calc(var(--p) * -.32);bottom:calc(var(--p) * -.62);width:var(--p);height:var(--p)}
+  .hero-scroll,.hero-coords{display:none}
+}
+/* Phones: the buttons stack full width, so the disc gives up the extra height. */
+@media (max-width:459px) and (min-height:520px){
+  .hero{--cta-h:46px;--ctas:calc(var(--cta-h) * 2 + 10px);--d:min(86vw,100vh - 270px)}
+  .hero-ctas{flex-direction:column;align-items:stretch;width:min(100%,300px)}
+  .hero-cta{width:100%}
+  .hero-sub-rule{display:none}
+}
+
+/* ---------- compact menu ---------- */
+.menu-panel{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#141312;color:#ECE8DF}
+.menu-top{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;padding:clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)}
+.menu-brand{display:inline-flex;align-items:center;gap:10px;color:#ECE8DF;text-decoration:none}
+.menu-brand:hover{color:oklch(0.84 0.09 85)}
+.menu-close{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 0 0 12px;border:0;background:none;cursor:pointer;font-weight:500;font-size:13px;letter-spacing:.14em;color:#ECE8DF}
+.menu-close:hover{color:oklch(0.84 0.09 85)}
+/* The list scrolls on its own if a short landscape screen can't fit it. */
+.menu-body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,4vh,40px);width:100%;max-width:640px;margin:0 auto;padding:clamp(8px,2vh,24px) clamp(20px,6vw,48px) clamp(24px,5vh,48px);overflow-y:auto;scrollbar-width:none}
+.menu-body::-webkit-scrollbar{display:none}
+.menu-list{margin:0;padding:0;list-style:none;border-bottom:1px solid rgba(236,232,223,.16)}
+.menu-link{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:clamp(10px,1.9vh,16px) 4px;border-top:1px solid rgba(236,232,223,.16);text-decoration:none;font-family:var(--font-display);font-weight:400;font-size:clamp(20px,min(5.4vw,4.4vh),30px);line-height:1.1;letter-spacing:.03em;transition:color .3s,background-color .3s}
+.menu-link:hover,.menu-link:focus-visible{color:oklch(0.84 0.09 85) !important;background:rgba(236,232,223,.04)}
+.menu-link[aria-current="page"] .menu-label::before{content:'';display:inline-block;width:14px;height:1.5px;margin:0 12px 0 0;vertical-align:middle;background:currentColor}
+.menu-arrow{flex:none;opacity:.45;transition:transform .45s cubic-bezier(.25,1,.1,1),opacity .3s}
+.menu-link:hover .menu-arrow,.menu-link:focus-visible .menu-arrow,.menu-link[aria-current="page"] .menu-arrow{opacity:1}
+.menu-link:hover .menu-arrow,.menu-link:focus-visible .menu-arrow{transform:translateX(5px)}
+.menu-link:active{background:rgba(236,232,223,.08)}
+.menu-foot{display:flex;flex-direction:column}
+.menu-meta{display:flex;flex-wrap:wrap;column-gap:28px;row-gap:4px;font-weight:500;font-size:13px;letter-spacing:.14em}
+.menu-meta a{display:inline-flex;align-items:center;min-height:40px;color:rgba(236,232,223,.78);text-decoration:none}
+/* Rows rise in one after another as the circle opens, and simply vanish with it on close. */
+@media (prefers-reduced-motion:no-preference){
+  .menu-item{opacity:0;transform:translateY(14px)}
+  .menu[data-open] .menu-item{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s),transform .7s cubic-bezier(.25,1,.1,1) calc(.18s + var(--i) * .045s)}
+}
+
+/* ---------- hud account ---------- */
+/* Signed in, the LOG IN slot becomes the visitor's profile: an initials badge in the HUD colour plus their first name
+   (Hud.tsx); phones get the badge alone. While the first session check runs, the slot shows an empty, dimmed frame. */
+.hud-profile{gap:10px;padding-left:clamp(9px,.7vw,11px) !important}
+.hud-avatar{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;font-size:10.5px;font-weight:800;letter-spacing:.04em;line-height:1;transition:background-color .4s,color .4s}
+.hud-profile-name{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud-avatar-btn{display:grid;place-items:center;min-width:40px;min-height:40px;color:inherit;text-decoration:none}
+.hud-avatar-btn .hud-avatar{width:30px;height:30px;font-size:11.5px}
+.hud-avatar-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:50%}
+.hud-auth-pending{opacity:.3;pointer-events:none}
+
 /* ---------- hud on small phones ---------- */
-/* Keep REGISTER and MENU on screen: drop the wordmark beside BACK, then tighten spacing. */
+/* Keep REGISTER and MENU on screen: the wordmark beside BACK goes first, then spacing tightens. */
 @media (max-width:519px){.hud-wordmark-detail{display:none}}
 @media (max-width:419px){.hud-bar,.hud-group{gap:12px !important}.hud-register{padding:10px 14px !important}}
-@media (max-width:359px){.hud-wordmark{display:none}}
+@media (max-width:419px){.hud-wordmark{display:none}}
 
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
@@ -147,3 +249,74 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .image-slot-empty svg{opacity:.45}
 .image-slot-cap{max-width:90%;font-weight:500;letter-spacing:.01em;opacity:.75}
 .image-slot-ring{position:absolute;inset:0;pointer-events:none;border:1.5px dashed currentColor;opacity:.35}
+
+/* ---------- low-power mode ---------- */
+/* Parallax art keeps its filter here rather than inline: --fx is its monochrome treatment, --fx-shadow its drop shadow. */
+.fx{filter:var(--fx) var(--fx-shadow,)}
+/* <html data-lowpower> (Innovision#goLowPower: few cores or little memory, Save-Data, reduced motion, or a slow first
+   few seconds). Drop shadows go: each is an extra blur pass over a big layer. The monochrome colour matrix stays,
+   since without it the art turns from monochrome to full colour; use filter:none here to drop that too. */
+[data-lowpower] .fx{filter:var(--fx)}
+/* Every other spark and gallery dust mote, and two of the five curtain cloud layers, sit out. */
+[data-lowpower] [data-lp-skip]{display:none}
+
+/* ---------- schedule ---------- */
+/* --gut lines the rows up with the 1240px column while letting each carousel run to the screen edge. */
+.sc-hero,.sc-body{--gut:max(clamp(16px,4vw,64px),(100% - 1240px) / 2)}
+.sc-hero{position:relative;overflow:hidden;padding:calc(92px + 6vh) var(--gut) 0;background:#141312;color:#ECE8DF}
+/* The crescent hangs low on the right, clear of the HUD: the HUD blends with difference, so anything bright under
+   REGISTER washes it out. */
+.sc-planet{position:absolute;right:max(-14vw,-210px);top:clamp(150px,22vh,230px);width:min(44vw,580px);aspect-ratio:1;opacity:.5;pointer-events:none}
+.sc-hero-copy{position:relative}
+.sc-title{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(42px,7vw,112px);line-height:.98}
+.sc-lede{max-width:44ch;margin:clamp(14px,2.4vh,22px) 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.6;color:rgba(236,232,223,.82);text-wrap:pretty}
+.sc-tabs{position:relative;margin-top:clamp(36px,6vh,64px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid rgba(236,232,223,.18)}
+.sc-body{padding:clamp(40px,7vh,72px) 0 calc(clamp(16px,2.6vw,44px) + 180px)}
+.sc-wrap{display:block;padding:0 var(--gut)}
+.sc-day-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(36px,4.6vw,64px);line-height:1}
+.sc-day-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:12px 0 0;font-size:15px;font-weight:500;color:#5c574f}
+.sc-day-starred{display:inline-flex;align-items:center;gap:7px;color:#141312}
+.sc-block{margin-top:clamp(36px,6vh,60px)}
+.sc-block-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:0 var(--gut);margin-bottom:16px}
+.sc-block-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(24px,2.4vw,34px);line-height:1}
+.sc-block-meta{margin:8px 0 0;font-size:14px;color:#5c574f}
+.sc-nav{display:flex;gap:8px;flex:none}
+.sc-arrow{display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;background:#141312;color:#ECE8DF;cursor:pointer;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:background-color .3s,opacity .3s}
+.sc-arrow:hover,.sc-arrow:focus-visible{background:#8a6a2a;outline:0}
+.sc-arrow:active{transform:translateY(1px)}
+.sc-arrow:disabled{opacity:.2;cursor:default;background:#141312;transform:none}
+/* The row scrolls natively (touch, trackpad, shift+wheel, arrow keys once focused) and snaps card by card. */
+.sc-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(262px,21vw,296px);gap:16px;padding:6px var(--gut) 10px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:var(--gut);scrollbar-width:none}
+.sc-track::-webkit-scrollbar{display:none}
+.sc-track:focus-visible{outline:2px solid #8a6a2a;outline-offset:-2px}
+/* Ticket: a 1px ring (the outer fill) around the card, both cut on the corners like the site's buttons. */
+.sc-card{--cut:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);position:relative;display:flex;padding:1px;scroll-snap-align:start;background:rgba(20,19,18,.2);clip-path:var(--cut);transition:background-color .35s,transform .5s cubic-bezier(.25,1,.1,1)}
+.sc-card[data-on]{background:#141312}
+.sc-card-in{position:relative;display:flex;flex-direction:column;flex:1;min-width:0;padding:16px 14px 16px 22px;background:#F6F4EF;clip-path:var(--cut)}
+.sc-card-in::before{content:'';position:absolute;left:0;top:14px;bottom:0;width:4px;background:var(--wc)}
+.sc-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sc-time{display:flex;align-items:baseline;gap:5px;margin:4px 0 0}
+.sc-time strong{font-family:var(--font-display);font-weight:400;font-size:30px;line-height:1}
+.sc-time span{font-size:12px;font-weight:700;letter-spacing:.08em}
+.sc-star{display:grid;place-items:center;flex:none;width:44px;height:44px;margin:-8px -6px 0 0;padding:0;border:0;background:none;cursor:pointer;color:#141312}
+.sc-star:focus-visible{outline:2px solid #8a6a2a;outline-offset:-4px}
+.sc-card-title{margin:14px 0 20px;font-family:var(--font-display);font-weight:400;font-size:20px;line-height:1.18;text-wrap:balance}
+.sc-card-foot{display:grid;gap:8px;margin-top:auto;padding-top:14px;border-top:1.5px dashed rgba(20,19,18,.24);font-size:14px;color:#3a3733}
+.sc-card-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sc-world{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;color:#141312}
+.sc-diamond{width:9px;height:9px;flex:none;transform:rotate(45deg);background:var(--wc)}
+.sc-dur{font-size:12px;font-weight:700;letter-spacing:.12em;color:#5c574f}
+.sc-venue{display:flex;align-items:center;gap:6px;min-width:0}
+.sc-note{margin:48px 0 0;font-size:14px;line-height:1.6;color:#5c574f}
+@media (hover:hover) and (pointer:fine){
+  .sc-card:hover{background:#141312;transform:translateY(-3px)}
+}
+@media (prefers-reduced-motion:reduce){.sc-card,.sc-card:hover{transition:none;transform:none}}
+/* Phones: one card and a peek of the next per screen; the crescent tucks behind the tabs. */
+@media (max-width:719px){
+  .sc-hero{padding-top:calc(76px + 5vh)}
+  .sc-planet{top:auto;bottom:-44vw;right:-34vw;width:88vw;opacity:.3}
+  .sc-track{grid-auto-columns:min(78vw,300px);gap:12px}
+  .sc-arrow{width:44px;height:44px}
+  .sc-time strong{font-size:28px}
+}

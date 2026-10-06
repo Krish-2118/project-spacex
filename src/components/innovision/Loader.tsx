@@ -21,7 +21,7 @@ export default function Loader({ v }: { v: V }) {
         <div style={{ position: "absolute", inset: "0", backgroundImage: "radial-gradient(rgba(20,19,18,.18) 1px,transparent 1.4px)", backgroundSize: "22px 22px", WebkitMaskImage: "radial-gradient(ellipse at 50% 44%,#000 8%,transparent 62%)", maskImage: "radial-gradient(ellipse at 50% 44%,#000 8%,transparent 62%)" }}></div>
       </div>
       {v.loaderSparks.map((s, sI) => (
-        <div key={sI} data-l-fade="" style={{ position: "absolute", left: s.x, top: s.y, width: s.s, height: s.s, color: "#141312", pointerEvents: "none" }}>
+        <div key={sI} data-l-fade="" data-lp-skip={sI % 2 ? "" : undefined} style={{ position: "absolute", left: s.x, top: s.y, width: s.s, height: s.s, color: "#141312", pointerEvents: "none" }}>
           <Sparkle data-twinkle="" style={{ display: "block", width: "100%", height: "100%" }} />
         </div>
       ))}
@@ -39,7 +39,7 @@ export default function Loader({ v }: { v: V }) {
             <div data-l-orb="" data-i={i} data-a0={a0} style={{ position: "absolute", inset: "0" }}>
               <div style={{ position: "absolute", left: "50%", top: "0", width: size + "%", height: size + "%", margin: `-${size / 2}% 0 0 -${size / 2}%` }}>
                 <span data-l-lock="" style={{ position: "absolute", inset: "-30%", borderRadius: "50%", border: "1.5px solid #8a6a2a", opacity: "0" }}></span>
-                <img src={"/assets/" + img} alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
+                <img decoding="async" src={"/assets/" + img} alt="" style={{ width: "100%", height: "100%", filter: MONO }} />
               </div>
             </div>
           </div>
@@ -50,10 +50,10 @@ export default function Loader({ v }: { v: V }) {
         </svg>
         <span data-l-flare="" style={{ position: "absolute", inset: "30%", borderRadius: "50%", border: "2px solid #8a6a2a", opacity: "0", pointerEvents: "none" }}></span>
         <div data-loader-disc="" style={{ position: "absolute", inset: "34%", borderRadius: "50%", background: "#141312", overflow: "hidden" }}>
-          <img src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
+          <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
           <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
           <div data-l-fade="" style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ECE8DF" }}>
-            <span data-l-count="" style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "min(6.2vmin, 54px)", lineHeight: "1", fontVariantNumeric: "tabular-nums" }}>000</span>
+            <span data-l-count="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "min(6.2vmin, 54px)", lineHeight: "1", fontVariantNumeric: "tabular-nums" }}>000</span>
             <span style={{ marginTop: "6px", fontSize: "min(1.3vmin, 11px)", letterSpacing: ".3em", opacity: ".75" }}>PERCENT</span>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Loader({ v }: { v: V }) {
           <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>NIT ROURKELA PRESENTS</div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
-          <div data-l-line="" style={{ fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>
+          <div data-l-line="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
           <div data-l-line="" style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}>

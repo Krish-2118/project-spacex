@@ -9,6 +9,8 @@ interface Props {
   style?: CSSProperties;
   /** Strength of the home page's attract-to-cursor effect (data-attract). */
   attract?: string;
+  /** 'lazy' for slots in secondary views (gallery, store); never on the first screen. */
+  loading?: 'lazy' | 'eager';
 }
 
 const RADIUS = { rect: '', rounded: '12px', circle: '50%', pill: '9999px' };
@@ -25,7 +27,7 @@ export default function ImageSlot({ id, shape = 'rounded', fit = 'cover', placeh
       <div className="image-slot-frame" style={{ borderRadius: radius }}>
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img.src} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: img.fit ?? fit }} />
+          <img decoding="async" src={img.src} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: img.fit ?? fit }} />
         ) : (
           <>
             <div className="image-slot-empty">
