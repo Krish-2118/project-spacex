@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth-server';
-import { isUuid } from '@/lib/security';
+import { isUuid, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -45,8 +45,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const body = await req.json();
-    const { userId, role } = body;
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const { userId, role } = parsed.value;
 
     if (!userId || !role) {
       return NextResponse.json({ error: 'Missing userId or role' }, { status: 400 });
@@ -66,7 +69,7 @@ export async function PATCH(req: NextRequest) {
 
     // Allowed roles to be assigned via the web dashboard: only 'user' or 'it-team'
     const assignableRoles = ['user', 'it-team'];
-    if (!assignableRoles.includes(role)) {
+    if (typeof role !== 'string' || !assignableRoles.includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role. Only "user" and "it-team" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
         { status: 400 }

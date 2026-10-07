@@ -160,19 +160,21 @@ CREATE TRIGGER trg_require_registration_gender
 
 
 -- 3. HELPER FUNCTIONS FOR SECURITY (SECURITY DEFINER to avoid RLS recursion)
+-- They only ever answer for the CALLER (uid must equal auth.uid()): the policies and triggers always pass auth.uid(),
+-- and a signed-in user calling them via /rest/v1/rpc can't probe other users' roles (e.g. to find the admins).
 CREATE OR REPLACE FUNCTION public.get_user_role(uid UUID) RETURNS TEXT AS $$
-  SELECT role FROM public.profiles WHERE id = uid;
+  SELECT role FROM public.profiles WHERE id = uid AND uid = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.is_admin(uid UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.profiles WHERE id = uid AND role = 'admin'
+    SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role = 'admin'
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.is_staff(uid UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.profiles WHERE id = uid AND role IN ('admin', 'it-team')
+    SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role IN ('admin', 'it-team')
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
@@ -315,9 +317,10 @@ DROP POLICY IF EXISTS "Users can view own registrations or staff can view all" O
 CREATE POLICY "Users can view own registrations or staff can view all" ON public.registrations FOR
 SELECT TO authenticated USING (user_id = auth.uid() OR public.is_staff(auth.uid()));
 
+-- No direct INSERT for end users: every registration is created by /api/register (service role), which applies the
+-- rules the database can't (ITER - SOA email domain, proof uploaded by the same user to our ImageKit folder, rate
+-- limits). The INSERT privilege itself is revoked in section 11; the insert trigger below stays as defense in depth.
 DROP POLICY IF EXISTS "Users can create their registration" ON public.registrations;
-CREATE POLICY "Users can create their registration" ON public.registrations FOR
-INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 
 DROP POLICY IF EXISTS "Staff can review pending registrations" ON public.registrations;
 CREATE POLICY "Staff can review pending registrations" ON public.registrations FOR
@@ -335,6 +338,11 @@ BEGIN
   END IF;
 
   SELECT lower(email), email_confirmed_at INTO v_email, v_confirmed FROM auth.users WHERE id = auth.uid();
+
+  -- Same ITER - SOA email rule as /api/register (isIterSoaEmail); the college CHECK only covers the typed name.
+  IF v_email LIKE '%@soa.%' OR v_email LIKE '%@iter.%' THEN
+    RAISE EXCEPTION 'Registration is not allowed for students from ITER - SOA.' USING ERRCODE = '42501';
+  END IF;
 
   NEW.user_id := auth.uid();
   NEW.email := COALESCE(v_email, '');
@@ -424,17 +432,10 @@ DROP POLICY IF EXISTS "Users can view own sessions" ON public.user_sessions;
 CREATE POLICY "Users can view own sessions" ON public.user_sessions FOR
 SELECT TO authenticated USING (user_id = auth.uid());
 
+-- Session rows are written only by /api/auth/session and /api/auth/logout (service role); clients can't write them.
 DROP POLICY IF EXISTS "Users can insert own sessions" ON public.user_sessions;
-CREATE POLICY "Users can insert own sessions" ON public.user_sessions FOR
-INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-
 DROP POLICY IF EXISTS "Users can update own sessions" ON public.user_sessions;
-CREATE POLICY "Users can update own sessions" ON public.user_sessions FOR
-UPDATE TO authenticated USING (user_id = auth.uid());
-
 DROP POLICY IF EXISTS "Users can delete own sessions" ON public.user_sessions;
-CREATE POLICY "Users can delete own sessions" ON public.user_sessions FOR
-DELETE TO authenticated USING (user_id = auth.uid());
 
 -- 7. EVENTS TABLE
 CREATE TABLE IF NOT EXISTS public.events (
@@ -546,7 +547,8 @@ REVOKE EXECUTE ON FUNCTION public.is_admin(UUID) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_staff(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_staff(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_role(UUID) TO authenticated;
+-- get_user_role isn't used by any policy or by the app.
+REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM authenticated;
 
 
 -- 10. AUTHORSHIP STAMPING FOR STAFF CONTENT
@@ -595,4 +597,7 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.events, p
 REVOKE TRUNCATE, REFERENCES, TRIGGER
   ON public.profiles, public.registrations, public.user_sessions, public.events, public.gallery
   FROM authenticated;
-REVOKE DELETE ON public.profiles, public.registrations FROM authenticated;
+REVOKE DELETE ON public.profiles, public.registrations FROM authenticated;
+-- Registrations are created only by /api/register, session rows only by the auth API routes (both service role).
+REVOKE INSERT ON public.registrations FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.user_sessions FROM authenticated;

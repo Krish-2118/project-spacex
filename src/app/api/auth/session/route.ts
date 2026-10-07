@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { safeHttpUrl } from '@/lib/validation';
-import { hashSessionToken } from '@/lib/security';
+import { hashSessionToken, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -115,8 +115,11 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { accessToken, refreshToken, userId } = body;
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const { accessToken, refreshToken, userId } = parsed.value;
 
     if (
       typeof accessToken !== 'string' || !accessToken || accessToken.length > 8192 ||

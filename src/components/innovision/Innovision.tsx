@@ -2221,8 +2221,8 @@ export default class Innovision extends Component<Props, State> {
           this.setState({ registration: reg });
           this.closeAuth(() => this.toast(`Welcome back, ${reg.name.split(' ')[0]}.`));
         } else {
-          this.pass = { name: this.nameFrom(em), college: '', id: id.replace(/^IV26-?/, 'IV26-'), email: em, status: 'CONFIRMED' };
-          this.closeAuth(() => this.toast(`Welcome back, ${this.pass.name.split(' ')[0]}.`));
+          // Never show a pass for a registration the server didn't return.
+          this.fail({ lid: 'No registration matches that email and ID.' });
         }
       });
       return;

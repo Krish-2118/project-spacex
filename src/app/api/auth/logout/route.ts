@@ -16,6 +16,9 @@ export async function POST(req: NextRequest) {
         const supabase = getSupabaseAdmin(accessToken);
         const { data: { user } } = await supabase.auth.getUser(accessToken);
         if (user) {
+          // Revoke this session's refresh tokens server-side, so logout holds even if the browser's own
+          // signOut call never completes (the client gives up after 3 s).
+          await supabase.auth.admin.signOut(accessToken, 'local').catch(() => null);
           await supabase
             .from('user_sessions')
             .delete()

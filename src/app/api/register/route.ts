@@ -7,6 +7,7 @@ import {
   createRateLimiter,
   generateRegistrationId,
   isFilterSafeEmail,
+  readJsonObject,
   validateRegistrationInput,
 } from '@/lib/security';
 
@@ -105,16 +106,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse and Validate Form Payload
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
+    const body = await readJsonObject(req);
+    if (!body.ok) {
+      return NextResponse.json({ error: body.error }, { status: body.status });
     }
 
-    const parsed = validateRegistrationInput(body, {
+    const parsed = validateRegistrationInput(body.value, {
       isInternal,
       imagekitEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || '',
+      ownerId: user.id,
     });
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaff } from '@/lib/auth-server';
-import { isUuid, sanitizeFilterValue } from '@/lib/security';
+import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -70,8 +70,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const body = await req.json();
-    const { registrationId, status } = body;
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const { registrationId, status } = parsed.value;
 
     if (!registrationId || !status) {
       return NextResponse.json(
@@ -84,7 +87,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid registrationId' }, { status: 400 });
     }
 
-    if (!['confirmed', 'rejected'].includes(status)) {
+    if (status !== 'confirmed' && status !== 'rejected') {
       return NextResponse.json(
         { error: "Invalid status. Must be 'confirmed' or 'rejected'" },
         { status: 400 }

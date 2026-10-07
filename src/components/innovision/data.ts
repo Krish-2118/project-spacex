@@ -83,19 +83,6 @@ export const PRELOAD_DEFERRED = ['cloud-1.webp', 'cloud-2.webp', 'cloud-3.webp',
   'floor.webp', 'lab.webp', 'lander.webp', 'astro-red.webp', 'big-spaceship.webp', 'planet-blue-half.webp',
   'moon.webp', 'home-astronaut.webp', 'moon-cratered.webp', 'planet-crescent.webp', 'astro-green.webp'];
 
-/** Intrinsic [width, height] of art drawn with one CSS dimension left auto (public/assets). */
-const IMG_SIZE: Record<string, [number, number]> = {
-  'asteroid.webp': [1000, 1000], 'astro-green.webp': [600, 1379], 'astro-red.webp': [200, 557], 'astro-yellow.webp': [600, 1083],
-  'big-spaceship.webp': [1000, 1329], 'floor.webp': [2000, 973], 'home-astronaut.webp': [600, 1418], 'indian-astronaut.webp': [1246, 1263],
-  'lab.webp': [1524, 1016], 'lander.webp': [1131, 922], 'moon.webp': [800, 850], 'planet-blue-half.webp': [2000, 1884],
-  'planet-crescent.webp': [1000, 1000], 'planet-ringed.webp': [1000, 1000], 'planet-yellow.webp': [1600, 1605],
-  'receiver.webp': [700, 606], 'satellite.webp': [900, 436], 'spaceship.webp': [600, 1537], 'sponsor-title.webp': [1026, 1040],
-};
-/**
- * width/height attributes for an asset image ({} when unknown). The browser derives the aspect ratio from them,
- * so an image sized by one CSS dimension holds its box before it loads; CSS still decides the rendered size.
- */
-export const imgSize = (src: string) => { const d = IMG_SIZE[src.replace(A, '')]; return d ? { width: d[0], height: d[1] } : {}; };
 /** loading="lazy" for an image in a secondary view, unless it is PRELOAD_CRITICAL art (cached already, shared with the first screen). */
 export const lazyUnlessCritical = (src: string) => (PRELOAD_CRITICAL.includes(src.replace(A, '')) ? undefined : 'lazy' as const);
 
