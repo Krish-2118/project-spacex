@@ -22,7 +22,8 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${[...new Set([imagekitOrigin, "https://ik.imagekit.io"])].join(" ")} https://*.googleusercontent.com`,
+  // Supabase origin: staff preview payment screenshots through short-lived signed Storage URLs.
+  `img-src 'self' data: blob: ${[...new Set([imagekitOrigin, "https://ik.imagekit.io"])].join(" ")} ${supabaseOrigin} https://*.googleusercontent.com`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, "wss:")}`,
   "media-src 'self' data: blob:",

@@ -100,7 +100,7 @@ export default function AdminDashboard({
     return null;
   };
 
-  // Payment screenshots are private in ImageKit: ask the server for a short-lived signed URL (staff only).
+  // Payment screenshots live in a private bucket: ask the server for a short-lived signed URL (staff only).
   const [proofBusyId, setProofBusyId] = useState<string | null>(null);
   const viewPaymentProof = async (reg: Registration) => {
     if (!reg.id) return;
@@ -318,7 +318,7 @@ export default function AdminDashboard({
       'Status',
       'Amount (INR)',
       'UPI UTR',
-      'Payment Screenshot URL',
+      'Payment Screenshot (private ref)',
       'Registered At',
     ];
 
@@ -334,7 +334,7 @@ export default function AdminDashboard({
       r.status,
       r.amount,
       r.utr,
-      r.payment_screenshot_url,
+      r.payment_proof_path,
       r.created_at,
     ].map(csvCell));
 
@@ -1195,7 +1195,7 @@ export default function AdminDashboard({
                           {/* Proofs */}
                           <td style={{ padding: '14px 18px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {reg.payment_screenshot_url && (
+                              {reg.payment_proof_path && (
                                 <button
                                   type="button"
                                   onClick={() => viewPaymentProof(reg)}
@@ -1216,7 +1216,7 @@ export default function AdminDashboard({
                                   <span>{proofBusyId === reg.id ? 'Loading…' : 'View Payment'}</span>
                                 </button>
                               )}
-                              {!reg.payment_screenshot_url && (
+                              {!reg.payment_proof_path && (
                                 <span style={{ fontSize: '12px', color: 'rgba(236,232,223,0.4)' }}>—</span>
                               )}
                             </div>

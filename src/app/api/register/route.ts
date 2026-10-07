@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
+import { paymentProofExists } from '@/lib/payment-proofs';
 import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 import {
   createRateLimiter,
@@ -111,9 +112,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: body.error }, { status: body.status });
     }
 
+    // ownerId comes from the verified session: a payment proof path is only accepted inside this user's own folder.
     const parsed = validateRegistrationInput(body.value, {
       isInternal,
-      imagekitEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || '',
       ownerId: user.id,
     });
     if (!parsed.ok) {
@@ -163,6 +164,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // The proof must be an object this user actually uploaded (checked with their own token, so Storage RLS only
+    // lets them see their own folder).
+    if (input.payment_proof_path && !(await paymentProofExists(token, input.payment_proof_path))) {
+      return NextResponse.json(
+        { error: 'Payment screenshot not found. Please re-upload your screenshot.' },
+        { status: 400 }
+      );
+    }
+
     // 4. Status and Fee Logic:
     // Internal students: ₹0 fee, auto-CONFIRMED, no payment or approval required!
     // External students: ₹499 fee, pending review by IT-Team.
@@ -179,7 +189,8 @@ export async function POST(req: NextRequest) {
       enrollment_no: input.enrollment_no,
       gender: input.gender,
       student_type: studentType,
-      payment_screenshot_url: input.payment_screenshot_url,
+      // Only the private storage object path is stored, never a URL or the image itself.
+      payment_proof_path: input.payment_proof_path,
       utr: input.utr,
       amount,
       status,
@@ -197,6 +208,13 @@ export async function POST(req: NextRequest) {
       regError = result.error;
       if (!regError) break;
       if (regError.code !== '23505') break;
+      // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert.
+      if (/utr/i.test(`${regError.message} ${regError.details ?? ''}`)) {
+        return NextResponse.json(
+          { error: 'This UPI transaction ID (UTR) has already been used for another registration.' },
+          { status: 409 }
+        );
+      }
       // Unique violation on user_id (concurrent double submit): return the registration that won.
       if (!/registration_id/i.test(`${regError.message} ${regError.details ?? ''}`)) {
         const { data: winner } = await findExistingRegistration(adminClient, user, verifiedEmail);

@@ -2092,10 +2092,10 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    // 2MB max size limit requirement
-    const MAX_SIZE = 2 * 1024 * 1024;
+    // 1MB max size limit requirement (same as /api/upload)
+    const MAX_SIZE = 1024 * 1024;
     if (f.size > MAX_SIZE) {
-      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller image (max 2MB).' });
+      this.fail({ [ek]: 'That file exceeds 1 MB. Please select a smaller image (max 1MB).' });
       return;
     }
 
@@ -2111,11 +2111,10 @@ export default class Innovision extends Component<Props, State> {
       () => this.runUpload(kind)
     );
 
-    // Upload to ImageKit via /api/upload Route Handler
+    // Upload to the private payment-proofs bucket via /api/upload (the server picks the storage path)
     try {
       const formData = new FormData();
       formData.append('file', f);
-      formData.append('folder', '/innovision/payments');
 
       const { data: { session } } = await getSupabase().auth.getSession();
       const res = await fetch('/api/upload', {
@@ -2126,7 +2125,7 @@ export default class Innovision extends Component<Props, State> {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to upload image to ImageKit');
+        throw new Error(data.error || 'Failed to upload the screenshot');
       }
 
       this.setState((st) => ({
@@ -2135,11 +2134,10 @@ export default class Innovision extends Component<Props, State> {
           [kind]: {
             name: f.name,
             size: f.size,
-            // The ImageKit file is private (its URL doesn't load without a signature), so keep showing the
-            // local preview and submit the stored ImageKit URL with the registration.
+            // The bucket is private (there is no URL to load), so keep showing the local preview and submit
+            // only the storage path the server returned with the registration.
             url: previewUrl,
-            remoteUrl: data.url,
-            fileId: data.fileId,
+            remotePath: data.path,
             pdf: !isImg,
             status: 'done',
           },
@@ -2149,7 +2147,7 @@ export default class Innovision extends Component<Props, State> {
       this.setState((st) => ({
         files: { ...st.files, [kind]: null },
       }));
-      this.fail({ [ek]: err?.message || 'Upload to ImageKit failed. Please try again.' });
+      this.fail({ [ek]: err?.message || 'Upload failed. Please try again.' });
     }
   };
   // @ts-ignore
@@ -2327,7 +2325,7 @@ export default class Innovision extends Component<Props, State> {
     } else if (s.step === 2) {
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
-      else if (fp.status !== 'done' || !fp.remoteUrl) err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
+      else if (fp.status !== 'done' || !fp.remotePath) err.payfile = 'Hold on, your screenshot is still uploading.';
       if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
       if (this.fail(err)) return;
 
@@ -2344,7 +2342,7 @@ export default class Innovision extends Component<Props, State> {
           enrollment_no: r.enrollment_no,
           gender: r.gender,
           student_type: 'external' as const,
-          payment_screenshot_url: fp.remoteUrl,
+          payment_proof_path: fp.remotePath,
           utr,
           amount: 499,
           status: 'pending' as const, // PENDING FOR EXTERNAL
@@ -2465,7 +2463,7 @@ export default class Innovision extends Component<Props, State> {
       }),
       d: { s0: show(reg && st === 0 && !!s.user), s2: show(reg && st === 1 && !isInternal && !!s.user), s3: show(reg && st === 2 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
       err: E, bc, inv, genderOptions: GENDERS,
-      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
+      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 1MB)'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
