@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
 import { safeHttpUrl } from '@/lib/validation';
+import { readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -21,11 +22,12 @@ export async function POST(req: NextRequest) {
     }
     const { user, token } = auth;
 
-    let body: Record<string, unknown> = {};
-    try {
-      const parsed = await req.json();
-      if (parsed && typeof parsed === 'object') body = parsed;
-    } catch {}
+    // The body is optional; when present it must be small.
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok && parsed.status === 413) {
+      return NextResponse.json({ error: parsed.error }, { status: 413 });
+    }
+    const body: Record<string, unknown> = parsed.ok ? parsed.value : {};
 
     // The body's userId (sent by older clients) must match the authenticated user.
     if (body.userId !== undefined && body.userId !== user.id) {

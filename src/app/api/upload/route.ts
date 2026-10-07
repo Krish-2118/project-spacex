@@ -5,7 +5,11 @@ import {
   createRateLimiter,
   detectFileType,
   FILE_EXTENSIONS,
+  formFile,
+  formText,
   isRegistrationUploadFolder,
+  paymentProofFilePrefix,
+  readFormLimited,
   REGISTRATION_UPLOAD_FOLDERS,
 } from '@/lib/security';
 
@@ -39,19 +43,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const declaredLength = Number(req.headers.get('content-length') || 0);
-    if (declaredLength > MAX_SIZE + 64 * 1024) {
-      return NextResponse.json(
-        { error: 'File size exceeds maximum limit of 2MB. Please select a smaller file.' },
-        { status: 413 }
-      );
+    const form = await readFormLimited(req, MAX_SIZE + 64 * 1024);
+    if (!form.ok) {
+      const error = form.status === 413 ? 'File size exceeds maximum limit of 2MB. Please select a smaller file.' : form.error;
+      return NextResponse.json({ error }, { status: form.status });
     }
+    const file = formFile(form.value, 'file');
+    const folder = formText(form.value, 'folder');
 
-    const formData = await req.formData();
-    const file = formData.get('file');
-    const folder = formData.get('folder');
-
-    if (!(file instanceof File)) {
+    if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
@@ -78,10 +78,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Server-chosen name and extension: the client's filename never reaches storage.
+    // Server-chosen name and extension: the client's filename never reaches storage. The owner prefix lets
+    // /api/register reject a proof URL uploaded by a different user.
     const uploadRes = await imagekit.upload({
       file: buffer,
-      fileName: `payment_${Date.now()}.${FILE_EXTENSIONS[type]}`,
+      fileName: `${paymentProofFilePrefix(auth.user.id)}${Date.now()}.${FILE_EXTENSIONS[type]}`,
       folder,
       useUniqueFileName: true,
       // Private: the stored URL alone doesn't load. Staff view it through short-lived signed URLs

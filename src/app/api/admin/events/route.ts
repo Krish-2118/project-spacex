@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaff, isValidGoogleDriveUrl, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
-import { isUuid } from '@/lib/security';
+import { formFile, formText, isUuid, jsonText, readFormLimited, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
 const MAX_POSTER_SIZE = 1 * 1024 * 1024; // 1MB strictly enforced
+// Poster plus the text fields and multipart overhead.
+const MAX_FORM_BYTES = MAX_POSTER_SIZE + 64 * 1024;
 
 export const ALLOWED_EVENT_CATEGORIES = [
   'flagship events',
@@ -16,7 +18,7 @@ export const ALLOWED_EVENT_CATEGORIES = [
 
 export type AllowedEventCategory = typeof ALLOWED_EVENT_CATEGORIES[number];
 
-const TEXT_LIMITS = { title: 200, description: 5000, format: 100, duration: 100, venue: 200 } as const;
+const TEXT_LIMITS = { title: 200, description: 5000, format: 100, duration: 100, venue: 200, brochure_url: 2048 } as const;
 
 /** Returns an error message if any provided text field exceeds its maximum length. */
 function textLimitError(fields: Partial<Record<keyof typeof TEXT_LIMITS, string | null | undefined>>): string | null {
@@ -70,28 +72,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const formData = await req.formData();
-    const title = (formData.get('title') as string || '').trim();
-    const description = (formData.get('description') as string || '').trim();
-    const brochureUrl = (formData.get('brochure_url') as string || '').trim();
-    const rawCategory = (formData.get('category') as string || '').trim().toLowerCase();
-    const format = formData.get('format') ? (formData.get('format') as string).trim() : null;
-    const duration = formData.get('duration') ? (formData.get('duration') as string).trim() : null;
-    const venue = formData.get('venue') ? (formData.get('venue') as string).trim() : null;
-    const posterFile = formData.get('file') as File | null;
+    const form = await readFormLimited(req, MAX_FORM_BYTES);
+    if (!form.ok) {
+      const error = form.status === 413 ? 'Event poster exceeds the maximum allowed size of 1MB.' : form.error;
+      return NextResponse.json({ error }, { status: form.status });
+    }
+    const formData = form.value;
+    const title = formText(formData, 'title') ?? '';
+    const description = formText(formData, 'description') ?? '';
+    const brochureUrl = formText(formData, 'brochure_url') ?? '';
+    const rawCategory = (formText(formData, 'category') ?? '').toLowerCase();
+    const format = formText(formData, 'format') || null;
+    const duration = formText(formData, 'duration') || null;
+    const venue = formText(formData, 'venue') || null;
+    const posterFile = formFile(formData, 'file');
 
     // 0. Validate Event Category
     if (!rawCategory || !ALLOWED_EVENT_CATEGORIES.includes(rawCategory as AllowedEventCategory)) {
       return NextResponse.json(
         {
-          error: `Invalid event category "${rawCategory}". Must be one of: [${ALLOWED_EVENT_CATEGORIES.join(', ')}].`,
+          error: `Invalid event category. Must be one of: [${ALLOWED_EVENT_CATEGORIES.join(', ')}].`,
         },
         { status: 400 }
       );
     }
     const category = rawCategory as AllowedEventCategory;
 
-    const lengthErr = textLimitError({ title, description, format, duration, venue });
+    const lengthErr = textLimitError({ title, description, format, duration, venue, brochure_url: brochureUrl });
     if (lengthErr) {
       return NextResponse.json({ error: lengthErr }, { status: 400 });
     }
@@ -244,26 +251,36 @@ export async function PATCH(req: NextRequest) {
     let newPosterFile: File | null = null;
 
     if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData();
-      eventId = (formData.get('id') as string || '').trim();
-      title = formData.get('title') ? (formData.get('title') as string).trim() : undefined;
-      description = formData.get('description') ? (formData.get('description') as string).trim() : undefined;
-      brochureUrl = formData.get('brochure_url') ? (formData.get('brochure_url') as string).trim() : undefined;
-      category = formData.get('category') ? (formData.get('category') as string).trim() : undefined;
-      format = formData.get('format') ? (formData.get('format') as string).trim() : undefined;
-      duration = formData.get('duration') ? (formData.get('duration') as string).trim() : undefined;
-      venue = formData.get('venue') ? (formData.get('venue') as string).trim() : undefined;
-      newPosterFile = formData.get('file') as File | null;
+      const form = await readFormLimited(req, MAX_FORM_BYTES);
+      if (!form.ok) {
+        const error = form.status === 413 ? 'Event poster exceeds the maximum allowed size of 1MB.' : form.error;
+        return NextResponse.json({ error }, { status: form.status });
+      }
+      const formData = form.value;
+      // Empty text fields mean "unchanged" in the edit form.
+      eventId = formText(formData, 'id') ?? '';
+      title = formText(formData, 'title') || undefined;
+      description = formText(formData, 'description') || undefined;
+      brochureUrl = formText(formData, 'brochure_url') || undefined;
+      category = formText(formData, 'category') || undefined;
+      format = formText(formData, 'format') || undefined;
+      duration = formText(formData, 'duration') || undefined;
+      venue = formText(formData, 'venue') || undefined;
+      newPosterFile = formFile(formData, 'file');
     } else {
-      const body = await req.json();
+      const parsed = await readJsonObject(req);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+      }
+      const body = parsed.value;
       eventId = typeof body.id === 'string' ? body.id.trim() : '';
-      title = body.title !== undefined ? String(body.title).trim() : undefined;
-      description = body.description !== undefined ? String(body.description).trim() : undefined;
-      brochureUrl = body.brochure_url !== undefined ? String(body.brochure_url).trim() : undefined;
-      category = body.category !== undefined ? String(body.category).trim() : undefined;
-      format = body.format !== undefined ? String(body.format).trim() : undefined;
-      duration = body.duration !== undefined ? String(body.duration).trim() : undefined;
-      venue = body.venue !== undefined ? String(body.venue).trim() : undefined;
+      title = jsonText(body.title);
+      description = jsonText(body.description);
+      brochureUrl = jsonText(body.brochure_url);
+      category = jsonText(body.category);
+      format = jsonText(body.format);
+      duration = jsonText(body.duration);
+      venue = jsonText(body.venue);
     }
 
     if (!eventId || !isUuid(eventId)) {
@@ -273,7 +290,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const patchLengthErr = textLimitError({ title, description, format, duration, venue });
+    const patchLengthErr = textLimitError({ title, description, format, duration, venue, brochure_url: brochureUrl });
     if (patchLengthErr) {
       return NextResponse.json({ error: patchLengthErr }, { status: 400 });
     }
@@ -319,7 +336,7 @@ export async function PATCH(req: NextRequest) {
       if (!ALLOWED_EVENT_CATEGORIES.includes(normCat as AllowedEventCategory)) {
         return NextResponse.json(
           {
-            error: `Invalid event category "${category}". Must be one of: [${ALLOWED_EVENT_CATEGORIES.join(', ')}].`,
+            error: `Invalid event category. Must be one of: [${ALLOWED_EVENT_CATEGORIES.join(', ')}].`,
           },
           { status: 400 }
         );
@@ -334,7 +351,7 @@ export async function PATCH(req: NextRequest) {
     if (venue !== undefined) updates.venue = venue;
 
     // If a new poster is uploaded, enforce .webp and 1MB limits
-    if (newPosterFile && newPosterFile.size > 0) {
+    if (newPosterFile) {
       const isWebpExt = newPosterFile.name.toLowerCase().endsWith('.webp');
       if (!isWebpExt) {
         return NextResponse.json(
@@ -416,10 +433,8 @@ export async function DELETE(req: NextRequest) {
     let id = searchParams.get('id');
 
     if (!id) {
-      try {
-        const body = await req.json();
-        id = body.id;
-      } catch {}
+      const body = await readJsonObject(req);
+      if (body.ok && typeof body.value.id === 'string') id = body.value.id;
     }
 
     if (!id || !isUuid(id)) {

@@ -109,12 +109,7 @@ export async function verifyAdmin(req: NextRequest): Promise<StaffAuthResult> {
   return staff;
 }
 
-export {
-  isValidGoogleDriveUrl,
-  isIterSoaCollege,
-  isIterSoaEmail,
-  ITER_SOA_ERROR_MESSAGE,
-} from '@/lib/validation';
+export { isValidGoogleDriveUrl } from '@/lib/validation';
 
 /**
  * Validates WebP image: checks extension, MIME type, and RIFF...WEBP magic bytes.

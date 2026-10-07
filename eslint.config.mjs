@@ -12,7 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    "Rover animation for flagship events-2/**",
     "test-results/**",
     "playwright-report/**",
   ]),

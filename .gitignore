@@ -48,3 +48,6 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# tests (kept locally only; run with `npm test` / `npx playwright test`)
+/tests/

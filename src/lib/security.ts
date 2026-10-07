@@ -55,6 +55,106 @@ export const FILE_EXTENSIONS: Record<DetectedFileType, string> = {
   pdf: 'pdf',
 };
 
+/**
+ * File-name prefix /api/upload gives a user's payment screenshot. The server chooses it from the verified user id,
+ * so /api/register can check that a submitted proof URL was uploaded by the same user.
+ */
+export function paymentProofFilePrefix(userId: string): string {
+  return `payment_${userId}_`;
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * Request bodies: bounded reads
+ * ------------------------------------------------------------------------------------------------------------- */
+
+export type BodyResult<T> = { ok: true; value: T } | { ok: false; status: 400 | 413; error: string };
+
+/** Default cap for JSON API bodies; the largest legitimate one (a registration) is well under 2 KB. */
+export const MAX_JSON_BODY_BYTES = 64 * 1024;
+
+const tooLarge = { ok: false, status: 413, error: 'Request body is too large.' } as const;
+
+/**
+ * Reads at most `maxBytes` of a request body. Enforced on the bytes actually received, not only on the declared
+ * Content-Length, so chunked/streamed bodies can't make the server buffer an unbounded payload.
+ */
+export async function readBodyLimited(req: Request, maxBytes: number): Promise<BodyResult<Uint8Array>> {
+  const declared = Number(req.headers.get('content-length') || 0);
+  if (declared > maxBytes) return tooLarge;
+  if (!req.body) return { ok: true, value: new Uint8Array(0) };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return tooLarge;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.byteLength;
+  }
+  return { ok: true, value: out };
+}
+
+/** Parses a bounded JSON body that must be a plain object. */
+export async function readJsonObject(
+  req: Request,
+  maxBytes = MAX_JSON_BODY_BYTES
+): Promise<BodyResult<Record<string, unknown>>> {
+  const body = await readBodyLimited(req, maxBytes);
+  if (!body.ok) return body;
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(body.value));
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return { ok: true, value: parsed as Record<string, unknown> };
+    }
+  } catch {}
+  return { ok: false, status: 400, error: 'Request body must be a JSON object.' };
+}
+
+/** Parses a bounded multipart/form-data (or urlencoded) body. */
+export async function readFormLimited(req: Request, maxBytes: number): Promise<BodyResult<FormData>> {
+  const body = await readBodyLimited(req, maxBytes);
+  if (!body.ok) return body;
+  try {
+    const form = await new Response(body.value as BodyInit, {
+      headers: { 'content-type': req.headers.get('content-type') || '' },
+    }).formData();
+    return { ok: true, value: form };
+  } catch {
+    return { ok: false, status: 400, error: 'Request body must be form data.' };
+  }
+}
+
+/** A text form field, trimmed; undefined when absent or when a file was sent in its place. */
+export function formText(form: FormData, name: string): string | undefined {
+  const v = form.get(name);
+  return typeof v === 'string' ? v.trim() : undefined;
+}
+
+/** A non-empty uploaded file field, or null. */
+export function formFile(form: FormData, name: string): File | null {
+  const v = form.get(name);
+  return typeof v === 'object' && v !== null && typeof (v as File).arrayBuffer === 'function' && (v as File).size > 0
+    ? (v as File)
+    : null;
+}
+
+/** A JSON text field, trimmed. `null` means "clear" (''); any non-string value is treated as absent. */
+export function jsonText(v: unknown): string | undefined {
+  if (v === null) return '';
+  return typeof v === 'string' ? v.trim() : undefined;
+}
+
 /* ---------------------------------------------------------------------------------------------------------------
  * URL validation
  * ------------------------------------------------------------------------------------------------------------- */
@@ -158,7 +258,7 @@ const optionalString = (v: unknown): string | null | undefined =>
  */
 export function validateRegistrationInput(
   body: unknown,
-  opts: { isInternal: boolean; imagekitEndpoint: string }
+  opts: { isInternal: boolean; imagekitEndpoint: string; ownerId: string }
 ): RegistrationValidation {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, error: 'Invalid request body.' };
@@ -217,7 +317,11 @@ export function validateRegistrationInput(
   if (!payShot) {
     return { ok: false, error: 'Payment screenshot is required for external students.' };
   }
-  if (!isImageKitUrlInFolder(payShot, opts.imagekitEndpoint, '/innovision/payments')) {
+  // Must be our own upload, and uploaded by this same user (not someone else's proof URL).
+  const fileName = isImageKitUrlInFolder(payShot, opts.imagekitEndpoint, '/innovision/payments')
+    ? new URL(payShot).pathname.split('/').pop() ?? ''
+    : '';
+  if (!opts.ownerId || !fileName.startsWith(paymentProofFilePrefix(opts.ownerId))) {
     return { ok: false, error: 'Invalid payment screenshot upload. Please re-upload your screenshot.' };
   }
   const utr = (rawUtr || '').replace(/\s+/g, '');

@@ -12,7 +12,6 @@
     "check:assets": "node scripts/check-assets.mjs"
   },
   "dependencies": {
-    "@imagekit/next": "^2.1.6",
     "@supabase/supabase-js": "^2.117.2",
     "gsap": "^3.15.0",
     "imagekit": "^6.0.0",
@@ -23,7 +22,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -31,7 +29,6 @@
     "eslint-config-next": "16.3.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "tailwindcss": "^4",
     "typescript": "^5"
   },
   "lint-staged": {

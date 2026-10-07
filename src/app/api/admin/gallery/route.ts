@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaff, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
-import { isImageKitPathInFolder, isUuid } from '@/lib/security';
+import { formFile, formText, isImageKitPathInFolder, isUuid, readFormLimited, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
@@ -49,9 +49,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const formData = await req.formData();
-    const title = (formData.get('title') as string || '').trim();
-    const imageFile = formData.get('file') as File | null;
+    const form = await readFormLimited(req, MAX_GALLERY_SIZE + 64 * 1024);
+    if (!form.ok) {
+      const error = form.status === 413 ? 'Gallery image exceeds the maximum allowed size of 2MB.' : form.error;
+      return NextResponse.json({ error }, { status: form.status });
+    }
+    const title = formText(form.value, 'title') ?? '';
+    const imageFile = formFile(form.value, 'file');
 
     if (title.length > 200) {
       return NextResponse.json({ error: 'Gallery title must be at most 200 characters.' }, { status: 400 });
@@ -158,9 +162,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const body = await req.json();
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const body = parsed.value;
     const id = typeof body.id === 'string' ? body.id.trim() : '';
-    const title = body.title !== undefined && body.title !== null ? String(body.title).trim() : null;
+    if (body.title !== undefined && body.title !== null && typeof body.title !== 'string') {
+      return NextResponse.json({ error: 'Gallery title must be text.' }, { status: 400 });
+    }
+    const title = typeof body.title === 'string' ? body.title.trim() : null;
 
     if (!id || !isUuid(id)) {
       return NextResponse.json({ error: 'Missing gallery image ID.' }, { status: 400 });
@@ -210,10 +221,8 @@ export async function DELETE(req: NextRequest) {
     let id = searchParams.get('id');
 
     if (!id) {
-      try {
-        const body = await req.json();
-        id = body.id;
-      } catch {}
+      const body = await readJsonObject(req);
+      if (body.ok && typeof body.value.id === 'string') id = body.value.id;
     }
 
     if (!id || !isUuid(id)) {
