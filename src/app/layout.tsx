@@ -6,6 +6,7 @@ import "./globals.css";
 const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
   weight: "400",
+  style: ["normal", "italic"],
   subsets: ["latin"],
 });
 

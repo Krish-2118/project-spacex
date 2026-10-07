@@ -1202,7 +1202,7 @@ export default class Innovision extends Component<Props, State> {
     const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
     const dur = (m: number) => m >= 600 ? Math.round(m / 60) + ' HRS' : m >= 120 && m % 60 === 0 ? m / 60 + ' HRS' : m + ' MIN';
     const count = (n: number) => n + (n === 1 ? ' event' : ' events');
-    const names = ['FLAGSHIP', 'MAIN', 'DTS & FUN'];
+    const names = ['FLAGSHIP', 'MAIN', 'FUN'];
     const nar = s.narrow;
     const starred = list.filter((x) => s.saved.includes(x.id)).length;
     return {
@@ -1223,10 +1223,16 @@ export default class Innovision extends Component<Props, State> {
         const items = list.filter(({ e }) => mins(e[0]) >= from && mins(e[0]) < to);
         return {
           key: day + '-' + name.toLowerCase(), name, lower: name.toLowerCase(),
-          meta: count(items.length) + (items.length ? ' · from ' + fmt(items[0].e[0]).join(' ') : ''),
+          meta: count(items.length) + (items.length ? ', starting ' + fmt(items[0].e[0]).join(' ') : ''),
           cards: items.map(({ e, id }) => {
             const [t, ap] = fmt(e[0]), on = s.saved.includes(id);
-            return { id, t, ap, dur: dur(e[1]), title: e[2], wn: names[e[3]], wc: WORLDS[e[3]].accent, venue: e[4], on, star: on ? 'oklch(0.8 0.12 85)' : 'transparent', aria: (on ? 'Remove ' : 'Star ') + e[2], toggle: (ev: MouseEvent<HTMLButtonElement>) => this.toggleSave(id, ev) };
+            const wIdx = e[3];
+            return {
+              id, t, ap, dur: dur(e[1]), title: e[2], wn: names[wIdx], wc: WORLDS[wIdx].accent, wIdx, venue: e[4],
+              on, star: on ? 'oklch(0.8 0.12 85)' : 'transparent',
+              aria: (on ? 'Remove ' : 'Star ') + e[2],
+              toggle: (ev: MouseEvent<HTMLButtonElement>) => this.toggleSave(id, ev)
+            };
           }),
         };
       }).filter((b) => b.cards.length),

@@ -9,6 +9,7 @@ import { lazyUnlessCritical } from './data';
 import type { V } from './types';
 
 const GOLD = "oklch(0.8 0.12 85)";
+const STAR = "M12 2.8l2.7 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.8 3.3 1.5-6.4-4.9-4.3 6.5-.6Z";
 
 function Pin({ size }: { size: number }) {
   return (
@@ -19,15 +20,163 @@ function Pin({ size }: { size: number }) {
   );
 }
 
-function Arrow({ flip }: { flip?: boolean }) {
+function ArrowLeft() {
   return (
-    <svg width="16" height="10" viewBox="0 0 16 10" aria-hidden="true" style={{ transform: flip ? "scaleX(-1)" : undefined }}>
-      <path d="M5 1 1 5l4 4M1 5h15" fill="none" stroke="currentColor" strokeWidth="1.5"></path>
+    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
+      <path d="M5.5 1.5L1 6M1 6L5.5 10.5M1 6H15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-const STAR = "M12 2.8l2.7 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.8 3.3 1.5-6.4-4.9-4.3 6.5-.6Z";
+function ArrowRight() {
+  return (
+    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
+      <path d="M10.5 1.5L15 6M15 6L10.5 10.5M15 6H1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PeriodIcon({ name }: { name: string }) {
+  const n = (name || '').toLowerCase();
+  if (n === 'morning') {
+    return (
+      <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-morning">
+        <path d="M17 1V5M6 6L9 9M28 6L25 9M2 17H6M28 17H32" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M9 17C9 12.58 12.58 9 17 9C21.42 9 25 12.58 25 17H9Z" fill="currentColor" />
+        <path d="M3 21H31" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M8 25H26" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (n === 'evening') {
+    return (
+      <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-evening">
+        <path d="M16 4C11.58 4 8 7.58 8 12C8 16.42 11.58 20 16 20C19.12 20 21.82 18.21 23.14 15.62C22.16 15.87 21.13 16 20.07 16C15.11 16 11.1 11.98 11.1 7.03C11.1 5.96 11.23 4.94 11.48 3.95C12.88 2.64 14.78 2 16 4Z" fill="currentColor" />
+        <path d="M25 6L26 8L28 9L26 10L25 12L24 10L22 9L24 8L25 6Z" fill="currentColor" />
+        <path d="M4 23H30" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M9 27H25" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  // Afternoon (default - matching reference image)
+  return (
+    <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-afternoon">
+      <path d="M17 2V6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M7 6L9.5 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M27 6L24.5 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M8 17C8 12.03 12.03 8 17 8C21.97 8 26 12.03 26 17H8Z" fill="currentColor" />
+      <path d="M4 21H30" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M9 26H25" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function StarIcon({ on }: { on?: boolean }) {
+  return (
+    <svg data-sc-star="" viewBox="0 0 24 24" aria-hidden="true" style={{ width: "16px", height: "16px" }}>
+      <path
+        d="M12 2.2l2.85 5.78 6.38.93-4.62 4.5 1.09 6.35L12 16.77l-5.7 3 1.09-6.36-4.62-4.5 6.38-.93L12 2.2z"
+        stroke={on ? "#E5A93C" : "#141312"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={on ? "#E5A93C" : "none"}
+        style={{ transition: "all .3s ease" }}
+      />
+    </svg>
+  );
+}
+
+function EventIcon({ title }: { title: string }) {
+  const t = title.toLowerCase();
+  
+  if (t.includes('opening') || t.includes('rocket')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+        <path d="m12 15-3-3a22 22 0 0 1 3.82-13 1.3 1.3 0 0 1 1.49-.38c.62.26 1.48.87 2.19 1.58.71.7 1.32 1.57 1.58 2.19.26.83-.06 1.37-.38 1.49A22 22 0 0 1 12 15Z"/>
+        <path d="m9 12 3 3"/>
+        <path d="m14 17 3 3"/>
+        <path d="m17 14 3 3"/>
+      </svg>
+    )
+  }
+  if (t.includes('robotic') || t.includes('bot')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="8" width="18" height="12" rx="2"/>
+        <path d="M12 8v-4"/><path d="M10 4h4"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M9 18h6"/>
+      </svg>
+    )
+  }
+  if (t.includes('hackathon') || t.includes('code') || t.includes('web') || t.includes('debug')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+    )
+  }
+  if (t.includes('circuit') || t.includes('hardware') || t.includes('pcb') || t.includes('arm')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="6" width="12" height="12" rx="1"/>
+        <path d="M6 9H4"/><path d="M6 15H4"/><path d="M20 9h-2"/><path d="M20 15h-2"/><path d="M9 6V4"/><path d="M15 6V4"/><path d="M9 20v-2"/><path d="M15 20v-2"/>
+      </svg>
+    )
+  }
+  if (t.includes('ai') || t.includes('ml') || t.includes('data')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+        <path d="m10.5 6.5-4 4"/><path d="m13.5 6.5 4 4"/><path d="m10.5 17.5-4-4"/><path d="m13.5 17.5 4-4"/><path d="M12 7v10"/>
+      </svg>
+    )
+  }
+  if (t.includes('quiz') || t.includes('debate')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        <path d="M9 12h.01"/><path d="M12 12h.01"/><path d="M15 12h.01"/>
+      </svg>
+    )
+  }
+  if (t.includes('startup') || t.includes('idea')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>
+      </svg>
+    )
+  }
+  if (t.includes('chess') || t.includes('strategy')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3a2 2 0 1 0 0 4 2 2 0 1 0 0-4Z"/><path d="M8 21h8l-1.5-9h-5L8 21Z"/><path d="M12 7v4"/><path d="M9 11h6"/>
+      </svg>
+    )
+  }
+  if (t.includes('gaming') || t.includes('esports')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 11h.01"/><path d="M18 13h.01"/>
+      </svg>
+    )
+  }
+  if (t.includes('drone') || t.includes('race')) {
+    return (
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/>
+        <path d="m8 8 3.5 3.5"/><path d="m16 16-3.5-3.5"/><path d="m8 16 3.5-3.5"/><path d="m16 8-3.5 3.5"/><rect x="10" y="10" width="4" height="4" rx="1"/>
+      </svg>
+    )
+  }
+  
+  // Default icon
+  return (
+    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/>
+    </svg>
+  )
+}
 
 type Block = V['schedBlocks'][number];
 
@@ -59,37 +208,72 @@ function Carousel({ b }: { b: Block }) {
   return (
     <section data-sc-row="" className="sc-block" aria-labelledby={id}>
       <div className="sc-block-head">
-        <div>
-          <h3 id={id} className="sc-block-name">{b.name}</h3>
-          <p className="sc-block-meta">{b.meta}</p>
+        <div className="sc-block-left">
+          <div className="sc-block-badge">
+            <PeriodIcon name={b.name} />
+          </div>
+          <div className="sc-block-titles">
+            <h3 id={id} className="sc-block-name">{b.name}</h3>
+            <span className="sc-block-pill">{b.meta}</span>
+          </div>
         </div>
+        <div className="sc-block-divider" aria-hidden="true" />
         <div className="sc-nav">
-          <button ref={prev} type="button" className="sc-arrow" aria-label={"Earlier " + b.lower + " events"} onClick={() => step(-1)} disabled><Arrow /></button>
-          <button ref={next} type="button" className="sc-arrow" aria-label={"Later " + b.lower + " events"} onClick={() => step(1)}><Arrow flip /></button>
+          <button ref={prev} type="button" className="sc-arrow" aria-label={"Earlier " + b.lower + " events"} onClick={() => step(-1)} disabled>
+            <ArrowLeft />
+          </button>
+          <button ref={next} type="button" className="sc-arrow" aria-label={"Later " + b.lower + " events"} onClick={() => step(1)}>
+            <ArrowRight />
+          </button>
         </div>
       </div>
       <div ref={track} className="sc-track" tabIndex={0} role="group" aria-label={b.name + " events, scrolls sideways"}>
         {b.cards.map((e) => (
-          <article key={e.id} className="sc-card" data-on={e.on ? "" : undefined} style={{ "--wc": e.wc } as CSSProperties}>
-            <div className="sc-card-in">
-              <div className="sc-card-top">
-                <p className="sc-time"><strong>{e.t}</strong><span>{e.ap}</span></p>
-                <button type="button" aria-pressed={e.on} aria-label={e.aria} onClick={e.toggle} className="sc-star">
-                  <svg data-sc-star="" viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}>
-                    <path d={STAR} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" style={{ fill: e.star, transition: "fill .3s" }}></path>
-                  </svg>
+          <div
+            key={e.id}
+            className="sc-card-shell"
+            data-world={e.wIdx}
+            style={{ "--wc": e.wc } as CSSProperties}
+          >
+            <article className="sc-card" data-on={e.on ? "" : undefined}>
+              <div className="sc-card-top-bg">
+                <span className="sc-sparkle" style={{ top: '25%', left: '12%' }}>✦</span>
+                <span className="sc-sparkle" style={{ top: '65%', left: '30%' }}>✦</span>
+                <span className="sc-sparkle" style={{ top: '35%', left: '48%' }}>✦</span>
+                
+                <div className="sc-card-icon-ring">
+                  <EventIcon title={e.title} />
+                </div>
+                
+                <button type="button" aria-pressed={e.on} aria-label={e.aria} onClick={e.toggle} className="sc-star-btn">
+                  <StarIcon on={e.on} />
                 </button>
               </div>
-              <h4 className="sc-card-title">{e.title}</h4>
-              <div className="sc-card-foot">
-                <span className="sc-card-row">
-                  <span className="sc-world"><span className="sc-diamond"></span>{e.wn}</span>
-                  <span className="sc-dur">{e.dur}</span>
-                </span>
-                <span className="sc-venue"><Pin size={14} />{e.venue}</span>
+
+              <div className="sc-card-divider" />
+
+              <div className="sc-card-bottom">
+                <p className="sc-time">
+                  <strong>{e.t}</strong>
+                  <span>{e.ap}</span>
+                </p>
+                <h4 className="sc-card-title">{e.title}</h4>
+                <div className="sc-card-foot">
+                  <div className="sc-card-row">
+                    <span className="sc-world">
+                      <span className="sc-diamond" />
+                      {e.wn}
+                    </span>
+                    <span className="sc-dur">{e.dur}</span>
+                  </div>
+                  <span className="sc-venue">
+                    <Pin size={14} />
+                    {e.venue}
+                  </span>
+                </div>
               </div>
-            </div>
-          </article>
+            </article>
+          </div>
         ))}
       </div>
     </section>
@@ -115,16 +299,44 @@ export default function ScheduleView({ v }: { v: V }) {
         </div>
         <div role="tablist" aria-label="Fest days" className="sc-tabs">
           {v.schedDays.map((d) => (
-            <button key={d.no} data-sc-tab="" type="button" role="tab" aria-selected={d.sel} onClick={d.pick} className="hv-link-paper" style={{ position: "relative", display: "flex", alignItems: "center", gap: "clamp(10px,1.4vw,20px)", minWidth: "0", padding: "clamp(18px,3vh,28px) clamp(8px,1.6vw,24px) clamp(22px,3.4vh,32px)", border: "0", borderLeft: `1px solid ${d.sep}`, background: "none", color: "#ECE8DF", textAlign: "left", cursor: "pointer", opacity: d.o, transition: "opacity .4s" }}>
-              <span style={{ flex: "none", display: d.imgD, width: "clamp(44px,5vw,72px)", aspectRatio: "1" }}>
-                <img decoding="async" loading={lazyUnlessCritical(d.img)} src={d.img} alt="" style={{ width: "100%", height: "100%", transform: `scale(${d.ps}) rotate(${d.pr})`, transition: "transform .9s cubic-bezier(.34,1.56,.64,1)" }} />
-              </span>
-              <span style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "0" }}>
-                <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".24em", color: GOLD }}>{d.no}</span>
-                <strong style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(20px,2.6vw,38px)", lineHeight: "1" }}>{d.theme}</strong>
-                <span style={{ fontSize: "14px", color: "rgba(236,232,223,.72)" }}>{d.meta}</span>
-              </span>
-              <span style={{ position: "absolute", left: "0", right: "0", bottom: "0", height: "3px", background: GOLD, transform: `scaleX(${d.bar})`, transformOrigin: d.barO, transition: "transform .7s cubic-bezier(.25,1,.1,1)" }}></span>
+            <button
+              key={d.no}
+              data-sc-tab=""
+              type="button"
+              role="tab"
+              aria-selected={d.sel}
+              onClick={d.pick}
+              className={`sc-tab-btn ${d.sel ? 'sc-tab-active' : ''}`}
+            >
+              <div className="sc-tab-planet-wrap">
+                <div className="sc-tab-halo" aria-hidden="true" />
+                <div className="sc-tab-orbit" aria-hidden="true">
+                  <span className="sc-tab-orbit-sparkle">✦</span>
+                </div>
+                <img
+                  decoding="async"
+                  loading={lazyUnlessCritical(d.img)}
+                  src={d.img}
+                  alt=""
+                  className="sc-tab-planet-img"
+                />
+              </div>
+              <div className="sc-tab-info">
+                <span className="sc-tab-no">
+                  {d.sel && <span className="sc-tab-diamond">✦</span>}
+                  {d.no}
+                </span>
+                <strong className="sc-tab-theme">{d.theme}</strong>
+                <span className="sc-tab-meta">
+                  <span>30 events · from 9:00</span>
+                  <span>AM</span>
+                </span>
+              </div>
+              {d.sel && (
+                <span className="sc-tab-bar" aria-hidden="true">
+                  <span className="sc-tab-flare" />
+                </span>
+              )}
             </button>
           ))}
         </div>
