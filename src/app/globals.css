@@ -121,6 +121,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hv-lift:hover{transform:translateY(-6px) !important}
 /* Mission ticket: lifts and picks up the world accent passed in --hv-accent. */
 .hv-ticket:hover{transform:translateY(-6px) !important;border-color:var(--hv-accent) !important}
+.hv-ticket-open{transition:background-color .25s,color .25s,transform .25s}
+.hv-ticket-open:hover,.hv-ticket-open:focus-visible{background:var(--hv-accent) !important;color:#141312 !important;transform:rotate(45deg)}
 
 /* Worlds guide on phones: same message in a slimmer card, so it doesn't crowd the planet's Enter button. */
 @media (max-width:719px){.wh-card{gap:12px !important;padding:10px 12px 10px 14px !important}.wh-glyph{display:none !important}.wh-main{font-size:14px !important}.wh-sub{font-size:12px !important}}
@@ -577,3 +579,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .sc-block-name{font-size:32px}
   .sc-block-divider{display:none}
 }
+
+/* ---------- event poster popup (EventPopup.tsx) ---------- */
+.ev-pop{animation:ev-fade .3s ease-out}
+.ev-pop-box{animation:ev-rise .5s cubic-bezier(.16,1,.3,1)}
+.ev-pop-x,.ev-pop-close,.ev-pop-rule{transition:background-color .2s,color .2s,border-color .2s,filter .2s}
+.ev-pop-x:hover,.ev-pop-close:hover,.ev-pop-x:focus-visible,.ev-pop-close:focus-visible{background:#ECE8DF !important;color:#141312 !important;border-color:#ECE8DF !important}
+.ev-pop-rule:hover,.ev-pop-rule:focus-visible{filter:brightness(1.12)}
+@keyframes ev-fade{from{opacity:0}}
+@keyframes ev-rise{from{opacity:0;transform:translateY(24px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.ev-pop,.ev-pop-box{animation:none}.hv-ticket-open:hover,.hv-ticket-open:focus-visible{transform:none}}

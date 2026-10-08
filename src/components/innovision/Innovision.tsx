@@ -22,6 +22,7 @@ import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
 import ProfileOverlay from './ProfileOverlay';
 import PhoneModal from './PhoneModal';
+import EventPopup from './EventPopup';
 import AdminDashboard from './AdminDashboard';
 import CartPill from './CartPill';
 import Toast from './Toast';
@@ -140,6 +141,8 @@ interface State {
   adminOpen: boolean;
   profileOpen: boolean;
   phoneModalOpen: boolean;
+  /** Mission ticket (index into the detail page's missions) whose poster and rulebook popup is open. */
+  eventPop: number | null;
   registration: Registration | null;
   user: UserProfile | null;
   authReady: boolean; auth: boolean; authMode: string; step: number; err: any; busyLbl: string; files: any; drag: string; copied: boolean; schedFilter: string;
@@ -170,7 +173,7 @@ export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
     auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
-    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, eventPop: null, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
@@ -1055,7 +1058,7 @@ export default class Innovision extends Component<Props, State> {
 
   /* ---------- detail ---------- */
   async prepDetail(i: number) {
-    await this.set({ index: i, dIndex: i });
+    await this.set({ index: i, dIndex: i, eventPop: null });
     this.setupDetailScroll();
   }
   setupDetailScroll(keep?: boolean) {
@@ -1352,6 +1355,7 @@ export default class Innovision extends Component<Props, State> {
   }
   onKey(e: KeyboardEvent) {
     const s = this.state;
+    if (e.key === 'Escape' && s.eventPop != null && s.view === 'detail') { this.setState({ eventPop: null }); return; }
     if (e.key === 'Escape' && (s.about || s.menu || s.bagOpen)) { this.setState({ about: false, menu: false, bagOpen: false }); return; }
     const v = s.view;
     if (v === 'worlds') {
@@ -2667,6 +2671,9 @@ export default class Innovision extends Component<Props, State> {
         };
       })(),
       nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
+      eventPop: s.view === 'detail' ? s.eventPop : null,
+      openEvent: (k: number) => this.setState({ eventPop: k }),
+      closeEvent: () => this.setState({ eventPop: null }),
 
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
       isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
@@ -2782,6 +2789,7 @@ export default class Innovision extends Component<Props, State> {
           onLogout={this.logout}
           onUpdatePhone={this.handleUpdatePhone}
         />
+        <EventPopup v={v} />
         <PhoneModal
           isOpen={s.phoneModalOpen}
           onSave={this.handleUpdatePhone}

@@ -407,7 +407,7 @@ export default function DetailView({ v }: { v: V }) {
             </div>
           </header>
           <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,500px),1fr))", gap: "22px" }}>
-            {cw.missions.map((m) => (
+            {cw.missions.map((m, mI) => (
 
               <article key={m.no} data-d-card="" onMouseEnter={v.beep} style={{ display: "flex" }}>
                 <div
@@ -520,41 +520,34 @@ export default function DetailView({ v }: { v: V }) {
                       {m.text}
                     </p>
 
-                    {/* Bottom Row: Barcode & Brochure Link */}
+                    {/* Bottom Row: barcode, and the arrow that opens this event's poster and rulebook (EventPopup). */}
                     <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "auto", paddingTop: "20px" }}>
-
                       <span aria-hidden="true" style={{ flex: "1", height: "26px", opacity: ".55", background: barcode("#ECE8DF") }}></span>
-                      {m.brochureUrl ? (
-                        <a
-                          href={m.brochureUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Open Event Brochure (Google Drive)"
-                          style={{
-                            flex: "none",
-                            display: "grid",
-                            placeItems: "center",
-                            width: "48px",
-                            height: "48px",
-                            borderRadius: "50%",
-                            border: `1.5px solid ${cw.accentL}`,
-                            background: "rgba(236,232,223,0.08)",
-                            color: cw.accentL,
-                            textDecoration: "none",
-                            cursor: "pointer",
-                            transition: "background .2s, transform .2s, box-shadow .2s",
-                            boxShadow: `0 0 16px ${cw.accentL}40`,
-                          }}
-                        >
-                          <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px" }}>
-                            <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2" />
-                          </svg>
-                        </a>
-                      ) : (
-                        <span aria-hidden="true" style={{ flex: "none", display: "grid", placeItems: "center", width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(236,232,223,.2)", color: "rgba(236,232,223,.3)" }}>
-                          <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px" }}><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="1.5"></path></svg>
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => v.openEvent(mI)}
+                        aria-haspopup="dialog"
+                        aria-label={"Poster and rulebook: " + m.name}
+                        className="hv-ticket-open"
+                        style={{
+                          flex: "none",
+                          display: "grid",
+                          placeItems: "center",
+                          width: "48px",
+                          height: "48px",
+                          padding: "0",
+                          borderRadius: "50%",
+                          border: `1.5px solid ${cw.accentL}`,
+                          background: "rgba(236,232,223,0.08)",
+                          color: cw.accentL,
+                          cursor: "pointer",
+                          boxShadow: `0 0 16px color-mix(in oklab, ${cw.accentL} 25%, transparent)`,
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "18px", height: "18px" }}>
+                          <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>
