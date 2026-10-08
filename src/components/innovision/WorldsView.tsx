@@ -18,7 +18,7 @@ export default function WorldsView({ v }: { v: V }) {
           {w.deco && (
             <div data-depth=".55" aria-hidden="true" style={{ position: "absolute", left: w.decoL, top: w.decoT, height: w.decoH, pointerEvents: "none" }}>
               <div style={{ height: "100%", transform: `rotate(${w.decoR})` }}>
-                <img decoding="async" src={w.deco} alt="" style={{ height: "100%", width: "auto", mixBlendMode: "multiply", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
+                <img decoding="async" src={w.deco} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
               </div>
             </div>
           )}

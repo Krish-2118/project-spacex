@@ -15,7 +15,7 @@ export function LiveFooter() {
 export default function SiteFooter({ v }: { v: V }) {
   return (
     <footer data-sec="footer" style={{ position: "relative", zIndex: 10, overflow: "hidden", background: "#141312", color: "#ECE8DF", borderRadius: "50% 50% 0 0 / 140px 140px 0 0", padding: "150px clamp(20px,4vw,64px) calc(clamp(16px,2.6vw,44px) + 90px)" }}>
-      <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
+      <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
       <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "48px 40px", paddingBottom: "56px", borderBottom: "1px solid rgba(236,232,223,.16)" }}>
           <div style={{ flex: "2 1 340px", minWidth: "0", maxWidth: "460px" }}>

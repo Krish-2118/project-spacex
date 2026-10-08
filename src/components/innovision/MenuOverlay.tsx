@@ -12,7 +12,7 @@ export default function MenuOverlay({ v }: { v: V }) {
   return (
     <div data-menu="" aria-hidden={v.menuHidden} data-open={v.menuHidden ? undefined : ""} className="menu" style={{ position: "fixed", inset: "0", zIndex: "66", visibility: v.menuVis, transition: `visibility 0s linear ${v.menuDelay}` }}>
       <div className="menu-panel" style={{ clipPath: v.menuClip, transition: "clip-path .9s cubic-bezier(.25,1,.1,1)" }}>
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".45", pointerEvents: "none" }} />
         <div className="menu-top">
           <a href="#/" onClick={(e) => { v.closeMenu(); v.goHome(e); }} aria-label="Innovision home" className="menu-brand">
             <Logo style={{ width: "24px", height: "auto" }} />

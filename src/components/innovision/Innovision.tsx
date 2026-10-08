@@ -1069,7 +1069,12 @@ export default class Innovision extends Component<Props, State> {
     // smoothWheel already eases the scroll itself, so the scene follows it directly: a trailing scrub
     // drifted out of step with the page, most visibly where the sticky scene hands over to the manifest.
     const tl = g.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root.querySelector('[data-d-track]'), scroller: sc, start: 'top top', end: 'bottom bottom', scrub: true, invalidateOnRefresh: true } });
-    q('[data-speed]').forEach((el) => { const sp = parseFloat(el.dataset.speed || '') || 0; tl.to(el, { y: () => H() * sp * 2, duration: 1 }, 0); });
+    // data-speed drifts a layer vertically (fraction of the screen height per half track); data-sx does the same
+    // across the width, data-rot turns it (degrees) and data-zoom scales it over the whole track.
+    q('[data-speed]').forEach((el) => {
+      const n = (k: string) => parseFloat(el.dataset[k] || '') || 0, sp = n('speed'), sx = n('sx'), rot = n('rot'), zoom = n('zoom');
+      tl.to(el, { y: () => H() * sp * 2, ...(sx && { x: () => innerWidth * sx * 2 }), ...(rot && { rotation: rot }), ...(zoom && { scale: zoom }), duration: 1 }, 0);
+    });
     q('[data-thrust]').forEach((el) => tl.fromTo(el, { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.15 }, 0));
     q('[data-lander]').forEach((el) => tl.to(el, { y: () => -H() * 0.25, duration: 0.35, ease: 'power1.out' }, 0));
     tl.to(root.querySelector('[data-d-titleblock]'), { scale: 1.25, autoAlpha: 0, y: () => -H() * .08, duration: .3 }, 0)
@@ -1118,13 +1123,14 @@ export default class Innovision extends Component<Props, State> {
     return gsap.timeline()
       .fromTo(root.querySelectorAll('[data-d-ch]'), { yPercent: 70, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 1.4, ease: 'expo.out', stagger: .05 }, .1)
       .fromTo(root.querySelector('[data-d-stats]'), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out' }, .5)
+      .fromTo(root.querySelectorAll('[data-d-sub]'), { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 1.4, ease: 'expo.out' }, .7)
       .fromTo(root.querySelectorAll('[data-speed] > img, [data-speed] > div'), { scale: 1.08 }, { scale: 1, duration: 2.4, ease: 'expo.out' }, 0)
       .fromTo(root.querySelector('[data-d-hint]'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 1 }, 1);
   }
   fitTitle() {
     const el = this.$('[data-d-title]');
     if (!el) return;
-    el.style.fontSize = 'clamp(56px, 13vw, 250px)';
+    el.style.fontSize = el.dataset.size || 'clamp(56px, 13vw, 250px)';
     const max = innerWidth * .9, w = el.scrollWidth;
     if (w > max) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * (max / w)) + 'px';
   }
@@ -2594,8 +2600,6 @@ export default class Innovision extends Component<Props, State> {
       },
       sponsorCta: (e: MouseEvent) => { e.preventDefault(); this.toast('Partnership deck drops soon. Reach us on Instagram.'); },
       toastMsg: s.toastMsg,
-      bandA: Array.from({ length: 6 }, () => ({ t: "EASTERN INDIA'S LARGEST TECH FEST" })),
-      bandB: Array.from({ length: 6 }, () => ({ t: 'INNOVISION 2026 · NIT ROURKELA' })),
       heroChars: 'INNOVISION'.split('').map((ch) => ({ ch })),
       briefWords: BRIEF.split(' '),
       heroSparks: HERO_SPARKS,

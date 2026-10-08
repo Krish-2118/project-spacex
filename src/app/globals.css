@@ -259,6 +259,37 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hp-freeze{display:none}
 }
 
+/* ---------- touchdown field (DetailView.tsx, Main Events) ---------- */
+/* .td-at is a zero-size anchor at (--x, --y); its art centres on it with `translate`, leaving `transform` free for
+   GSAP on the anchor and for the CSS idle loops on the art. Portrait swaps in --px/--py where set. */
+.td-at{position:absolute;left:var(--x);top:var(--y);width:0;height:0;pointer-events:none}
+.td-title{padding-bottom:26vh}
+.td-sub{padding-left:.5em;font-size:clamp(11px,1vw,16px);letter-spacing:.5em}
+.td-moon{position:absolute;left:0;top:0;width:min(14vh,9vw);height:auto;translate:-50% -50%}
+.td-ringed{--p:min(52vh,30vw);position:absolute;left:calc(var(--p) / -2);top:calc(var(--p) / -2);width:var(--p);height:var(--p)}
+.td-rock{position:absolute;left:0;top:0;width:auto;height:calc(var(--k,1) * var(--s) * 1vmin)}
+.td-star{position:absolute;color:oklch(0.3 0.08 295);translate:-50% -50%;animation:td-twinkle 3.6s ease-in-out infinite}
+.td-flight{--r:min(7vh,4.6vw);position:relative;rotate:-24deg;animation:iv-hang 4.2s ease-in-out infinite}
+.td-rocket{position:absolute;left:0;top:0;width:auto;height:var(--r);translate:-50% -50%;rotate:90deg}
+.td-trail{position:absolute;right:calc(var(--r) * .42);top:-1px;width:26vw;height:2px;background:repeating-linear-gradient(90deg,oklch(0.3 0.08 295) 0 7px,transparent 7px 13px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 85%);mask-image:linear-gradient(90deg,transparent,#000 85%)}
+/* Foreground ledge: a circle of radius 70vh whose crest sits at (25vw, 74vh); the astronaut hops on the crest, low enough to clear the title. */
+.td-ledge{position:absolute;left:calc(25vw - 70vh);top:74vh;width:140vh;height:auto}
+.td-astro{position:absolute;left:0;bottom:-1.2vh;width:auto;height:17vh;translate:-50% 0}
+@keyframes td-twinkle{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(.6);opacity:.3}}
+@media (orientation:portrait){
+  .td-at{left:var(--px,var(--x));top:var(--py,var(--y))}
+  .td-title{padding-bottom:12vh}
+  .td-sub{padding-left:.3em;font-size:10px;letter-spacing:.3em}
+  .td-moon{width:20vw}
+  .td-ringed{--p:44vw}
+  .td-rock{--k:1.6}
+  .td-flight{--r:5vh}
+  .td-trail{width:40vw}
+  .td-ledge{left:-33vw;top:76vh;width:130vw}
+  .td-astro{height:15vh}
+}
+@media (prefers-reduced-motion:reduce){.td-star,.td-flight,.td-hop{animation:none}}
+
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
 .image-slot-frame{position:absolute;inset:0;overflow:hidden;background:rgba(127,127,127,.08)}

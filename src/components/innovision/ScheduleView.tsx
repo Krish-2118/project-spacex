@@ -328,7 +328,7 @@ export default function ScheduleView({ v }: { v: V }) {
   return (
     <main data-view="schedule" data-noscroll="" data-screen-label="Schedule" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden", background: "#ECE8DF", color: "#141312" }}>
       <section className="sc-hero">
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div aria-hidden="true" className="sc-planet">
           <img decoding="async" loading="lazy" data-sc-planet="" src="/assets/planet-crescent.webp" alt="" style={{ width: "100%", height: "100%", animation: "iv-drift 12s ease-in-out infinite" }} />
         </div>

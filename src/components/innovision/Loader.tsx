@@ -7,8 +7,8 @@ const MONO = "grayscale(1) contrast(1.35) brightness(1.05)";
 /** Orbiting planets that swing into alignment as loading progresses: [ring inset, ring border, orb index, start angle, size %, image]. */
 const ORBS: [string, string, number, number, number, string][] = [
   ['0', '1px dotted rgba(20,19,18,.5)', 2, 236, 12, 'planet-tide.webp'],
-  ['14%', '1px dashed rgba(20,19,18,.45)', 1, -148, 13, 'planet-blue.webp'],
-  ['26%', '1px solid rgba(20,19,18,.3)', 0, 128, 16, 'planet-yellow.webp'],
+  ['14%', '1px dashed rgba(20,19,18,.45)', 1, -148, 13, 'planet-earth.webp'],
+  ['26%', '1px solid rgba(20,19,18,.3)', 0, 128, 16, 'planet-mars.webp'],
 ];
 const DISC = 'min(58vmin, 540px, 100vh - 330px)';
 
@@ -50,7 +50,7 @@ export default function Loader({ v }: { v: V }) {
         </svg>
         <span data-l-flare="" style={{ position: "absolute", inset: "30%", borderRadius: "50%", border: "2px solid #8a6a2a", opacity: "0", pointerEvents: "none" }}></span>
         <div data-loader-disc="" style={{ position: "absolute", inset: "34%", borderRadius: "50%", background: "#141312", overflow: "hidden" }}>
-          <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
+          <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
           <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
           <div data-l-fade="" style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ECE8DF" }}>
             <span data-l-count="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "min(6.2vmin, 54px)", lineHeight: "1", fontVariantNumeric: "tabular-nums" }}>000</span>

@@ -17,7 +17,7 @@ export default function Sponsors({ v }: { v: V }) {
   return (
     <>
       <div data-reveal="" className="sp-title" style={{ position: "relative", overflow: "hidden", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: "clamp(20px,4vw,56px)", padding: "clamp(28px,4.5vw,60px)", background: "#141312", color: "#ECE8DF", clipPath: CUT(20) }}>
-        <img decoding="async" src={A + "stars.webp"} alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".55", pointerEvents: "none" }} />
+        <img decoding="async" src={A + "starfield.svg"} alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".55", pointerEvents: "none" }} />
         <span aria-hidden="true" style={{ position: "absolute", right: "-12%", top: "50%", width: "min(70vw, 640px)", aspectRatio: "1", transform: "translateY(-50%)", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.16)", pointerEvents: "none" }}></span>
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "18px", minWidth: "0" }}>
           <span style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />TITLE SPONSOR</span>

@@ -10,7 +10,7 @@ import ImageSlot from './ImageSlot';
 import { LiveFooter } from './SiteFooter';
 import type { V } from './types';
 
-/** Landing page: sticky hero, marquee bands, briefing, odyssey map, gallery tunnel, sponsors, merch teaser and closing call to action. */
+/** Landing page: sticky hero, briefing, odyssey map, gallery tunnel, sponsors, merch teaser and closing call to action. */
 export default function HomeView({ v }: { v: V }) {
   return (
     <main data-view="home" data-noscroll="" data-screen-label="Home" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden" }}>
@@ -38,7 +38,7 @@ export default function HomeView({ v }: { v: V }) {
             </div>
             {/* Own layer: the cursor pull nudges it every frame, which otherwise re-rasters the starfield. */}
             <div data-hero-disc="" data-attract=".03" className="hero-disc" style={{ borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
-              <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
+              <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
               <span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
               <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
@@ -117,29 +117,7 @@ export default function HomeView({ v }: { v: V }) {
           </div>
         </section>
       </div>
-      <div data-bands="" aria-hidden="true" style={{ position: "relative", zIndex: "4", height: "0", marginTop: "-45vh", pointerEvents: "none" }}>
-        <div style={{ position: "absolute", left: "-10vw", right: "-10vw", top: "48px", transform: "rotate(-2.4deg)", background: "oklch(0.8 0.12 85)", color: "#141312", overflow: "hidden", padding: "clamp(6px,.55vw,9px) 0", boxShadow: "0 14px 30px rgba(20,19,18,.22)" }}>
-          <div data-marquee="46" data-rev="1" style={{ display: "inline-flex", whiteSpace: "nowrap" }}>
-            {v.bandA.map((b, bI) => (
-              <span key={bI} style={{ display: "inline-flex", alignItems: "center", gap: "clamp(14px,1.4vw,22px)", paddingRight: "clamp(14px,1.4vw,22px)", fontWeight: "700", fontSize: "clamp(11px,1vw,15px)", letterSpacing: ".04em", lineHeight: "1" }}><Sparkle style={{ width: ".8em", height: ".8em", flex: "none" }} />{b.t}</span>
-            ))}
-            {v.bandA.map((b, bI) => (
-              <span key={bI} style={{ display: "inline-flex", alignItems: "center", gap: "clamp(14px,1.4vw,22px)", paddingRight: "clamp(14px,1.4vw,22px)", fontWeight: "700", fontSize: "clamp(11px,1vw,15px)", letterSpacing: ".04em", lineHeight: "1" }}><Sparkle style={{ width: ".8em", height: ".8em", flex: "none" }} />{b.t}</span>
-            ))}
-          </div>
-        </div>
-        <div style={{ position: "absolute", left: "-10vw", right: "-10vw", top: "48px", transform: "rotate(2.4deg)", background: "#141312", color: "#ECE8DF", overflow: "hidden", padding: "clamp(6px,.55vw,9px) 0", boxShadow: "0 14px 30px rgba(20,19,18,.22)" }}>
-          <div data-marquee="34" style={{ display: "inline-flex", whiteSpace: "nowrap" }}>
-            {v.bandB.map((b, bI) => (
-              <span key={bI} style={{ display: "inline-flex", alignItems: "center", gap: "clamp(14px,1.4vw,22px)", paddingRight: "clamp(14px,1.4vw,22px)", fontWeight: "700", fontSize: "clamp(11px,1vw,15px)", letterSpacing: ".04em", lineHeight: "1" }}><Sparkle style={{ width: ".8em", height: ".8em", flex: "none" }} />{b.t}</span>
-            ))}
-            {v.bandB.map((b, bI) => (
-              <span key={bI} style={{ display: "inline-flex", alignItems: "center", gap: "clamp(14px,1.4vw,22px)", paddingRight: "clamp(14px,1.4vw,22px)", fontWeight: "700", fontSize: "clamp(11px,1vw,15px)", letterSpacing: ".04em", lineHeight: "1" }}><Sparkle style={{ width: ".8em", height: ".8em", flex: "none" }} />{b.t}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-      <section style={{ position: "relative", zIndex: "2", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(96px,14vh,160px)", background: "#ECE8DF", boxShadow: "0 -40px 80px rgba(20,19,18,.28)" }}>
+      <section style={{ position: "relative", zIndex: "2", marginTop: "-45vh", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(96px,14vh,160px)", background: "#ECE8DF", boxShadow: "0 -40px 80px rgba(20,19,18,.28)" }}>
         <div style={{ maxWidth: "1240px", margin: "0 auto" }}>
           <h2 aria-label="For a few days, NIT Rourkela turns into a launch pad for builders, thinkers and makers from across the country." style={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: ".14em", margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,5.2vw,84px)", lineHeight: "1.08", letterSpacing: "-.01em" }}>
             {v.briefWords.map((t, bwI) => (
@@ -160,7 +138,7 @@ export default function HomeView({ v }: { v: V }) {
         </div>
       </section>
       <section style={{ position: "relative", padding: "clamp(96px,14vh,160px) clamp(20px,4vw,64px)", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto" }}>
           <header data-reveal="" style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "48px" }}>
             <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>The Odyssey Map</h2>
@@ -200,7 +178,7 @@ export default function HomeView({ v }: { v: V }) {
       </section>
       <section data-sec="gallery" data-tunnel="" aria-label="Gallery" style={{ position: "relative", height: "600vh", background: "#141312", color: "#ECE8DF" }}>
         <div style={{ position: "sticky", top: "0", height: "100vh", overflow: "hidden" }}>
-          <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".75", pointerEvents: "none" }} />
+          <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".75", pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: "0", perspective: "900px", perspectiveOrigin: "50% 50%" }}>
             <div style={{ position: "absolute", inset: "0", transformStyle: "preserve-3d" }}>
               {v.tunnel.map((g, gI) => (
@@ -250,7 +228,7 @@ export default function HomeView({ v }: { v: V }) {
         </div>
       </section>
       <section data-sec="merch" aria-label="Merch" style={{ position: "relative", padding: "clamp(96px,14vh,160px) clamp(20px,4vw,64px)", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(40px,6vw,96px)", alignItems: "center" }}>
           <div data-reveal="">
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH</p>
@@ -276,10 +254,10 @@ export default function HomeView({ v }: { v: V }) {
       <section data-launch-sec="" style={{ position: "relative", overflow: "hidden", padding: "clamp(110px,18vh,200px) clamp(20px,4vw,64px) clamp(260px,40vh,420px)", textAlign: "center", background: "#ECE8DF" }}>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "100%", width: "220vmax", height: "220vmax", margin: "-110vmax 0 0 -110vmax", borderRadius: "50%", background: "repeating-conic-gradient(from 0deg,rgba(20,19,18,.09) 0deg .5deg,transparent .5deg 5deg)", WebkitMaskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", maskImage: "radial-gradient(circle,transparent 22%,#000 28%,transparent 52%)", pointerEvents: "none" }}></div>
         <div aria-hidden="true" style={{ position: "absolute", left: "50%", bottom: "calc(min(130vw, 1700px) * -.8)", width: "min(130vw, 1700px)", aspectRatio: "1", marginLeft: "calc(min(130vw, 1700px) / -2)", pointerEvents: "none" }}>
-          <img decoding="async" data-spin="480" src="/assets/planet-green.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+          <img decoding="async" data-spin="480" src="/assets/planet-mercury.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
         </div>
         <div data-launch="" aria-hidden="true" style={{ position: "absolute", right: "clamp(20px,11vw,220px)", bottom: "16%", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none" }}>
-          <img decoding="async" src="/assets/spaceship.webp" alt="" style={{ height: "min(34vh, 320px)", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.2))" }} />
+          <img decoding="async" src="/assets/rocket.svg" alt="" style={{ height: "min(34vh, 320px)", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.2))" }} />
           <span style={{ width: "3.6vh", height: "8vh", marginTop: "-1.4vh", borderRadius: "45% 45% 50% 50% / 20% 20% 80% 80%", background: "radial-gradient(ellipse 50% 100% at 50% 0,#fff,rgba(255,244,230,.75) 45%,transparent 100%)", transformOrigin: "50% 0", animation: "iv-flame .16s ease-in-out infinite alternate" }}></span>
           <span style={{ width: "2px", height: "70vh", background: "repeating-linear-gradient(180deg,rgba(20,19,18,.45) 0 8px,transparent 8px 18px)" }}></span>
         </div>

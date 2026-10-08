@@ -27,7 +27,7 @@ export default function BagPanel({ v }: { v: V }) {
           {v.bagLines.map((l, lI) => (
             <div key={lI} style={{ display: "grid", gridTemplateColumns: "56px minmax(0,1fr) auto", gap: "14px", alignItems: "center", padding: "18px 0", borderBottom: "1px solid rgba(20,19,18,.12)" }}>
               <div style={{ position: "relative", width: "56px", height: "56px", borderRadius: "50%", overflow: "hidden", background: "#141312" }}>
-                <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+                <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
               <div style={{ minWidth: "0" }}>
                 <div style={{ fontWeight: "700", fontSize: "16px", lineHeight: "1.3" }}>{l.name}</div>

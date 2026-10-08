@@ -8,7 +8,7 @@ export default function MerchView({ v }: { v: V }) {
   return (
     <main data-view="merch" data-noscroll="" data-screen-label="Merch Store" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden", background: "#ECE8DF" }}>
       <section style={{ position: "relative", padding: "calc(110px + 6vh) clamp(20px,4vw,64px) 56px", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "28px" }}>
           <div data-m-reveal="">
             <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH · INNOVISION 2026</p>

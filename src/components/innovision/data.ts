@@ -35,6 +35,8 @@ export interface World {
   statL: string;
   statR: string;
   tagline: string;
+  /** Line under the title on the detail page, when the world's scene has one. */
+  sub?: string;
   intro: string;
   specs: [string, string][];
   /** [name, text, format, duration] */
@@ -43,25 +45,31 @@ export interface World {
 
 export const WORLDS: World[] = [
   { key: 'takeoff', slug: 'flagship-events', name: 'Flagship Events', category: 'Technical Events', accent: 'oklch(0.56 0.13 32)', accentL: 'oklch(0.76 0.11 38)', ink: 'oklch(0.3 0.08 32)', tint: 'oklch(0.94 0.02 55)', tint2: 'oklch(0.85 0.045 40)',
-    planet: A + 'planet-yellow.webp', astro: '', astroSit: false, rover: true,
-    gates: ['indian-astronaut.webp', 'astro-red.webp', 'spaceship.webp', 'big-spaceship.webp'],
-    coord: 'RA 05h 35m · DEC −05° 23′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(22vh, 210px)', decoR: '-14deg',
+    planet: A + 'planet-moon.webp', astro: '', astroSit: false, rover: true,
+    gates: ['indian-astronaut.webp', 'astronaut-eva.webp', 'rocket.svg', 'capsule.svg'],
+    coord: 'RA 05h 35m · DEC −05° 23′', deco: A + 'rocket.svg', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(22vh, 210px)', decoR: '-14deg',
     statL: 'Mission 01', statR: 'Tech Arena', tagline: 'Code. Build. Break the atmosphere.',
     intro: 'Strap in for the technical arena of Innovision. Hackathons, robotics and coding battles where ideas get their launch thrust. Bring your crew, your laptop and your wildest builds.',
     specs: [['Category', 'Technical'], ['Format', 'Solo & team'], ['Launch pad', 'NIT Rourkela'], ['Fuel', 'Code & circuits'], ['Status', 'Boarding soon']],
     missions: [['Hackathon', 'A non-stop build sprint. Ship a working prototype before the countdown hits zero.', 'Team · 2–4', '36 hrs'], ['Robo Wars', 'Bring your bot into the arena. Last machine standing takes the crown.', 'Team · up to 5', 'Knockout'], ['Code Sprint', 'Competitive programming under pressure. Fast logic, faster fingers.', 'Solo', '3 hrs'], ['Circuit Lab', 'Design, debug and demo hardware that works on the first try.', 'Team · 2', '4 hrs']] },
   { key: 'touchdown', slug: 'main-events', name: 'Main Events', category: 'Workshops & Talks', accent: 'oklch(0.55 0.12 295)', accentL: 'oklch(0.77 0.09 295)', ink: 'oklch(0.3 0.08 295)', tint: 'oklch(0.94 0.018 295)', tint2: 'oklch(0.85 0.04 295)',
-    planet: A + 'planet-blue.webp', astro: '', astroStyle: { transform: 'translateX(-44vh) translateY(12.5vh) rotate(-28deg)', height: '100%', mixBlendMode: 'multiply', filter: 'grayscale(1) contrast(2.2) brightness(1.2)' }, astroSit: false, uplink: true,
-    gates: ['astro-yellow.webp', 'home-astronaut.webp', 'spaceship.webp', 'planet-ringed.webp'],
+    planet: A + 'planet-moon.webp', astro: '', astroStyle: { transform: 'translateX(-44vh) translateY(12.5vh) rotate(-28deg)', height: '100%', mixBlendMode: 'multiply', filter: 'grayscale(1) contrast(2.2) brightness(1.2)' }, astroSit: false, uplink: true,
+    gates: ['astronaut-eva.webp', 'indian-astronaut.webp', 'rocket.svg', 'planet-ringed.webp'],
     coord: 'RA 18h 36m · DEC +38° 47′', deco: '', decoL: '62vw', decoT: '12vh', decoH: 'min(30vh, 280px)', decoR: '12deg',
-    statL: 'Mission 02', statR: 'Learn & Land', tagline: 'A cosmic calm for curious minds.',
+    statL: 'Mission 02', statR: 'Learn & Land', tagline: 'A cosmic calm for curious minds.', sub: 'Workshops · Talks · Labs',
     intro: 'Slow the descent and land on new ideas. Hands-on workshops and talks from people who have been there, built that, and are ready to show you how.',
     specs: [['Category', 'Workshops'], ['Format', 'Hands-on'], ['Crew', 'Experts & alumni'], ['Fuel', 'Curiosity'], ['Status', 'Boarding soon']],
     missions: [['AI & ML Workshop', 'From first model to deployed demo in a single session.', 'Hands-on', 'Full day'], ['Guest Lectures', 'Stories and lessons from engineers, founders and researchers.', 'Open to all', '90 min'], ['Startup Talks', 'How ideas become companies, straight from the people who did it.', 'Open to all', '60 min'], ['Maker Labs', 'Solder, print and prototype with guidance at every step.', 'Limited seats', 'Half day']] },
   { key: 'highpoint', slug: 'dts-and-fun-events', name: 'DTS and Fun Events', category: 'Games & Showcases', accent: 'oklch(0.56 0.09 178)', accentL: 'oklch(0.8 0.08 178)', ink: 'oklch(0.3 0.06 185)', tint: 'oklch(0.94 0.018 178)', tint2: 'oklch(0.85 0.04 180)',
-    planet: A + 'planet-green.webp', astro: A + 'astro-yellow.webp', astroSit: true,
-    gates: ['astro-green.webp', 'planet-crescent.webp', 'astro-red.webp', 'big-spaceship.webp'],
-    coord: 'RA 13h 25m · DEC −11° 09′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(21vh, 200px)', decoR: '24deg',
+    // Line-art astronaut cut from "Astronaut on a Lunar Horizon", placed on the planet as it stands on the moon in that
+    // picture: moon radius 1.705× the cutout's height, cutout bottom 18.85% of its height below the crest and its centre
+    // 10.7% of its width right of the moon's centre (both boots plant just in front of the rim line).
+    // Sized from the planet's diameter (WorldsView data-s-hero) rather than astroH so the fit holds on every screen; the
+    // container already sits 3.5vh below the crest. Its teal trim matches this world, so it is only lightly desaturated.
+    planet: A + 'planet-moon.webp', astro: A + 'astronaut-lunar.webp', astroSit: false,
+    astroStyle: { height: 'calc(min(112vw, 150vh) * .293)', transform: 'translate(10.7%, calc(18.85% - 3.5vh))', filter: 'grayscale(.15) contrast(1.12) drop-shadow(0 18px 30px rgba(0,0,0,.35))' },
+    gates: ['astronaut-eva.webp', 'planet-crescent.webp', 'astronaut-lunar.webp', 'capsule.svg'],
+    coord: 'RA 13h 25m · DEC −11° 09′', deco: A + 'rocket.svg', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(21vh, 200px)', decoR: '24deg',
     statL: 'Mission 03', statR: 'Fun Zone', tagline: 'Ride the wave where the fest peaks.',
     intro: 'The best of both worlds: competition meets celebration. Gaming arenas, quizzes and showcases that keep the energy high until the very last night.',
     specs: [['Category', 'Fun & games'], ['Format', 'Open to all'], ['Vibe', 'Euphoric'], ['Fuel', 'Team spirit'], ['Status', 'Boarding soon']],
@@ -72,16 +80,15 @@ export const WORLDS: World[] = [
  * What the loader waits for: its own planets (Loader ORBS) plus everything on the first home screen
  * (HomeView hero: starfield, orbiting asteroid and ringed planet, rocks, storm planet, astronaut).
  */
-export const PRELOAD_CRITICAL = ['planet-tide.webp', 'planet-yellow.webp', 'planet-blue.webp', 'stars.webp',
+export const PRELOAD_CRITICAL = ['planet-tide.webp', 'planet-mars.webp', 'planet-earth.webp', 'starfield.svg',
   'asteroid.webp', 'planet-ringed.webp', 'planet-storm.webp', 'indian-astronaut.webp'];
 /**
  * Art for the other views, warmed a few files at a time once the loader is gone (Innovision#warmDeferred),
- * roughly in the order a visitor meets it: transition curtain, worlds slider, the flagship world, the rest.
+ * roughly in the order a visitor meets it: worlds slider, the flagship world, the rest. (The transition curtain is drawn in code.)
  */
-export const PRELOAD_DEFERRED = ['cloud-1.webp', 'cloud-2.webp', 'cloud-3.webp', 'cloud-4.webp', 'cloud-5.webp',
-  'planet-green.webp', 'spaceship.webp', 'astro-yellow.webp', 'satellite.webp', 'receiver.webp',
-  'floor.webp', 'lab.webp', 'lander.webp', 'astro-red.webp', 'big-spaceship.webp', 'planet-blue-half.webp',
-  'moon.webp', 'home-astronaut.webp', 'moon-cratered.webp', 'planet-crescent.webp', 'astro-green.webp'];
+export const PRELOAD_DEFERRED = ['planet-moon.webp', 'planet-mercury.webp', 'rocket.svg', 'satellite.webp', 'receiver.webp', 'mesa.svg',
+  'lab.webp', 'lander.webp', 'astronaut-eva.webp', 'astronaut-lunar.webp', 'astronaut-snowboard.webp', 'capsule.svg',
+  'moon-full.webp', 'moon-cratered.webp', 'planet-crescent.webp'];
 
 /** loading="lazy" for an image in a secondary view, unless it is PRELOAD_CRITICAL art (cached already, shared with the first screen). */
 export const lazyUnlessCritical = (src: string) => (PRELOAD_CRITICAL.includes(src.replace(A, '')) ? undefined : 'lazy' as const);
