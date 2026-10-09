@@ -108,7 +108,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                           <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
                           {isBlockedCollege && (
                             <span style={{ fontSize: "11px", fontWeight: "700", color: "#f87171", letterSpacing: ".06em" }}>
-                              🚫 NOT ELIGIBLE
+                              NOT ELIGIBLE
                             </span>
                           )}
                         </div>
@@ -163,19 +163,15 @@ export default function AuthOverlay({ v }: { v: V }) {
                               lineHeight: "1.4",
                             }}
                           >
-                            <span>⚠️</span>
                             <span>Registration is not allowed for students from ITER - SOA.</span>
                           </div>
                         )}
                         {v.err.college && !isBlockedCollege ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL (LOCKED)</span>
-                          <span style={{ fontSize: "11px", color: "oklch(0.8 0.12 85)", fontWeight: "700" }}>🔒 Authenticated Account</span>
-                        </div>
+                        <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL</span>
                         <input name="email" type="email" value={v.regVals.email} readOnly autoComplete="email" placeholder="you@college.edu" aria-invalid={v.inv.email} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.08)", fontSize: "16px", color: "#ECE8DF", outline: "none", border: `1.5px solid ${v.bc.email}`, cursor: "not-allowed", opacity: "0.85" }} />
-                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>This email is bound to your account and cannot be altered.</span>
+                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>The email you signed in with.</span>
                         {v.err.email ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.email}</span>) : null}
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -271,41 +267,15 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.login, flexDirection: "column", gap: "18px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Log in / Sign up</h3>
-                      
-                      <div data-s-in="" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(220,183,106,0.08)", border: "1px solid rgba(220,183,106,0.3)", clipPath: "polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)" }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="oklch(0.8 0.12 85)" strokeWidth="2" style={{ width: "18px", height: "18px", flex: "none" }}>
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        <span style={{ fontSize: "13px", lineHeight: "1.45", color: "#ECE8DF" }}>
-                          <strong style={{ color: "oklch(0.8 0.12 85)", letterSpacing: ".04em" }}>AUTHENTICATION REQUIRED:</strong> Log in or sign up below to unlock event registration.
-                        </span>
-                      </div>
 
-                      <p data-s-in="" style={{ margin: "0 0 4px", fontSize: "14px", lineHeight: "1.5", color: "rgba(236,232,223,.75)" }}>Select your student portal to authenticate via Google Auth:</p>
+                      <p data-s-in="" style={{ margin: "0 0 4px", fontSize: "14px", lineHeight: "1.5", color: "rgba(236,232,223,.75)" }}>Sign in with your Google account to register for events.</p>
 
-                      {/* Option 1: External Students */}
                       <div data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".14em", color: "rgba(236,232,223,.6)" }}>EXTERNAL STUDENTS (ALL COLLEGES)</span>
                         <button id="google-login-external" data-g-btn="" type="button" onClick={() => v.googleLogin(false)} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1px solid #8e918f", borderRadius: "0", background: "#131314", color: "#e3e3e3", cursor: v.gBusy ? "progress" : "pointer", fontSize: "15px", fontWeight: "500", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
                           <span style={{ position: "relative", display: "grid", placeItems: "center", width: "24px", height: "24px" }}>
                             <svg viewBox="0 0 48 48" aria-hidden="true" style={{ width: "20px", height: "20px" }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
                           </span>
-                          <span>Continue with Google (External)</span>
-                        </button>
-                      </div>
-
-                      {/* Option 2: Internal Students (@nitrkl.ac.in) */}
-                      <div data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".14em", color: "oklch(0.8 0.12 85)" }}>NIT ROURKELA STUDENTS ONLY</span>
-                          <span style={{ fontSize: "10px", fontWeight: "800", letterSpacing: ".1em", padding: "2px 8px", background: "rgba(220,183,106,0.18)", color: "oklch(0.8 0.12 85)", border: "1px solid rgba(220,183,106,0.3)" }}>FREE ENTRY PASS</span>
-                        </div>
-                        <button id="google-login-internal" data-g-btn="" type="button" onClick={() => v.googleLogin(true)} disabled={v.gBusy} aria-busy={v.gBusy} className="hv-google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", height: "54px", padding: "0 16px", border: "1.5px solid oklch(0.8 0.12 85)", borderRadius: "0", background: "rgba(220,183,106,0.08)", color: "#ECE8DF", cursor: v.gBusy ? "progress" : "pointer", fontSize: "15px", fontWeight: "700", letterSpacing: ".01em", transition: "background-color .3s,border-color .3s" }}>
-                          <span style={{ position: "relative", display: "grid", placeItems: "center", width: "24px", height: "24px" }}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="oklch(0.8 0.12 85)" strokeWidth="2" style={{ width: "20px", height: "20px" }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                          </span>
-                          <span>Institute Webmail (@nitrkl.ac.in)</span>
+                          <span>Continue with Google</span>
                         </button>
                       </div>
 

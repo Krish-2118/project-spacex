@@ -325,14 +325,14 @@ export default class Innovision extends Component<Props, State> {
       if (isAuthRequired) {
         setTimeout(() => {
           this.openAuth('login');
-          this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+          this.toast('Please log in to register.');
         }, 1200);
       } else if (isOpenRegister) {
         setTimeout(() => {
           if (!this.state.user) {
             sessionStorage.setItem('inv_pending_action', 'register');
             this.openAuth('login');
-            this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+            this.toast('Please log in to register.');
           } else if (this.state.registration || this.pass) {
             this.openAuth('pass');
           } else {
@@ -1450,7 +1450,7 @@ export default class Innovision extends Component<Props, State> {
         sessionStorage.setItem('inv_pending_action', 'register');
       }
       this.openAuth('login');
-      this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+      this.toast('Please log in to register.');
       return;
     }
     if (this.state.registration || this.pass) {
@@ -1684,7 +1684,7 @@ export default class Innovision extends Component<Props, State> {
         this.openAuth('pass');
         this.toast(`Welcome back, ${profile.full_name?.split(' ')[0] || 'Explorer'}! Here is your boarding pass.`);
       } else {
-        this.toast(`Authenticated as ${profile.email}. Let's complete your registration.`);
+        this.toast(`Signed in as ${profile.email}.`);
         setTimeout(() => this.openAuth('register'), 300);
       }
       return;
@@ -1874,7 +1874,7 @@ export default class Innovision extends Component<Props, State> {
         sessionStorage.setItem('inv_pending_action', 'register');
       }
       mode = 'login';
-      this.toast('🔒 Authentication required: Please log in or sign up before registering.');
+      this.toast('Please log in to register.');
     }
 
     // If user is already registered, always show their pass - never show registration
@@ -2008,7 +2008,7 @@ export default class Innovision extends Component<Props, State> {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('inv_pending_action', 'register');
       }
-      this.toast('🔒 Authentication required: Please log in or sign up first to access registration.');
+      this.toast('Please log in to register.');
       return;
     }
 
@@ -2283,7 +2283,7 @@ export default class Innovision extends Component<Props, State> {
           };
 
           playClick();
-          this.toast(saveRes.alreadyRegistered ? 'You are already registered! Here is your pass.' : '🎉 Registration confirmed! Welcome to Innovision 2026.');
+          this.toast(saveRes.alreadyRegistered ? 'You are already registered. Here is your pass.' : 'Registration confirmed. Welcome to Innovision 2026.');
 
           this.setState(
             {
@@ -2430,7 +2430,7 @@ export default class Innovision extends Component<Props, State> {
       authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : "You're on board",
       authSub: reg
         ? (isInternal ? 'NIT Rourkela student registration: Instant auto-confirmed entry (Free).' : 'Three short stops to register for Innovision 2026 at NIT Rourkela.')
-        : am === 'login' ? 'Sign in using your Google account or institute webmail.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
+        : am === 'login' ? 'Sign in using your Google account.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
       railD: show(showRail && !s.narrow && !isInternal), hprogD: showRail && s.narrow && !isInternal ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;

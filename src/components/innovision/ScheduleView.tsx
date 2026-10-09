@@ -4,18 +4,11 @@
 
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
-import { Sparkle } from './icons';
 import { lazyUnlessCritical } from './data';
 import type { V } from './types';
 
 const GOLD = "oklch(0.8 0.12 85)";
 const STAR = "M12 2.8l2.7 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.8 3.3 1.5-6.4-4.9-4.3 6.5-.6Z";
-// Ticket sparkles: where each sits, and (--fx, --fy) how far it flies to leave through the top-left corner on hover.
-const SPARKS = [
-  { top: '25%', left: '12%', '--fx': '-52px', '--fy': '-38px', '--d': '0ms' },
-  { top: '65%', left: '30%', '--fx': '-104px', '--fy': '-76px', '--d': '50ms' },
-  { top: '35%', left: '48%', '--fx': '-160px', '--fy': '-48px', '--d': '100ms' },
-] as CSSProperties[];
 
 /** How far (in degrees) a ticket tilts toward the cursor at its edges. */
 const TILT = 8;
@@ -66,41 +59,6 @@ function ArrowRight() {
   return (
     <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
       <path d="M10.5 1.5L15 6M15 6L10.5 10.5M15 6H1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PeriodIcon({ name }: { name: string }) {
-  const n = (name || '').toLowerCase();
-  if (n === 'morning') {
-    return (
-      <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-morning">
-        <path d="M17 1V5M6 6L9 9M28 6L25 9M2 17H6M28 17H32" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M9 17C9 12.58 12.58 9 17 9C21.42 9 25 12.58 25 17H9Z" fill="currentColor" />
-        <path d="M3 21H31" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M8 25H26" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (n === 'evening') {
-    return (
-      <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-evening">
-        <path d="M16 4C11.58 4 8 7.58 8 12C8 16.42 11.58 20 16 20C19.12 20 21.82 18.21 23.14 15.62C22.16 15.87 21.13 16 20.07 16C15.11 16 11.1 11.98 11.1 7.03C11.1 5.96 11.23 4.94 11.48 3.95C12.88 2.64 14.78 2 16 4Z" fill="currentColor" />
-        <path d="M25 6L26 8L28 9L26 10L25 12L24 10L22 9L24 8L25 6Z" fill="currentColor" />
-        <path d="M4 23H30" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M9 27H25" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  // Afternoon (default - matching reference image)
-  return (
-    <svg width="34" height="28" viewBox="0 0 34 28" fill="none" aria-hidden="true" className="sc-period-icon sc-period-afternoon">
-      <path d="M17 2V6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M7 6L9.5 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M27 6L24.5 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M8 17C8 12.03 12.03 8 17 8C21.97 8 26 12.03 26 17H8Z" fill="currentColor" />
-      <path d="M4 21H30" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M9 26H25" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -218,12 +176,15 @@ type Block = V['schedBlocks'][number];
  * One part of the day (morning, afternoon, evening) as a sideways-scrolling row of event tickets.
  * The arrows step by a screenful of cards and switch off at either end (watched with an IntersectionObserver
  * on the first and last card, so nothing runs while the row scrolls).
+ * The arrows' disabled state lives only in the DOM, never in a `disabled` prop: React swallows clicks on a button
+ * whose props say disabled, so a prop would keep the arrow dead after the observer switched it back on.
  */
 function Carousel({ b }: { b: Block }) {
   const track = useRef<HTMLDivElement>(null), prev = useRef<HTMLButtonElement>(null), next = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const t = track.current, first = t?.firstElementChild, last = t?.lastElementChild;
     if (!t || !first || !last) return;
+    if (prev.current) prev.current.disabled = t.scrollLeft < 1;
     const io = new IntersectionObserver((es) => es.forEach((e) => {
       const on = e.intersectionRatio > .96;
       if (e.target === first && prev.current) prev.current.disabled = on;
@@ -243,9 +204,6 @@ function Carousel({ b }: { b: Block }) {
     <section data-sc-row="" className="sc-block" aria-labelledby={id}>
       <div className="sc-block-head">
         <div className="sc-block-left">
-          <div className="sc-block-badge">
-            <PeriodIcon name={b.name} />
-          </div>
           <div className="sc-block-titles">
             <h3 id={id} className="sc-block-name">{b.name}</h3>
             <span className="sc-block-pill">{b.meta}</span>
@@ -253,7 +211,7 @@ function Carousel({ b }: { b: Block }) {
         </div>
         <div className="sc-block-divider" aria-hidden="true" />
         <div className="sc-nav">
-          <button ref={prev} type="button" className="sc-arrow" aria-label={"Earlier " + b.lower + " events"} onClick={() => step(-1)} disabled>
+          <button ref={prev} type="button" className="sc-arrow" aria-label={"Earlier " + b.lower + " events"} onClick={() => step(-1)}>
             <ArrowLeft />
           </button>
           <button ref={next} type="button" className="sc-arrow" aria-label={"Later " + b.lower + " events"} onClick={() => step(1)}>
@@ -275,10 +233,6 @@ function Carousel({ b }: { b: Block }) {
               <span className="sc-card-frame" aria-hidden="true" />
               <span className="sc-card-sheen" aria-hidden="true" />
               <div className="sc-card-top-bg">
-                {SPARKS.map((s, i) => (
-                  <Sparkle key={i} aria-hidden="true" className="sc-sparkle" style={s} />
-                ))}
-
                 <div className="sc-card-icon-ring">
                   <span className="sc-card-icon">
                     <EventIcon title={e.title} />
@@ -350,9 +304,7 @@ export default function ScheduleView({ v }: { v: V }) {
             >
               <div className="sc-tab-planet-wrap">
                 <div className="sc-tab-halo" aria-hidden="true" />
-                <div className="sc-tab-orbit" aria-hidden="true">
-                  <Sparkle className="sc-tab-orbit-sparkle" />
-                </div>
+                <div className="sc-tab-orbit" aria-hidden="true" />
                 <img
                   decoding="async"
                   loading={lazyUnlessCritical(d.img)}
@@ -362,15 +314,9 @@ export default function ScheduleView({ v }: { v: V }) {
                 />
               </div>
               <div className="sc-tab-info">
-                <span className="sc-tab-no">
-                  {d.sel && <Sparkle className="sc-tab-diamond" aria-hidden="true" />}
-                  {d.no}
-                </span>
+                <span className="sc-tab-no">{d.no}</span>
                 <strong className="sc-tab-theme">{d.theme}</strong>
-                <span className="sc-tab-meta">
-                  <span>30 events · from 9:00</span>
-                  <span>AM</span>
-                </span>
+                <span className="sc-tab-meta">{d.meta}</span>
               </div>
               {d.sel && (
                 <span className="sc-tab-bar" aria-hidden="true">

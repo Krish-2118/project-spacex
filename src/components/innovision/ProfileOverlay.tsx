@@ -233,18 +233,20 @@ export default function ProfileOverlay({
                 <p style={{ margin: 0, fontSize: '14px', color: 'rgba(236,232,223,0.7)', overflowWrap: 'anywhere' }}>
                   {user.email}
                 </p>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    marginTop: '6px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '.08em',
-                    color: isInternal ? 'oklch(0.8 0.12 85)' : 'rgba(236,232,223,0.6)',
-                  }}
-                >
-                  {isInternal ? 'NIT ROURKELA STUDENT (INTERNAL)' : 'EXTERNAL VISITOR'}
-                </span>
+                {isInternal && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      marginTop: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '.08em',
+                      color: 'oklch(0.8 0.12 85)',
+                    }}
+                  >
+                    NIT ROURKELA STUDENT
+                  </span>
+                )}
               </div>
             </div>
 

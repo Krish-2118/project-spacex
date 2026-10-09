@@ -8,7 +8,7 @@ const FOCUSABLE = 'a[href],button:not([disabled])';
 
 /**
  * An event's poster and rulebook, opened from the arrow on its mission ticket (DetailView). Closes from the
- * corner button, the Close button, Escape (Innovision#onKey) or a click on the backdrop, and hands focus back
+ * red corner cross, Escape (Innovision#onKey) or a click on the backdrop, and hands focus back
  * to the arrow that opened it.
  */
 export default function EventPopup({ v }: { v: V }) {
@@ -43,8 +43,8 @@ export default function EventPopup({ v }: { v: V }) {
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="ev-pop-title" className="ev-pop-box" onClick={(e) => e.stopPropagation()} style={{ position: "relative", display: "flex", flexDirection: "column", width: "min(460px, 100%)", maxHeight: "100%", overflow: "hidden", background: "#191816", border: "1px solid rgba(236,232,223,.16)", borderRadius: "18px", boxShadow: "0 40px 80px -20px rgba(0,0,0,.6)", color: "#ECE8DF" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "14px 14px 14px 20px", borderBottom: "1px solid rgba(236,232,223,.12)", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: accent }}>
           <span>GATE {m.no} · {v.cw.serial}</span>
-          <button ref={closeRef} type="button" onClick={v.closeEvent} aria-label="Close" className="ev-pop-x" style={{ display: "grid", placeItems: "center", width: "36px", height: "36px", borderRadius: "50%", border: "1px solid rgba(236,232,223,.22)", background: "transparent", color: "#ECE8DF", cursor: "pointer" }}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "16px", height: "16px" }}><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"></path></svg>
+          <button ref={closeRef} type="button" onClick={v.closeEvent} aria-label="Close" className="ev-pop-x" style={{ display: "grid", placeItems: "center", width: "38px", height: "38px", padding: "0", borderRadius: "50%", border: "0", background: "#DC2626", color: "#FFFFFF", boxShadow: "0 6px 16px -6px rgba(220,38,38,.7)", cursor: "pointer" }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "18px", height: "18px" }}><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"></path></svg>
           </button>
         </div>
 
@@ -72,7 +72,6 @@ export default function EventPopup({ v }: { v: V }) {
             ) : (
               <button type="button" disabled style={{ flex: "1", height: "48px", borderRadius: "999px", border: "1px dashed rgba(236,232,223,.25)", background: "transparent", color: "rgba(236,232,223,.5)", fontSize: "13px", fontWeight: "700", letterSpacing: ".16em", cursor: "not-allowed" }}>RULEBOOK SOON</button>
             )}
-            <button type="button" onClick={v.closeEvent} className="ev-pop-close" style={{ flex: "none", height: "48px", padding: "0 22px", borderRadius: "999px", border: "1px solid rgba(236,232,223,.3)", background: "transparent", color: "#ECE8DF", fontSize: "13px", fontWeight: "700", letterSpacing: ".16em", cursor: "pointer" }}>CLOSE</button>
           </div>
         </div>
       </div>
