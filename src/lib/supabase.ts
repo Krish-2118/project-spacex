@@ -30,7 +30,8 @@ export interface Registration {
   enrollment_no?: string | null;
   student_type: 'internal' | 'external';
   gender: 'male' | 'female' | 'others';
-  payment_screenshot_url?: string | null;
+  /** Object path in the private `payment-proofs` bucket. Not a URL: staff view it via a short-lived signed URL. */
+  payment_proof_path?: string | null;
   utr?: string | null;
   amount: number;
   status: 'pending' | 'confirmed' | 'rejected';
@@ -40,7 +41,7 @@ export interface Registration {
   updated_at?: string;
 }
 
-export type EventCategory = 'flagship events' | 'main events' | 'fun events' | 'dts events';
+export type EventCategory = 'flagship events' | 'standout events' | 'main events' | 'dts events' | 'fun events';
 
 export interface EventItem {
   id?: string;
@@ -326,7 +327,7 @@ export async function signOutUser() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('inv_login_intent');
     purgeLocalStorageTokens();
-    // Cached registrations hold personal data (phone, UTR, proof URLs): don't leave them on shared computers.
+    // Cached registrations hold personal data (phone, UTR, proof references): don't leave them on shared computers.
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);

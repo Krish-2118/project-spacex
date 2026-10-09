@@ -22,6 +22,7 @@ import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
 import ProfileOverlay from './ProfileOverlay';
 import PhoneModal from './PhoneModal';
+import EventPopup from './EventPopup';
 import AdminDashboard from './AdminDashboard';
 import CartPill from './CartPill';
 import Toast from './Toast';
@@ -140,6 +141,8 @@ interface State {
   adminOpen: boolean;
   profileOpen: boolean;
   phoneModalOpen: boolean;
+  /** Mission ticket (index into the detail page's missions) whose poster and rulebook popup is open. */
+  eventPop: number | null;
   registration: Registration | null;
   user: UserProfile | null;
   authReady: boolean; auth: boolean; authMode: string; step: number; err: any; busyLbl: string; files: any; drag: string; copied: boolean; schedFilter: string;
@@ -170,7 +173,7 @@ export default class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
     auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, gIdx: 0, sel: {}, bag: [], bagOpen: false, added: null, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, coarse: false, lowPower: false, lazy: {},
-    adminOpen: false, profileOpen: false, phoneModalOpen: false, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
+    adminOpen: false, profileOpen: false, phoneModalOpen: false, eventPop: null, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
   /** Settles once the first session check has finished, so an early REGISTER / LOG IN click waits for it. */
@@ -1055,7 +1058,7 @@ export default class Innovision extends Component<Props, State> {
 
   /* ---------- detail ---------- */
   async prepDetail(i: number) {
-    await this.set({ index: i, dIndex: i });
+    await this.set({ index: i, dIndex: i, eventPop: null });
     this.setupDetailScroll();
   }
   setupDetailScroll(keep?: boolean) {
@@ -1069,7 +1072,12 @@ export default class Innovision extends Component<Props, State> {
     // smoothWheel already eases the scroll itself, so the scene follows it directly: a trailing scrub
     // drifted out of step with the page, most visibly where the sticky scene hands over to the manifest.
     const tl = g.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root.querySelector('[data-d-track]'), scroller: sc, start: 'top top', end: 'bottom bottom', scrub: true, invalidateOnRefresh: true } });
-    q('[data-speed]').forEach((el) => { const sp = parseFloat(el.dataset.speed || '') || 0; tl.to(el, { y: () => H() * sp * 2, duration: 1 }, 0); });
+    // data-speed drifts a layer vertically (fraction of the screen height per half track); data-sx does the same
+    // across the width, data-rot turns it (degrees) and data-zoom scales it over the whole track.
+    q('[data-speed]').forEach((el) => {
+      const n = (k: string) => parseFloat(el.dataset[k] || '') || 0, sp = n('speed'), sx = n('sx'), rot = n('rot'), zoom = n('zoom');
+      tl.to(el, { y: () => H() * sp * 2, ...(sx && { x: () => innerWidth * sx * 2 }), ...(rot && { rotation: rot }), ...(zoom && { scale: zoom }), duration: 1 }, 0);
+    });
     q('[data-thrust]').forEach((el) => tl.fromTo(el, { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.15 }, 0));
     q('[data-lander]').forEach((el) => tl.to(el, { y: () => -H() * 0.25, duration: 0.35, ease: 'power1.out' }, 0));
     tl.to(root.querySelector('[data-d-titleblock]'), { scale: 1.25, autoAlpha: 0, y: () => -H() * .08, duration: .3 }, 0)
@@ -1118,13 +1126,14 @@ export default class Innovision extends Component<Props, State> {
     return gsap.timeline()
       .fromTo(root.querySelectorAll('[data-d-ch]'), { yPercent: 70, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 1.4, ease: 'expo.out', stagger: .05 }, .1)
       .fromTo(root.querySelector('[data-d-stats]'), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 1.2, ease: 'expo.out' }, .5)
+      .fromTo(root.querySelectorAll('[data-d-sub]'), { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 1.4, ease: 'expo.out' }, .7)
       .fromTo(root.querySelectorAll('[data-speed] > img, [data-speed] > div'), { scale: 1.08 }, { scale: 1, duration: 2.4, ease: 'expo.out' }, 0)
       .fromTo(root.querySelector('[data-d-hint]'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 1 }, 1);
   }
   fitTitle() {
     const el = this.$('[data-d-title]');
     if (!el) return;
-    el.style.fontSize = 'clamp(56px, 13vw, 250px)';
+    el.style.fontSize = el.dataset.size || 'clamp(56px, 13vw, 250px)';
     const max = innerWidth * .9, w = el.scrollWidth;
     if (w > max) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * (max / w)) + 'px';
   }
@@ -1202,7 +1211,7 @@ export default class Innovision extends Component<Props, State> {
     const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
     const dur = (m: number) => m >= 600 ? Math.round(m / 60) + ' HRS' : m >= 120 && m % 60 === 0 ? m / 60 + ' HRS' : m + ' MIN';
     const count = (n: number) => n + (n === 1 ? ' event' : ' events');
-    const names = ['FLAGSHIP', 'MAIN', 'FUN'];
+    const names = ['FLAGSHIP', 'STANDOUT', 'MAIN', 'FUN'];
     const nar = s.narrow;
     const starred = list.filter((x) => s.saved.includes(x.id)).length;
     return {
@@ -1337,7 +1346,7 @@ export default class Innovision extends Component<Props, State> {
     if (this.busy || this.state.view !== 'worlds') return;
     this.dismissHint();
     this.slideDir = d;
-    this.go('#/worlds/' + WORLDS[(this.state.index + d + 3) % 3].slug, true);
+    this.go('#/worlds/' + WORLDS[(this.state.index + d + WORLDS.length) % WORLDS.length].slug, true);
   }
   navTo(k: number) {
     const key = WORLDS[k].slug;
@@ -1346,6 +1355,7 @@ export default class Innovision extends Component<Props, State> {
   }
   onKey(e: KeyboardEvent) {
     const s = this.state;
+    if (e.key === 'Escape' && s.eventPop != null && s.view === 'detail') { this.setState({ eventPop: null }); return; }
     if (e.key === 'Escape' && (s.about || s.menu || s.bagOpen)) { this.setState({ about: false, menu: false, bagOpen: false }); return; }
     const v = s.view;
     if (v === 'worlds') {
@@ -2092,10 +2102,10 @@ export default class Innovision extends Component<Props, State> {
       return;
     }
 
-    // 2MB max size limit requirement
-    const MAX_SIZE = 2 * 1024 * 1024;
+    // 1MB max size limit requirement (same as /api/upload)
+    const MAX_SIZE = 1024 * 1024;
     if (f.size > MAX_SIZE) {
-      this.fail({ [ek]: 'That file exceeds 2 MB. Please select a smaller image (max 2MB).' });
+      this.fail({ [ek]: 'That file exceeds 1 MB. Please select a smaller image (max 1MB).' });
       return;
     }
 
@@ -2111,11 +2121,10 @@ export default class Innovision extends Component<Props, State> {
       () => this.runUpload(kind)
     );
 
-    // Upload to ImageKit via /api/upload Route Handler
+    // Upload to the private payment-proofs bucket via /api/upload (the server picks the storage path)
     try {
       const formData = new FormData();
       formData.append('file', f);
-      formData.append('folder', '/innovision/payments');
 
       const { data: { session } } = await getSupabase().auth.getSession();
       const res = await fetch('/api/upload', {
@@ -2126,7 +2135,7 @@ export default class Innovision extends Component<Props, State> {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to upload image to ImageKit');
+        throw new Error(data.error || 'Failed to upload the screenshot');
       }
 
       this.setState((st) => ({
@@ -2135,11 +2144,10 @@ export default class Innovision extends Component<Props, State> {
           [kind]: {
             name: f.name,
             size: f.size,
-            // The ImageKit file is private (its URL doesn't load without a signature), so keep showing the
-            // local preview and submit the stored ImageKit URL with the registration.
+            // The bucket is private (there is no URL to load), so keep showing the local preview and submit
+            // only the storage path the server returned with the registration.
             url: previewUrl,
-            remoteUrl: data.url,
-            fileId: data.fileId,
+            remotePath: data.path,
             pdf: !isImg,
             status: 'done',
           },
@@ -2149,7 +2157,7 @@ export default class Innovision extends Component<Props, State> {
       this.setState((st) => ({
         files: { ...st.files, [kind]: null },
       }));
-      this.fail({ [ek]: err?.message || 'Upload to ImageKit failed. Please try again.' });
+      this.fail({ [ek]: err?.message || 'Upload failed. Please try again.' });
     }
   };
   // @ts-ignore
@@ -2327,7 +2335,7 @@ export default class Innovision extends Component<Props, State> {
     } else if (s.step === 2) {
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
-      else if (fp.status !== 'done' || !fp.remoteUrl) err.payfile = 'Hold on, your screenshot is still uploading to ImageKit.';
+      else if (fp.status !== 'done' || !fp.remotePath) err.payfile = 'Hold on, your screenshot is still uploading.';
       if (!/^\d{12}$/.test(utr)) err.utr = 'UTR numbers are 12 digits. Check the payment details in your UPI app.';
       if (this.fail(err)) return;
 
@@ -2344,7 +2352,7 @@ export default class Innovision extends Component<Props, State> {
           enrollment_no: r.enrollment_no,
           gender: r.gender,
           student_type: 'external' as const,
-          payment_screenshot_url: fp.remoteUrl,
+          payment_proof_path: fp.remotePath,
           utr,
           amount: 499,
           status: 'pending' as const, // PENDING FOR EXTERNAL
@@ -2465,7 +2473,7 @@ export default class Innovision extends Component<Props, State> {
       }),
       d: { s0: show(reg && st === 0 && !!s.user), s2: show(reg && st === 1 && !isInternal && !!s.user), s3: show(reg && st === 2 && !isInternal && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
       err: E, bc, inv, genderOptions: GENDERS,
-      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 2MB)'),
+      upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 1MB)'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: 'upi://pay?pa=' + encodeURIComponent(upi) + '&pn=' + encodeURIComponent('Innovision NIT Rourkela') + '&am=' + fee + '&cu=INR&tn=' + encodeURIComponent('Innovision 2026 registration'),
       upiAppD: s.narrow ? 'inline-flex' : 'none',
@@ -2512,7 +2520,7 @@ export default class Innovision extends Component<Props, State> {
 
   renderVals() {
     // Handlers below read this.state when they run: memoised views may hold an older v.
-    const s = this.state, i = s.index, w = WORLDS[i], dw = WORLDS[s.dIndex], nx = WORLDS[(s.dIndex + 1) % 3];
+    const s = this.state, i = s.index, w = WORLDS[i], dw = WORLDS[s.dIndex], nx = WORLDS[(s.dIndex + 1) % WORLDS.length];
     const navOn = s.view === 'worlds' || s.view === 'detail';
     const act = s.view === 'merch' ? 'merch' : s.view === 'gallery' ? 'gallery' : s.view === 'schedule' ? 'schedule' : navOn ? 'events' : 'home';
     const routed = (k: string) => k === 'events' || k === 'merch' || k === 'gallery' || k === 'schedule';
@@ -2552,7 +2560,7 @@ export default class Innovision extends Component<Props, State> {
             x,
             y,
             ar,
-            c: TUNNEL_C[k % 3],
+            c: TUNNEL_C[k % TUNNEL_C.length],
             imageUrl: photo ? photo.image_url : undefined,
           };
         });
@@ -2596,14 +2604,12 @@ export default class Innovision extends Component<Props, State> {
       },
       sponsorCta: (e: MouseEvent) => { e.preventDefault(); this.toast('Partnership deck drops soon. Reach us on Instagram.'); },
       toastMsg: s.toastMsg,
-      bandA: Array.from({ length: 6 }, () => ({ t: "EASTERN INDIA'S LARGEST TECH FEST" })),
-      bandB: Array.from({ length: 6 }, () => ({ t: 'INNOVISION 2026 · NIT ROURKELA' })),
       heroChars: 'INNOVISION'.split('').map((ch) => ({ ch })),
       briefWords: BRIEF.split(' '),
       heroSparks: HERO_SPARKS,
       loaderSparks: LOADER_SPARKS,
       worlds: WORLDS.map((x, k) => ({
-        ...x, secNo: String(k + 1).padStart(2, '0'), sealText: x.statL.toUpperCase() + ' · ' + x.category.toUpperCase() + ' · ',
+        ...x, secNo: String(k + 1).padStart(2, '0'), secTotal: String(WORLDS.length).padStart(2, '0'), sealText: x.statL.toUpperCase() + ' · ' + x.category.toUpperCase() + ' · ',
         href: '#/world/' + x.slug, stroke: 'color-mix(in oklab, ' + x.ink + ' 36%, transparent)', statLU: x.statL.toUpperCase(), categoryU: x.category.toUpperCase(),
         astroBottom: x.astroSit ? 'calc(100% - 7vh)' : 'calc(100% - 3.5vh)', astroH: x.astroSit ? (s.narrow ? '32vh' : '42vh') : (s.narrow ? '30vh' : '40vh'),
         onExplore: () => this.go('#/world/' + x.slug),
@@ -2611,43 +2617,46 @@ export default class Innovision extends Component<Props, State> {
       })),
 
       cw: (() => {
-        const catEvents = (s.dbEvents || []).filter((ev) => {
-          if (!ev.category) return true;
-          const cat = ev.category.toLowerCase().trim();
-          if (dw.key === 'takeoff') {
-            return cat === 'flagship events' || cat.includes('flagship') || cat.includes('tech');
-          }
-          if (dw.key === 'touchdown') {
-            return cat === 'main events' || cat.includes('main') || cat.includes('workshop');
-          }
-          if (dw.key === 'highpoint') {
-            return cat === 'fun events' || cat === 'dts events' || cat.includes('fun') || cat.includes('dts');
-          }
-          return true;
-        });
+        // Events belong to the world that lists their category; an event without one shows in every world.
+        const catEvents = (s.dbEvents || []).filter((ev) => !ev.category || dw.categories.includes(ev.category.toLowerCase().trim()));
 
         const useDynamic = catEvents.length > 0;
-        const missions = useDynamic
-          ? catEvents.map((ev, k) => ({
-              no: String(k + 1).padStart(2, '0'),
+        const list = useDynamic
+          ? catEvents.map((ev) => ({
               name: ev.title,
               text: ev.description,
-              format: '',
-              dur: '',
-              img: A + dw.gates[k % dw.gates.length],
+              cat: (ev.category || '').toLowerCase().trim(),
               posterUrl: ev.poster_url || '',
               brochureUrl: ev.brochure_url && isValidGoogleDriveUrl(ev.brochure_url) ? ev.brochure_url : '',
             }))
-          : dw.missions.map(([name, text], k) => ({
+          : dw.missions.map(([name, text, , , cat]) => ({ name, text, cat: cat || '', posterUrl: '', brochureUrl: '' }));
+
+        // A world that combines categories (DTS and Fun) lists each one under its own heading, in dw.groups order;
+        // anything that fits none of them (no category) closes the list untitled.
+        const sections = dw.groups
+          ? [...dw.groups.map(([cat, title]) => ({ key: cat, title, items: list.filter((m) => m.cat === cat) })),
+             { key: 'other', title: '', items: list.filter((m) => !dw.groups!.some(([cat]) => cat === m.cat)) }]
+          : [{ key: 'all', title: '', items: list }];
+        // Numbered in display order; idx is the ticket's place in missions, which the event popup reads.
+        let n = 0;
+        const groups = sections.filter((g) => g.items.length).map((g) => ({
+          key: g.key,
+          titleU: g.title.toUpperCase(),
+          count: String(g.items.length).padStart(2, '0'),
+          missions: g.items.map((m) => {
+            const k = n++;
+            return {
+              ...m,
+              idx: k,
               no: String(k + 1).padStart(2, '0'),
-              name,
-              text,
+              tag: g.title ? g.title.toUpperCase() : dw.statL.toUpperCase(),
               format: '',
               dur: '',
               img: A + dw.gates[k % dw.gates.length],
-              posterUrl: '',
-              brochureUrl: '',
-            }));
+            };
+          }),
+        }));
+        const missions = groups.flatMap((g) => g.missions);
 
         return {
           ...dw,
@@ -2662,12 +2671,16 @@ export default class Innovision extends Component<Props, State> {
           specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })),
           missionCount: String(missions.length).padStart(2, '0'),
           missions,
+          groups,
         };
       })(),
       nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
+      eventPop: s.view === 'detail' ? s.eventPop : null,
+      openEvent: (k: number) => this.setState({ eventPop: k }),
+      closeEvent: () => this.setState({ eventPop: null }),
 
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
-      isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
+      isTakeoff: dw.key === 'takeoff', isSpotlight: dw.key === 'spotlight', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
       compact: s.compact, notCompact: !s.compact,
       taglineW: s.compact ? '88vw' : 'min(640px, 34vw)',
@@ -2675,6 +2688,7 @@ export default class Innovision extends Component<Props, State> {
       backHref: '#/worlds/' + w.slug,
       nav: WORLDS.map((x, k) => ({ no: String(k + 1).padStart(2, '0'), label: x.name.toUpperCase(), current: k === i, color: k === i ? '#ECE8DF' : 'rgba(20,19,18,.72)', onClick: () => this.navTo(k) })),
       navX: (i * 100) + '%',
+      navW: (100 / WORLDS.length) + '%',
       navGlow: '#141312',
       navO: navOn ? 1 : 0, navY: navOn ? '0px' : '30px', navPE: (navOn ? 'auto' : 'none') as 'auto' | 'none',
       navBottom: s.narrow ? 'calc(clamp(16px,2.6vw,44px) + 40px)' : 'clamp(16px,2.6vw,44px)',
@@ -2684,9 +2698,9 @@ export default class Innovision extends Component<Props, State> {
         if (sc && hw) sc.scrollTo({ top: hw.offsetTop + hw.offsetHeight, behavior: this.reduce ? 'auto' : 'smooth' });
       },
       hintOn: s.hint && s.view === 'worlds' && !s.auth && !s.menu,
-      // Entering is spelled out by the world's Enter button; the guide covers what isn't on screen: there are three worlds.
+      // Entering is spelled out by the world's Enter button; the guide covers what isn't on screen: there are four worlds.
       // Name only the controls this screen shows: no side arrows on narrow screens, no keys on touch.
-      hintMain: s.coarse ? 'Swipe left or right to visit all three worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all three worlds' : 'Use the side arrows or ← → keys to visit all three worlds',
+      hintMain: s.coarse ? 'Swipe left or right to visit all four worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all four worlds' : 'Use the side arrows or ← → keys to visit all four worlds',
       hintSub: s.coarse ? 'Tap Enter, or the planet itself, to step inside one.' : 'Hover over a planet, then click Enter to step inside.',
       dismissHint: this.dismissHint,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',
@@ -2780,6 +2794,7 @@ export default class Innovision extends Component<Props, State> {
           onLogout={this.logout}
           onUpdatePhone={this.handleUpdatePhone}
         />
+        <EventPopup v={v} />
         <PhoneModal
           isOpen={s.phoneModalOpen}
           onSave={this.handleUpdatePhone}

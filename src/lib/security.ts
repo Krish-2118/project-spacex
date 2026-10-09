@@ -12,17 +12,6 @@ import { createHash } from 'node:crypto';
 
 export type DetectedFileType = 'jpeg' | 'png' | 'webp' | 'gif' | 'heic' | 'pdf';
 
-/** Folders a registrant may upload into via /api/upload, keyed by the value the client sends. */
-export const REGISTRATION_UPLOAD_FOLDERS = {
-  '/innovision/payments': ['jpeg', 'png', 'webp', 'gif', 'heic'],
-} as const satisfies Record<string, readonly DetectedFileType[]>;
-
-export type RegistrationUploadFolder = keyof typeof REGISTRATION_UPLOAD_FOLDERS;
-
-export function isRegistrationUploadFolder(folder: unknown): folder is RegistrationUploadFolder {
-  return typeof folder === 'string' && Object.prototype.hasOwnProperty.call(REGISTRATION_UPLOAD_FOLDERS, folder);
-}
-
 const ascii = (bytes: Uint8Array, start: number, end: number) =>
   String.fromCharCode(...Array.from(bytes.subarray(start, end)));
 
@@ -55,12 +44,49 @@ export const FILE_EXTENSIONS: Record<DetectedFileType, string> = {
   pdf: 'pdf',
 };
 
+/* ---------------------------------------------------------------------------------------------------------------
+ * Payment proofs (private Supabase Storage bucket)
+ * ------------------------------------------------------------------------------------------------------------- */
+
+/** Private bucket holding payment screenshots. Created, and kept private, by supabase/schema.sql. */
+export const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
+
+/** Lifetime of the signed links staff get to view a payment screenshot. */
+export const PAYMENT_PROOF_URL_TTL_SECONDS = 300;
+
+/** Image types accepted as a payment screenshot (never PDFs); must match the bucket's allowed_mime_types. */
+export const PAYMENT_PROOF_MIME_TYPES = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+} as const satisfies Partial<Record<DetectedFileType, string>>;
+
+export type PaymentProofFileType = keyof typeof PAYMENT_PROOF_MIME_TYPES;
+
+export function isPaymentProofFileType(type: unknown): type is PaymentProofFileType {
+  return typeof type === 'string' && Object.prototype.hasOwnProperty.call(PAYMENT_PROOF_MIME_TYPES, type);
+}
+
+const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+// `<owner uuid>/<random uuid>.<ext>`: the same shape the Storage INSERT policy and the registrations CHECK enforce.
+const PAYMENT_PROOF_PATH_RE = new RegExp(`^(${UUID_PATTERN})/${UUID_PATTERN}\\.(jpg|png|webp|gif|heic)$`);
+
 /**
- * File-name prefix /api/upload gives a user's payment screenshot. The server chooses it from the verified user id,
- * so /api/register can check that a submitted proof URL was uploaded by the same user.
+ * Object path for a new payment screenshot. The folder is the uploader's verified user id (from the session, never
+ * from the request) and the file name is random, so a path can't be guessed or chosen by the client.
  */
-export function paymentProofFilePrefix(userId: string): string {
-  return `payment_${userId}_`;
+export function buildPaymentProofPath(ownerId: string, type: PaymentProofFileType): string {
+  if (!isUuid(ownerId)) throw new Error('buildPaymentProofPath: owner id must be a UUID');
+  return `${ownerId.toLowerCase()}/${globalThis.crypto.randomUUID()}.${FILE_EXTENSIONS[type]}`;
+}
+
+/** True when `path` is a payment-proof object path inside `ownerId`'s own folder (no traversal, no other user). */
+export function isPaymentProofPath(path: unknown, ownerId: unknown): path is string {
+  if (typeof path !== 'string' || !isUuid(ownerId)) return false;
+  const m = PAYMENT_PROOF_PATH_RE.exec(path);
+  return !!m && m[1] === ownerId.toLowerCase();
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -159,37 +185,6 @@ export function jsonText(v: unknown): string | undefined {
  * URL validation
  * ------------------------------------------------------------------------------------------------------------- */
 
-/**
- * True when `url` is an https URL inside `folder` of the configured ImageKit endpoint, i.e. a file our own
- * /api/upload produced. Rejects `javascript:`/`data:` URLs, other hosts and path traversal.
- */
-export function isImageKitUrlInFolder(url: unknown, endpoint: string, folder: string): boolean {
-  if (typeof url !== 'string' || url.length > 2048) return false;
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return false;
-  if (/%2e|%2f|%5c/i.test(parsed.pathname) || parsed.pathname.includes('/../')) return false;
-
-  let base: URL;
-  try {
-    base = new URL(endpoint || 'https://ik.imagekit.io/');
-  } catch {
-    return false;
-  }
-  if (!endpoint) {
-    // Endpoint not configured: fall back to requiring the ImageKit CDN host.
-    if (parsed.hostname !== 'ik.imagekit.io' && !parsed.hostname.endsWith('.imagekit.io')) return false;
-    return parsed.pathname.includes(`${folder.replace(/\/+$/, '')}/`);
-  }
-  if (parsed.origin !== base.origin) return false;
-  const prefix = `${base.pathname.replace(/\/+$/, '')}${folder.replace(/\/+$/, '')}/`;
-  return parsed.pathname.startsWith(prefix) && parsed.pathname.length > prefix.length;
-}
-
 /** True if an ImageKit `filePath` (e.g. "/innovision/gallery/x.webp") is a file directly inside `folder`. */
 export function isImageKitPathInFolder(filePath: unknown, folder: string): boolean {
   if (typeof filePath !== 'string') return false;
@@ -237,7 +232,8 @@ export interface RegistrationInput {
   phone: string;
   enrollment_no: string | null;
   gender: RegistrationGender;
-  payment_screenshot_url: string | null;
+  /** Storage object path in the private payment-proofs bucket (never a URL). */
+  payment_proof_path: string | null;
   utr: string | null;
 }
 
@@ -258,7 +254,7 @@ const optionalString = (v: unknown): string | null | undefined =>
  */
 export function validateRegistrationInput(
   body: unknown,
-  opts: { isInternal: boolean; imagekitEndpoint: string; ownerId: string }
+  opts: { isInternal: boolean; ownerId: string }
 ): RegistrationValidation {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, error: 'Invalid request body.' };
@@ -270,13 +266,13 @@ export function validateRegistrationInput(
   const rawPhone = typeof b.phone === 'string' || typeof b.phone === 'number' ? String(b.phone) : '';
   const enrollment = optionalString(b.enrollment_no);
   const gender = typeof b.gender === 'string' ? b.gender.trim().toLowerCase() : '';
-  const payShot = optionalString(b.payment_screenshot_url);
+  const proofPath = optionalString(b.payment_proof_path);
   const rawUtr = optionalString(b.utr);
 
   if (!name || !rawPhone || (!opts.isInternal && !college)) {
     return { ok: false, error: 'Missing required fields: name, college, and phone are mandatory.' };
   }
-  if (enrollment === undefined || payShot === undefined || rawUtr === undefined) {
+  if (enrollment === undefined || proofPath === undefined || rawUtr === undefined) {
     return { ok: false, error: 'Invalid field types in registration payload.' };
   }
   if (name.length < 2 || name.length > 100) {
@@ -308,20 +304,18 @@ export function validateRegistrationInput(
         phone,
         enrollment_no: enrollment_no || null,
         gender: gender as RegistrationGender,
-        payment_screenshot_url: null,
+        payment_proof_path: null,
         utr: null,
       },
     };
   }
 
-  if (!payShot) {
+  if (!proofPath) {
     return { ok: false, error: 'Payment screenshot is required for external students.' };
   }
-  // Must be our own upload, and uploaded by this same user (not someone else's proof URL).
-  const fileName = isImageKitUrlInFolder(payShot, opts.imagekitEndpoint, '/innovision/payments')
-    ? new URL(payShot).pathname.split('/').pop() ?? ''
-    : '';
-  if (!opts.ownerId || !fileName.startsWith(paymentProofFilePrefix(opts.ownerId))) {
+  // The path is only accepted inside the caller's own folder (ownerId comes from the verified session), so a
+  // registration can never reference another user's proof. /api/register then checks the object really exists.
+  if (!isPaymentProofPath(proofPath, opts.ownerId)) {
     return { ok: false, error: 'Invalid payment screenshot upload. Please re-upload your screenshot.' };
   }
   const utr = (rawUtr || '').replace(/\s+/g, '');
@@ -337,7 +331,7 @@ export function validateRegistrationInput(
       phone,
       enrollment_no: enrollment_no || null,
       gender: gender as RegistrationGender,
-      payment_screenshot_url: payShot,
+      payment_proof_path: proofPath,
       utr,
     },
   };

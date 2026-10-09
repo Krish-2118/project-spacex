@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   enrollment_no TEXT,
   student_type TEXT NOT NULL CHECK (student_type IN ('internal', 'external')),
   gender TEXT NOT NULL, -- 'male' | 'female' | 'others' (see registrations_gender_check)
-  payment_screenshot_url TEXT,
+  payment_proof_path TEXT, -- object path in the private 'payment-proofs' Storage bucket ('<user_id>/<uuid>.<ext>')
   utr TEXT,
   amount NUMERIC DEFAULT 0,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
 
 -- Upgrade tables created by earlier versions of this script.
 ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE public.registrations ADD COLUMN IF NOT EXISTS payment_proof_path TEXT;
 DO $$
 BEGIN
   IF EXISTS (
@@ -106,9 +107,14 @@ BEGIN
   ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_gender_check;
   ALTER TABLE public.registrations ADD CONSTRAINT registrations_gender_check
     CHECK (gender IS NULL OR gender IN ('male', 'female', 'others'));
-  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_payment_screenshot_url_check;
-  ALTER TABLE public.registrations ADD CONSTRAINT registrations_payment_screenshot_url_check
-    CHECK (payment_screenshot_url IS NULL OR payment_screenshot_url = '' OR (payment_screenshot_url ~* '^https://[^\s"''<>]+$' AND char_length(payment_screenshot_url) <= 2048)) NOT VALID;
+  -- A payment proof is a path inside the registrant's OWN folder of the private bucket, never a URL, and never
+  -- another user's file (even through the service role).
+  ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_payment_proof_path_check;
+  ALTER TABLE public.registrations ADD CONSTRAINT registrations_payment_proof_path_check
+    CHECK (payment_proof_path IS NULL OR (
+      payment_proof_path ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif|heic)$'
+      AND split_part(payment_proof_path, '/', 1) = user_id::text
+    ));
   ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_name_check;
   ALTER TABLE public.registrations ADD CONSTRAINT registrations_name_check
     CHECK (char_length(name) BETWEEN 1 AND 100) NOT VALID;
@@ -157,6 +163,40 @@ DROP TRIGGER IF EXISTS trg_require_registration_gender ON public.registrations;
 CREATE TRIGGER trg_require_registration_gender
   BEFORE INSERT ON public.registrations
   FOR EACH ROW EXECUTE FUNCTION public.require_registration_gender();
+
+-- LEGACY payment_screenshot_url (ImageKit proof URLs from before the move to private Supabase Storage).
+-- Fresh databases never get this column. On databases that still have it, it is kept read-only until
+-- scripts/migrate-payment-proofs.mjs has copied and verified every proof into the payment-proofs bucket; then
+-- supabase/manual/drop_legacy_payment_screenshot_url.sql removes it. Until then: no new URL can be written
+-- (insert or update); a reference can only be kept as is or cleared.
+CREATE OR REPLACE FUNCTION public.reject_payment_proof_urls() RETURNS TRIGGER AS $$
+BEGIN
+  IF COALESCE(NEW.payment_screenshot_url, '') <> ''
+     AND (TG_OP = 'INSERT' OR NEW.payment_screenshot_url IS DISTINCT FROM OLD.payment_screenshot_url) THEN
+    RAISE EXCEPTION 'payment_screenshot_url is no longer accepted: store the private payment_proof_path instead'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_reject_payment_proof_urls ON public.registrations;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'registrations' AND column_name = 'payment_screenshot_url'
+  ) THEN
+    ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS registrations_payment_screenshot_url_check;
+    ALTER TABLE public.registrations ADD CONSTRAINT registrations_payment_screenshot_url_check
+      CHECK (payment_screenshot_url IS NULL OR payment_screenshot_url = '' OR (payment_screenshot_url ~* '^https://[^\s"''<>]+$' AND char_length(payment_screenshot_url) <= 2048)) NOT VALID;
+    CREATE TRIGGER trg_reject_payment_proof_urls
+      BEFORE INSERT OR UPDATE ON public.registrations
+      FOR EACH ROW EXECUTE FUNCTION public.reject_payment_proof_urls();
+  ELSE
+    DROP FUNCTION IF EXISTS public.reject_payment_proof_urls();
+  END IF;
+END $$;
 
 
 -- 3. HELPER FUNCTIONS FOR SECURITY (SECURITY DEFINER to avoid RLS recursion)
@@ -318,8 +358,7 @@ CREATE POLICY "Users can view own registrations or staff can view all" ON public
 SELECT TO authenticated USING (user_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- No direct INSERT for end users: every registration is created by /api/register (service role), which applies the
--- rules the database can't (ITER - SOA email domain, proof uploaded by the same user to our ImageKit folder, rate
--- limits). The INSERT privilege itself is revoked in section 11; the insert trigger below stays as defense in depth.
+-- rules the database can't (ITER - SOA email domain, proof object really uploaded by the same user, rate limits). The INSERT privilege itself is revoked in section 11; the insert trigger below stays as defense in depth.
 DROP POLICY IF EXISTS "Users can create their registration" ON public.registrations;
 
 DROP POLICY IF EXISTS "Staff can review pending registrations" ON public.registrations;
@@ -444,7 +483,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   description TEXT NOT NULL,
   poster_url TEXT NOT NULL,
   brochure_url TEXT, -- Optional Google Drive link
-  category TEXT NOT NULL CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events')),
+  category TEXT NOT NULL CHECK (category IN ('flagship events', 'standout events', 'main events', 'dts events', 'fun events')),
   format TEXT DEFAULT 'Solo / Team',
   duration TEXT DEFAULT 'TBA',
   venue TEXT DEFAULT 'NIT Rourkela',
@@ -465,7 +504,7 @@ BEGIN
     ALTER TABLE public.events ALTER COLUMN duration DROP NOT NULL;
     ALTER TABLE public.events ALTER COLUMN venue DROP NOT NULL;
     ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_category_check;
-    ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events'));
+    ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'standout events', 'main events', 'dts events', 'fun events'));
     -- Brochure links are rendered as public hrefs: only Google Drive/Docs URLs (never javascript:/data:).
     ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_poster_url_check;
     ALTER TABLE public.events ADD CONSTRAINT events_poster_url_check
@@ -600,4 +639,42 @@ REVOKE TRUNCATE, REFERENCES, TRIGGER
 REVOKE DELETE ON public.profiles, public.registrations FROM authenticated;
 -- Registrations are created only by /api/register, session rows only by the auth API routes (both service role).
 REVOKE INSERT ON public.registrations FROM authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.user_sessions FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.user_sessions FROM authenticated;
+
+
+-- 12. PRIVATE STORAGE BUCKET FOR PAYMENT PROOFS
+-- Payment screenshots live in a PRIVATE bucket: no public URLs exist. Objects are written only by /api/upload (service
+-- role) and named '<user_id>/<uuid>.<ext>' from the verified session. Re-running this script also forces the bucket back to private.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('payment-proofs', 'payment-proofs', false, 1048576,
+        ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic'])
+ON CONFLICT (id) DO UPDATE SET
+  public = false,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- Uploads: NO INSERT policy for users. A signed-in user's JWT plus the public key could otherwise upload straight to
+-- Storage, skipping /api/upload's rate limit, magic-byte check and per-user limits (unbounded junk files that the
+-- owner can't even delete). /api/upload writes with the service role after all its checks: server-chosen
+-- '<user_id>/<uuid>.<ext>' name, and only before the user has registered. Dropped here so re-running this script
+-- also removes the policy from databases created by an earlier version.
+-- No UPDATE/DELETE policies either: a submitted proof can't be replaced or removed.
+DROP POLICY IF EXISTS "Payment proofs: owners upload into their own folder" ON storage.objects;
+
+-- Owners may see their own files (used by /api/register to confirm the upload exists). There is deliberately NO staff
+-- policy: staff view proofs only through short-lived signed URLs minted server-side by
+-- /api/admin/registrations/payment-proof, so they can't list the bucket or sign long-lived URLs themselves.
+DROP POLICY IF EXISTS "Payment proofs: owners read their own files" ON storage.objects;
+CREATE POLICY "Payment proofs: owners read their own files" ON storage.objects FOR
+SELECT TO authenticated USING (
+  bucket_id = 'payment-proofs'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Guard rail: a RESTRICTIVE policy is ANDed with every other policy, so even a broad storage policy added later in
+-- the dashboard (e.g. "authenticated can read all objects") can never expose another user's payment proof.
+DROP POLICY IF EXISTS "Payment proofs: never outside the owner's folder" ON storage.objects;
+CREATE POLICY "Payment proofs: never outside the owner's folder" ON storage.objects AS RESTRICTIVE FOR
+ALL TO anon, authenticated
+USING (bucket_id <> 'payment-proofs' OR (storage.foldername(name))[1] = auth.uid()::text)
+WITH CHECK (bucket_id <> 'payment-proofs' OR (storage.foldername(name))[1] = auth.uid()::text);

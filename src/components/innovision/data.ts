@@ -2,7 +2,7 @@
 
 export const A = '/assets/';
 
-export type WorldKey = 'takeoff' | 'touchdown' | 'highpoint';
+export type WorldKey = 'takeoff' | 'spotlight' | 'touchdown' | 'highpoint';
 
 export interface World {
   key: WorldKey;
@@ -35,53 +35,85 @@ export interface World {
   statL: string;
   statR: string;
   tagline: string;
+  /** Line under the title on the detail page, when the world's scene has one. */
+  sub?: string;
   intro: string;
   specs: [string, string][];
-  /** [name, text, format, duration] */
-  missions: [string, string, string, string][];
+  /** Event categories (admin/DB keys) whose events this world lists, in display order. */
+  categories: string[];
+  /**
+   * Shows the mission tickets in one titled group per category (in `categories` order) instead of one list, for a world
+   * that combines several categories: [category, group title].
+   */
+  groups?: [string, string][];
+  /** Placeholder line-up until events are published: [name, text, format, duration, category (grouped worlds)]. */
+  missions: [string, string, string, string, string?][];
 }
 
 export const WORLDS: World[] = [
   { key: 'takeoff', slug: 'flagship-events', name: 'Flagship Events', category: 'Technical Events', accent: 'oklch(0.56 0.13 32)', accentL: 'oklch(0.76 0.11 38)', ink: 'oklch(0.3 0.08 32)', tint: 'oklch(0.94 0.02 55)', tint2: 'oklch(0.85 0.045 40)',
-    planet: A + 'planet-yellow.webp', astro: '', astroSit: false, rover: true,
-    gates: ['indian-astronaut.webp', 'astro-red.webp', 'spaceship.webp', 'big-spaceship.webp'],
-    coord: 'RA 05h 35m · DEC −05° 23′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(22vh, 210px)', decoR: '-14deg',
+    planet: A + 'planet-moon.webp', astro: '', astroSit: false, rover: true,
+    gates: ['indian-astronaut.webp', 'astronaut-eva.webp', 'rocket.svg', 'capsule.svg'],
+    coord: 'RA 05h 35m · DEC −05° 23′', deco: A + 'rocket.svg', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(22vh, 210px)', decoR: '-14deg',
     statL: 'Mission 01', statR: 'Tech Arena', tagline: 'Code. Build. Break the atmosphere.',
     intro: 'Strap in for the technical arena of Innovision. Hackathons, robotics and coding battles where ideas get their launch thrust. Bring your crew, your laptop and your wildest builds.',
     specs: [['Category', 'Technical'], ['Format', 'Solo & team'], ['Launch pad', 'NIT Rourkela'], ['Fuel', 'Code & circuits'], ['Status', 'Boarding soon']],
+    categories: ['flagship events'],
     missions: [['Hackathon', 'A non-stop build sprint. Ship a working prototype before the countdown hits zero.', 'Team · 2–4', '36 hrs'], ['Robo Wars', 'Bring your bot into the arena. Last machine standing takes the crown.', 'Team · up to 5', 'Knockout'], ['Code Sprint', 'Competitive programming under pressure. Fast logic, faster fingers.', 'Solo', '3 hrs'], ['Circuit Lab', 'Design, debug and demo hardware that works on the first try.', 'Team · 2', '4 hrs']] },
+  { key: 'spotlight', slug: 'standout-events', name: 'Standout Events', category: 'Signature Showcases', accent: 'oklch(0.55 0.12 250)', accentL: 'oklch(0.77 0.09 250)', ink: 'oklch(0.3 0.08 250)', tint: 'oklch(0.94 0.018 250)', tint2: 'oklch(0.85 0.04 250)',
+    // An astronaut planting the INNOVISION flag on the moon's crest, flag outward. The art is pinned by the middle of its
+    // boots (26.3% across, 98.2% down): shifted 12% right so the figure and flag sit centred, tilted 4° to the curve there,
+    // and raised from the container (3.5vh below the hero's top) to the crest (0.8% of the diameter down), boots just in the rim.
+    // It keeps its own colours (the tricolour patch and the navy mark), so it is not run through the mono filter.
+    planet: A + 'planet-moon.webp', astro: A + 'astronaut-flag.webp', astroSit: false,
+    astroStyle: { height: 'calc(min(112vw, 150vh) * .3)', transformOrigin: '26.3% 98.2%', transform: 'translate(12%, calc(2.8% - 3.5vh + min(112vw, 150vh) * .008)) rotate(-4deg)', filter: 'contrast(1.05) drop-shadow(0 18px 30px rgba(0,0,0,.35))' },
+    gates: ['satellite.webp', 'astronaut-eva.webp', 'planet-ringed.webp', 'rocket.svg'],
+    coord: 'RA 06h 45m · DEC −16° 43′', deco: A + 'satellite.webp', decoL: '64vw', decoT: '14vh', decoH: 'min(24vh, 230px)', decoR: '-10deg',
+    statL: 'Mission 02', statR: 'Spotlight', tagline: 'Where the brightest stars take the stage.', sub: 'Showcases · Challenges · Spectacles',
+    intro: 'The events that steal the show. Signature challenges and showcases built to stand out, with the biggest crowds, the boldest ideas and the brightest spotlight of the fest.',
+    specs: [['Category', 'Signature'], ['Format', 'Solo & team'], ['Stage', 'Centre stage'], ['Fuel', 'Ambition'], ['Status', 'Boarding soon']],
+    categories: ['standout events'],
+    missions: [['Ideathon', 'Pitch a bold idea to a panel of founders and investors in five minutes flat.', 'Team · 2–4', '2 rounds'], ['Design Duel', 'Head-to-head design challenges judged live in front of the crowd.', 'Solo', '3 hrs'], ['Tech Talk Arena', 'Short, sharp talks on the ideas shaping the next decade.', 'Open to all', '90 min'], ['Innovation Showcase', 'The most ambitious student builds of the fest, on display under the spotlight.', 'Open to all', 'All fest']] },
   { key: 'touchdown', slug: 'main-events', name: 'Main Events', category: 'Workshops & Talks', accent: 'oklch(0.55 0.12 295)', accentL: 'oklch(0.77 0.09 295)', ink: 'oklch(0.3 0.08 295)', tint: 'oklch(0.94 0.018 295)', tint2: 'oklch(0.85 0.04 295)',
-    planet: A + 'planet-blue.webp', astro: '', astroStyle: { transform: 'translateX(-44vh) translateY(12.5vh) rotate(-28deg)', height: '100%', mixBlendMode: 'multiply', filter: 'grayscale(1) contrast(2.2) brightness(1.2)' }, astroSit: false, uplink: true,
-    gates: ['astro-yellow.webp', 'home-astronaut.webp', 'spaceship.webp', 'planet-ringed.webp'],
+    planet: A + 'planet-moon.webp', astro: '', astroStyle: { transform: 'translateX(-44vh) translateY(12.5vh) rotate(-28deg)', height: '100%', mixBlendMode: 'multiply', filter: 'grayscale(1) contrast(2.2) brightness(1.2)' }, astroSit: false, uplink: true,
+    gates: ['astronaut-eva.webp', 'indian-astronaut.webp', 'rocket.svg', 'planet-ringed.webp'],
     coord: 'RA 18h 36m · DEC +38° 47′', deco: '', decoL: '62vw', decoT: '12vh', decoH: 'min(30vh, 280px)', decoR: '12deg',
-    statL: 'Mission 02', statR: 'Learn & Land', tagline: 'A cosmic calm for curious minds.',
+    statL: 'Mission 03', statR: 'Learn & Land', tagline: 'A cosmic calm for curious minds.', sub: 'Workshops · Talks · Labs',
     intro: 'Slow the descent and land on new ideas. Hands-on workshops and talks from people who have been there, built that, and are ready to show you how.',
     specs: [['Category', 'Workshops'], ['Format', 'Hands-on'], ['Crew', 'Experts & alumni'], ['Fuel', 'Curiosity'], ['Status', 'Boarding soon']],
+    categories: ['main events'],
     missions: [['AI & ML Workshop', 'From first model to deployed demo in a single session.', 'Hands-on', 'Full day'], ['Guest Lectures', 'Stories and lessons from engineers, founders and researchers.', 'Open to all', '90 min'], ['Startup Talks', 'How ideas become companies, straight from the people who did it.', 'Open to all', '60 min'], ['Maker Labs', 'Solder, print and prototype with guidance at every step.', 'Limited seats', 'Half day']] },
   { key: 'highpoint', slug: 'dts-and-fun-events', name: 'DTS and Fun Events', category: 'Games & Showcases', accent: 'oklch(0.56 0.09 178)', accentL: 'oklch(0.8 0.08 178)', ink: 'oklch(0.3 0.06 185)', tint: 'oklch(0.94 0.018 178)', tint2: 'oklch(0.85 0.04 180)',
-    planet: A + 'planet-green.webp', astro: A + 'astro-yellow.webp', astroSit: true,
-    gates: ['astro-green.webp', 'planet-crescent.webp', 'astro-red.webp', 'big-spaceship.webp'],
-    coord: 'RA 13h 25m · DEC −11° 09′', deco: A + 'spaceship.webp', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(21vh, 200px)', decoR: '24deg',
-    statL: 'Mission 03', statR: 'Fun Zone', tagline: 'Ride the wave where the fest peaks.',
+    // Line-art astronaut cut from "Astronaut on a Lunar Horizon", placed on the planet as it stands on the moon in that
+    // picture: moon radius 1.705× the cutout's height, cutout bottom 18.85% of its height below the crest and its centre
+    // 10.7% of its width right of the moon's centre (both boots plant just in front of the rim line).
+    // Sized from the planet's diameter (WorldsView data-s-hero) rather than astroH so the fit holds on every screen; the
+    // container already sits 3.5vh below the crest. Its teal trim matches this world, so it is only lightly desaturated.
+    planet: A + 'planet-moon.webp', astro: A + 'astronaut-lunar.webp', astroSit: false,
+    astroStyle: { height: 'calc(min(112vw, 150vh) * .293)', transform: 'translate(10.7%, calc(18.85% - 3.5vh))', filter: 'grayscale(.15) contrast(1.12) drop-shadow(0 18px 30px rgba(0,0,0,.35))' },
+    gates: ['astronaut-eva.webp', 'planet-crescent.webp', 'astronaut-lunar.webp', 'capsule.svg'],
+    coord: 'RA 13h 25m · DEC −11° 09′', deco: A + 'rocket.svg', decoL: 'clamp(28px,9vw,180px)', decoT: '31%', decoH: 'min(21vh, 200px)', decoR: '24deg',
+    statL: 'Mission 04', statR: 'Fun Zone', tagline: 'Ride the wave where the fest peaks.',
     intro: 'The best of both worlds: competition meets celebration. Gaming arenas, quizzes and showcases that keep the energy high until the very last night.',
     specs: [['Category', 'Fun & games'], ['Format', 'Open to all'], ['Vibe', 'Euphoric'], ['Fuel', 'Team spirit'], ['Status', 'Boarding soon']],
-    missions: [['Gaming Arena', 'Squad up for LAN battles and console showdowns.', 'Squad', 'All night'], ['Quiz Night', 'Tech, pop culture and everything in between.', 'Team · 2–3', '3 rounds'], ['Treasure Hunt', 'Clues scattered across campus. Only the sharpest crews finish.', 'Team · 3–4', 'Campus-wide'], ['Project Expo', 'Walk the hall of student builds and vote for your favourite.', 'Open to all', 'All fest']] },
+    categories: ['dts events', 'fun events'],
+    groups: [['dts events', 'DTS Events'], ['fun events', 'Fun Events']],
+    missions: [['Quiz Night', 'Tech, pop culture and everything in between.', 'Team · 2–3', '3 rounds', 'dts events'], ['Project Expo', 'Walk the hall of student builds and vote for your favourite.', 'Open to all', 'All fest', 'dts events'], ['Gaming Arena', 'Squad up for LAN battles and console showdowns.', 'Squad', 'All night', 'fun events'], ['Treasure Hunt', 'Clues scattered across campus. Only the sharpest crews finish.', 'Team · 3–4', 'Campus-wide', 'fun events']] },
 ];
 
 /**
  * What the loader waits for: its own planets (Loader ORBS) plus everything on the first home screen
  * (HomeView hero: starfield, orbiting asteroid and ringed planet, rocks, storm planet, astronaut).
  */
-export const PRELOAD_CRITICAL = ['planet-tide.webp', 'planet-yellow.webp', 'planet-blue.webp', 'stars.webp',
+export const PRELOAD_CRITICAL = ['planet-tide.webp', 'planet-mars.webp', 'planet-earth.webp', 'starfield.svg',
   'asteroid.webp', 'planet-ringed.webp', 'planet-storm.webp', 'indian-astronaut.webp'];
 /**
  * Art for the other views, warmed a few files at a time once the loader is gone (Innovision#warmDeferred),
- * roughly in the order a visitor meets it: transition curtain, worlds slider, the flagship world, the rest.
+ * roughly in the order a visitor meets it: worlds slider, the flagship world, the rest. (The transition curtain is drawn in code.)
  */
-export const PRELOAD_DEFERRED = ['cloud-1.webp', 'cloud-2.webp', 'cloud-3.webp', 'cloud-4.webp', 'cloud-5.webp',
-  'planet-green.webp', 'spaceship.webp', 'astro-yellow.webp', 'satellite.webp', 'receiver.webp',
-  'floor.webp', 'lab.webp', 'lander.webp', 'astro-red.webp', 'big-spaceship.webp', 'planet-blue-half.webp',
-  'moon.webp', 'home-astronaut.webp', 'moon-cratered.webp', 'planet-crescent.webp', 'astro-green.webp'];
+export const PRELOAD_DEFERRED = ['planet-moon.webp', 'planet-mercury.webp', 'rocket.svg', 'satellite.webp', 'receiver.webp', 'mesa.svg',
+  'lab.webp', 'lander.webp', 'astronaut-eva.webp', 'astronaut-flag.webp', 'astronaut-lunar.webp', 'astronaut-snowboard.webp', 'capsule.svg',
+  'moon-full.webp', 'moon-cratered.webp', 'planet-crescent.webp'];
 
 /** loading="lazy" for an image in a secondary view, unless it is PRELOAD_CRITICAL art (cached already, shared with the first screen). */
 export const lazyUnlessCritical = (src: string) => (PRELOAD_CRITICAL.includes(src.replace(A, '')) ? undefined : 'lazy' as const);
@@ -120,7 +152,7 @@ export const LINKS: [string, string][] = [['Home', 'home'], ['Events', 'events']
 
 /** Frames in the home page's gallery tunnel: [caption, x offset, y offset, aspect ratio]. */
 export const TUNNEL: [string, string, string, string][] = [['Opening night', '-15vw', '-6vh', '4 / 3'], ['Hackathon floor', '17vw', '7vh', '3 / 4'], ['Robo Wars arena', '-18vw', '9vh', '4 / 3'], ['Guest lecture', '15vw', '-10vh', '1 / 1'], ['Project expo', '-8vw', '-11vh', '3 / 4'], ['Closing ceremony', '6vw', '5vh', '16 / 10']];
-export const TUNNEL_C = ['oklch(0.76 0.11 38)', 'oklch(0.77 0.09 295)', 'oklch(0.8 0.08 178)'];
+export const TUNNEL_C = ['oklch(0.76 0.11 38)', 'oklch(0.77 0.09 250)', 'oklch(0.77 0.09 295)', 'oklch(0.8 0.08 178)'];
 
 const INK: [string, string] = ['Ink', '#141312'], BONE: [string, string] = ['Bone', '#ECE8DF'];
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -168,59 +200,59 @@ export const SCHED_DAYS: [string, string][] = [['Launch', 'moon-cratered.webp'],
 /** Parts of a fest day on the schedule page: [name, from, until], in minutes after midnight (by start time). */
 export const SCHED_BLOCKS: [string, number, number][] = [['Morning', 0, 12 * 60], ['Afternoon', 12 * 60, 17 * 60], ['Evening', 17 * 60, 24 * 60]];
 
-/** One schedule entry: [start 'HH:MM', duration in minutes, title, world index, venue]. */
+/** One schedule entry: [start 'HH:MM', duration in minutes, title, world index (into WORLDS), venue]. */
 export type SchedEvent = [string, number, string, number, string];
 
 /** Events per fest day, in start order. The schedule page splits each day into morning, afternoon and evening. */
 export const SCHED: SchedEvent[][] = [
-  [['09:00', 60, 'Opening Ceremony', 1, 'Main Auditorium'],
-   ['09:30', 90, 'Robotics Bootcamp', 1, 'Mechanical Workshop'],
+  [['09:00', 60, 'Opening Ceremony', 2, 'Main Auditorium'],
+   ['09:30', 90, 'Robotics Bootcamp', 2, 'Mechanical Workshop'],
    ['10:00', 120, 'Circuit Debugging', 0, 'Electronics Lab'],
-   ['10:30', 90, 'AI & ML Workshop', 1, 'CS Lab 2'],
+   ['10:30', 90, 'AI & ML Workshop', 2, 'CS Lab 2'],
    ['11:00', 120, 'CAD Modelling Contest', 0, 'Design Studio'],
-   ['11:00', 60, 'Satellites on a Budget', 1, 'Seminar Hall'],
-   ['11:30', 60, 'Quiz Odyssey', 2, 'Seminar Hall'],
+   ['11:00', 60, 'Satellites on a Budget', 2, 'Seminar Hall'],
+   ['11:30', 60, 'Quiz Odyssey', 3, 'Seminar Hall'],
    ['11:30', 120, 'Robo Wars: Qualifiers', 0, 'Sports Complex Arena'],
-   ['11:30', 90, 'Photography Walk', 2, 'Central Lawns'],
-   ['12:30', 90, 'Startup Pitch Pit', 1, 'Innovation Hub'],
-   ['13:00', 90, 'Web Dev Workshop', 1, 'CS Lab 1'],
-   ['13:30', 60, 'Meme Making Contest', 2, 'Library Annexe'],
-   ['14:30', 60, 'Chess Blitz', 2, 'Seminar Hall'],
+   ['11:30', 90, 'Photography Walk', 3, 'Central Lawns'],
+   ['12:30', 90, 'Startup Pitch Pit', 2, 'Innovation Hub'],
+   ['13:00', 90, 'Web Dev Workshop', 2, 'CS Lab 1'],
+   ['13:30', 60, 'Meme Making Contest', 3, 'Library Annexe'],
+   ['14:30', 60, 'Chess Blitz', 3, 'Seminar Hall'],
    ['15:00', 120, 'Circuit Design Challenge', 0, 'Electronics Lab'],
-   ['17:00', 90, 'Open Source Meetup', 1, 'CS Lab 2'],
+   ['17:00', 90, 'Open Source Meetup', 2, 'CS Lab 2'],
    ['17:00', 60, 'Drone Race Heats', 0, 'Football Ground'],
-   ['17:30', 90, 'Startup Pitch Pad', 1, 'Seminar Hall'],
-   ['17:30', 60, 'Sketch Battle', 2, 'Design Studio'],
-   ['18:00', 90, 'Mock Interviews', 1, 'Library Annexe'],
+   ['17:30', 90, 'Startup Pitch Pad', 2, 'Seminar Hall'],
+   ['17:30', 60, 'Sketch Battle', 3, 'Design Studio'],
+   ['18:00', 90, 'Mock Interviews', 2, 'Library Annexe'],
    ['18:00', 120, 'Night Coding Sprint', 0, 'CS Lab 1'],
-   ['18:30', 60, 'Battle of Bands: Auditions', 2, 'Open Air Theatre'],
-   ['19:00', 90, 'Quiz Night: Round One', 2, 'Lecture Hall Complex'],
-   ['19:30', 60, 'Astrophotography Talk', 1, 'Main Auditorium'],
-   ['20:00', 90, 'Sci-Fi Movie Night', 2, 'Golden Jubilee Hall'],
-   ['20:00', 60, 'Gaming Arena: Group Stage', 2, 'SAC Hall'],
-   ['20:30', 90, 'Starlight Open Mic', 2, 'Open Air Theatre'],
-   ['21:00', 60, 'Astronomy Showcase', 1, 'Main Auditorium'],
-   ['21:00', 60, 'Laser Show Prelims', 2, 'Central Lawns'],
-   ['21:30', 60, 'Cosmic Campfire', 2, 'Central Lawns'],
-   ['22:00', 60, 'Midnight Stargazing', 2, 'Rooftop Observatory']],
-  [['09:00', 60, 'Hackathon Checkpoint', 0, 'Lecture Hall Complex'], ['09:00', 120, 'Origami Orbit', 2, 'Central Lawns'], ['09:30', 150, 'IoT Workshop', 1, 'Electronics Lab'], ['09:30', 90, 'Blind Coding', 0, 'CS Lab 1'],
-   ['10:00', 120, 'Hydraulic Arm Challenge', 0, 'Mechanical Workshop'], ['10:30', 150, 'Robo Wars: Knockouts', 0, 'Sports Complex Arena'], ['10:30', 90, 'Debate: Tech on Trial', 1, 'Library Annexe'], ['11:00', 120, 'Paper Presentation', 1, 'Seminar Hall'],
-   ['11:00', 90, 'Pictionary Showdown', 2, 'SAC Hall'], ['11:30', 60, 'Talk: Rockets 101', 1, 'Main Auditorium'],
-   ['12:00', 90, 'Line Follower Sprint', 0, 'Mechanical Workshop'], ['12:30', 120, 'Reverse Engineering Lab', 0, 'Electronics Lab'], ['13:00', 90, 'Cyber Security Workshop', 1, 'CS Lab 2'], ['13:30', 75, 'Panel: Founders from Campus', 1, 'Main Auditorium'],
-   ['13:30', 60, 'Ad Mad Show', 2, 'SAC Hall'], ['14:30', 120, 'Escape Room', 2, 'Library Annexe'], ['14:30', 90, 'Data Science Sprint', 0, 'CS Lab 1'], ['15:00', 60, 'Talk: Women in Aerospace', 1, 'Seminar Hall'],
-   ['15:30', 120, 'Bridge Building Challenge', 0, 'Civil Engineering Yard'], ['16:30', 180, 'Gaming Arena: Finals', 2, 'SAC Hall'],
-   ['17:00', 60, 'Tug of War', 2, 'Football Ground'], ['17:30', 120, 'UI/UX Design Sprint', 1, 'Design Studio'], ['17:30', 90, 'Competitive Programming', 0, 'CS Lab 1'], ['18:00', 60, 'Research Showcase Talks', 1, 'Seminar Hall'],
-   ['18:30', 90, 'Laser Tag', 2, 'Central Lawns'], ['19:00', 90, 'Quiz Night: Finals', 2, 'Lecture Hall Complex'], ['19:00', 120, 'Hardware Night Build', 0, 'Electronics Lab'], ['19:30', 90, 'Dance Off', 2, 'Open Air Theatre'],
-   ['20:00', 60, 'Talk: Life on Mars', 1, 'Main Auditorium'], ['21:00', 90, 'Stargazing Session', 2, 'Rooftop Observatory']],
-  [['09:00', 120, 'Hackathon Final Demos', 0, 'Lecture Hall Complex'], ['09:00', 60, 'Sunrise Yoga', 2, 'Central Lawns'], ['09:30', 90, 'Typing Race', 2, 'CS Lab 1'], ['10:00', 150, 'Cloud & DevOps Workshop', 1, 'CS Lab 2'],
-   ['10:30', 120, 'Robo Wars: Grand Final', 0, 'Sports Complex Arena'], ['10:30', 90, 'Talk: From Idea to Patent', 1, 'Seminar Hall'], ['11:00', 120, 'Solar Car Showcase', 0, 'Mechanical Workshop'], ['11:30', 180, 'Project Expo', 2, 'Golden Jubilee Hall'],
-   ['11:30', 60, 'Crossword Rush', 2, 'Library Annexe'], ['11:30', 90, 'PCB Design Contest', 0, 'Electronics Lab'],
-   ['12:30', 60, 'Model Rocketry Launch', 0, 'Football Ground'], ['13:00', 90, 'Blockchain Basics', 1, 'CS Lab 2'], ['13:00', 60, 'Mobile Gaming Cup', 2, 'SAC Hall'], ['13:30', 90, 'Debugging Duel', 0, 'CS Lab 1'],
-   ['14:00', 75, 'Keynote: The Next Frontier', 1, 'Main Auditorium'], ['14:30', 90, 'Science Magic Show', 2, 'Seminar Hall'], ['15:00', 90, 'Tech Charades', 2, 'SAC Hall'], ['15:00', 120, 'Mars Rover Challenge', 0, 'Civil Engineering Yard'],
-   ['15:30', 90, 'Drone Race Final', 0, 'Football Ground'], ['16:30', 120, 'Gaming Arena: Grand Final', 2, 'SAC Hall'],
-   ['17:00', 60, 'Hackathon Results', 0, 'Lecture Hall Complex'], ['17:30', 75, 'Alumni Connect', 1, 'Seminar Hall'], ['17:30', 60, 'Cosmic Fashion Walk', 2, 'Golden Jubilee Hall'], ['18:00', 60, 'Talk: Careers in Deep Tech', 1, 'Main Auditorium'],
-   ['18:00', 90, 'Antakshari Night', 2, 'Library Annexe'], ['18:30', 60, 'Sponsor Meet and Greet', 1, 'Design Studio'], ['19:00', 60, 'Prize Distribution', 1, 'Main Auditorium'], ['19:30', 60, 'Club Showcase', 2, 'Central Lawns'],
-   ['20:00', 30, 'DJ Warm-up', 2, 'Open Air Theatre'], ['20:30', 150, 'Closing Night Pro Show', 2, 'Open Air Theatre']],
+   ['18:30', 60, 'Battle of Bands: Auditions', 3, 'Open Air Theatre'],
+   ['19:00', 90, 'Quiz Night: Round One', 3, 'Lecture Hall Complex'],
+   ['19:30', 60, 'Astrophotography Talk', 2, 'Main Auditorium'],
+   ['20:00', 90, 'Sci-Fi Movie Night', 3, 'Golden Jubilee Hall'],
+   ['20:00', 60, 'Gaming Arena: Group Stage', 3, 'SAC Hall'],
+   ['20:30', 90, 'Starlight Open Mic', 3, 'Open Air Theatre'],
+   ['21:00', 60, 'Astronomy Showcase', 2, 'Main Auditorium'],
+   ['21:00', 60, 'Laser Show Prelims', 3, 'Central Lawns'],
+   ['21:30', 60, 'Cosmic Campfire', 3, 'Central Lawns'],
+   ['22:00', 60, 'Midnight Stargazing', 3, 'Rooftop Observatory']],
+  [['09:00', 60, 'Hackathon Checkpoint', 0, 'Lecture Hall Complex'], ['09:00', 120, 'Origami Orbit', 3, 'Central Lawns'], ['09:30', 150, 'IoT Workshop', 2, 'Electronics Lab'], ['09:30', 90, 'Blind Coding', 0, 'CS Lab 1'],
+   ['10:00', 120, 'Hydraulic Arm Challenge', 0, 'Mechanical Workshop'], ['10:30', 150, 'Robo Wars: Knockouts', 0, 'Sports Complex Arena'], ['10:30', 90, 'Debate: Tech on Trial', 2, 'Library Annexe'], ['11:00', 120, 'Paper Presentation', 2, 'Seminar Hall'],
+   ['11:00', 90, 'Pictionary Showdown', 3, 'SAC Hall'], ['11:30', 60, 'Talk: Rockets 101', 2, 'Main Auditorium'],
+   ['12:00', 90, 'Line Follower Sprint', 0, 'Mechanical Workshop'], ['12:30', 120, 'Reverse Engineering Lab', 0, 'Electronics Lab'], ['13:00', 90, 'Cyber Security Workshop', 2, 'CS Lab 2'], ['13:30', 75, 'Panel: Founders from Campus', 2, 'Main Auditorium'],
+   ['13:30', 60, 'Ad Mad Show', 3, 'SAC Hall'], ['14:30', 120, 'Escape Room', 3, 'Library Annexe'], ['14:30', 90, 'Data Science Sprint', 0, 'CS Lab 1'], ['15:00', 60, 'Talk: Women in Aerospace', 2, 'Seminar Hall'],
+   ['15:30', 120, 'Bridge Building Challenge', 0, 'Civil Engineering Yard'], ['16:30', 180, 'Gaming Arena: Finals', 3, 'SAC Hall'],
+   ['17:00', 60, 'Tug of War', 3, 'Football Ground'], ['17:30', 120, 'UI/UX Design Sprint', 2, 'Design Studio'], ['17:30', 90, 'Competitive Programming', 0, 'CS Lab 1'], ['18:00', 60, 'Research Showcase Talks', 2, 'Seminar Hall'],
+   ['18:30', 90, 'Laser Tag', 3, 'Central Lawns'], ['19:00', 90, 'Quiz Night: Finals', 3, 'Lecture Hall Complex'], ['19:00', 120, 'Hardware Night Build', 0, 'Electronics Lab'], ['19:30', 90, 'Dance Off', 3, 'Open Air Theatre'],
+   ['20:00', 60, 'Talk: Life on Mars', 2, 'Main Auditorium'], ['21:00', 90, 'Stargazing Session', 3, 'Rooftop Observatory']],
+  [['09:00', 120, 'Hackathon Final Demos', 0, 'Lecture Hall Complex'], ['09:00', 60, 'Sunrise Yoga', 3, 'Central Lawns'], ['09:30', 90, 'Typing Race', 3, 'CS Lab 1'], ['10:00', 150, 'Cloud & DevOps Workshop', 2, 'CS Lab 2'],
+   ['10:30', 120, 'Robo Wars: Grand Final', 0, 'Sports Complex Arena'], ['10:30', 90, 'Talk: From Idea to Patent', 2, 'Seminar Hall'], ['11:00', 120, 'Solar Car Showcase', 0, 'Mechanical Workshop'], ['11:30', 180, 'Project Expo', 3, 'Golden Jubilee Hall'],
+   ['11:30', 60, 'Crossword Rush', 3, 'Library Annexe'], ['11:30', 90, 'PCB Design Contest', 0, 'Electronics Lab'],
+   ['12:30', 60, 'Model Rocketry Launch', 0, 'Football Ground'], ['13:00', 90, 'Blockchain Basics', 2, 'CS Lab 2'], ['13:00', 60, 'Mobile Gaming Cup', 3, 'SAC Hall'], ['13:30', 90, 'Debugging Duel', 0, 'CS Lab 1'],
+   ['14:00', 75, 'Keynote: The Next Frontier', 2, 'Main Auditorium'], ['14:30', 90, 'Science Magic Show', 3, 'Seminar Hall'], ['15:00', 90, 'Tech Charades', 3, 'SAC Hall'], ['15:00', 120, 'Mars Rover Challenge', 0, 'Civil Engineering Yard'],
+   ['15:30', 90, 'Drone Race Final', 0, 'Football Ground'], ['16:30', 120, 'Gaming Arena: Grand Final', 3, 'SAC Hall'],
+   ['17:00', 60, 'Hackathon Results', 0, 'Lecture Hall Complex'], ['17:30', 75, 'Alumni Connect', 2, 'Seminar Hall'], ['17:30', 60, 'Cosmic Fashion Walk', 3, 'Golden Jubilee Hall'], ['18:00', 60, 'Talk: Careers in Deep Tech', 2, 'Main Auditorium'],
+   ['18:00', 90, 'Antakshari Night', 3, 'Library Annexe'], ['18:30', 60, 'Sponsor Meet and Greet', 2, 'Design Studio'], ['19:00', 60, 'Prize Distribution', 2, 'Main Auditorium'], ['19:30', 60, 'Club Showcase', 3, 'Central Lawns'],
+   ['20:00', 30, 'DJ Warm-up', 3, 'Open Air Theatre'], ['20:30', 150, 'Closing Night Pro Show', 3, 'Open Air Theatre']],
 ];
 
 export const inr = (n: number) => '₹' + n.toLocaleString('en-IN');

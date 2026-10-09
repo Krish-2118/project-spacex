@@ -21,12 +21,20 @@ interface EventsManagerProps {
 
 const MAX_POSTER_SIZE = 1 * 1024 * 1024; // 1MB strictly enforced
 
+/** Event categories in hierarchy order: flagship, standout, main, then DTS and fun. */
 export const EVENT_CATEGORIES = [
   { key: 'flagship events', label: 'Flagship Events', badgeBg: 'rgba(234, 88, 12, 0.25)', badgeColor: 'oklch(0.76 0.11 38)', border: 'rgba(234, 88, 12, 0.5)' },
+  { key: 'standout events', label: 'Standout Events', badgeBg: 'rgba(59, 130, 246, 0.25)', badgeColor: 'oklch(0.77 0.09 250)', border: 'rgba(59, 130, 246, 0.5)' },
   { key: 'main events', label: 'Main Events', badgeBg: 'rgba(168, 85, 247, 0.25)', badgeColor: 'oklch(0.77 0.09 295)', border: 'rgba(168, 85, 247, 0.5)' },
-  { key: 'fun events', label: 'Fun Events', badgeBg: 'rgba(20, 184, 166, 0.25)', badgeColor: 'oklch(0.8 0.08 178)', border: 'rgba(20, 184, 166, 0.5)' },
   { key: 'dts events', label: 'DTS Events', badgeBg: 'rgba(234, 179, 8, 0.25)', badgeColor: 'oklch(0.84 0.12 85)', border: 'rgba(234, 179, 8, 0.5)' },
+  { key: 'fun events', label: 'Fun Events', badgeBg: 'rgba(20, 184, 166, 0.25)', badgeColor: 'oklch(0.8 0.08 178)', border: 'rgba(20, 184, 166, 0.5)' },
 ] as const;
+
+/** Position of a category in EVENT_CATEGORIES; unknown categories sort last. */
+const categoryRank = (cat?: string | null) => {
+  const k = EVENT_CATEGORIES.findIndex((c) => c.key === (cat || '').toLowerCase());
+  return k < 0 ? EVENT_CATEGORIES.length : k;
+};
 
 export type EventCategoryKey = typeof EVENT_CATEGORIES[number]['key'];
 
@@ -360,10 +368,11 @@ export default function EventsManager({
       ev.category?.toLowerCase() === categoryFilter.toLowerCase();
 
     return matchesSearch && matchesCat;
-  });
+  }).sort((a, b) => categoryRank(a.category) - categoryRank(b.category));
 
   // Category counts for top stat cards
   const countFlagship = events.filter((e) => (e.category || '').toLowerCase() === 'flagship events').length;
+  const countStandout = events.filter((e) => (e.category || '').toLowerCase() === 'standout events').length;
   const countMain = events.filter((e) => (e.category || '').toLowerCase() === 'main events').length;
   const countFun = events.filter((e) => (e.category || '').toLowerCase() === 'fun events').length;
   const countDts = events.filter((e) => (e.category || '').toLowerCase() === 'dts events').length;
@@ -381,9 +390,10 @@ export default function EventsManager({
         {[
           { label: 'TOTAL EVENTS', value: events.length, color: '#ECE8DF' },
           { label: 'FLAGSHIP EVENTS', value: countFlagship, color: 'oklch(0.76 0.11 38)' },
+          { label: 'STANDOUT EVENTS', value: countStandout, color: 'oklch(0.77 0.09 250)' },
           { label: 'MAIN EVENTS', value: countMain, color: 'oklch(0.77 0.09 295)' },
-          { label: 'FUN EVENTS', value: countFun, color: 'oklch(0.8 0.08 178)' },
           { label: 'DTS EVENTS', value: countDts, color: 'oklch(0.84 0.12 85)' },
+          { label: 'FUN EVENTS', value: countFun, color: 'oklch(0.8 0.08 178)' },
         ].map((stat, i) => (
           <div
             key={i}

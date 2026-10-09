@@ -7,7 +7,7 @@ export default function AboutPanel({ v }: { v: V }) {
     <aside aria-hidden={v.aboutHidden} aria-label="About Innovision" style={{ position: "fixed", inset: "0", zIndex: "60", visibility: v.aboutVis, transition: `visibility 0s linear ${v.aboutDelay}` }}>
       <div onClick={v.closeAbout} style={{ position: "absolute", inset: "0", background: "rgba(10,9,8,.5)", backdropFilter: "blur(4px)", opacity: v.aboutO, transition: "opacity .8s cubic-bezier(.25,1,.1,1)" }}></div>
       <div data-noscroll="" style={{ position: "absolute", top: "0", right: "0", bottom: "0", width: "min(540px, 100%)", padding: "calc(clamp(16px,2.6vw,44px) + 70px) clamp(24px,4vw,56px) 48px", overflowY: "auto", scrollbarWidth: "none", background: "#141312", color: "#ECE8DF", borderLeft: "1.5px solid oklch(0.8 0.12 85)", transform: `translateX(${v.aboutX})`, transition: "transform .8s cubic-bezier(.25,1,.1,1)", fontSize: "17px", lineHeight: "1.6" }}>
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".35", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".35", pointerEvents: "none" }} />
         <div style={{ position: "relative" }}>
           <button type="button" onClick={v.closeAbout} onMouseEnter={v.hover} style={{ position: "absolute", top: "-70px", right: "0", padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "500", fontSize: "15px", letterSpacing: ".02em", color: "#ECE8DF" }}>
             <span data-scr="">CLOSE</span>
@@ -25,7 +25,7 @@ export default function AboutPanel({ v }: { v: V }) {
           <p style={{ margin: "0", fontSize: "13px", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}>MISSION BRIEFING</p>
           <h2 style={{ margin: "10px 0 24px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,5vw,64px)", lineHeight: "1" }}>INNOVISION</h2>
           <p style={{ margin: "0 0 16px" }}>Innovision is the techno-management fest of NIT Rourkela: a few days where the campus turns into a launch pad for builders, thinkers and makers from across the country.</p>
-          <p style={{ margin: "0" }}>Pick your world. <b>Flagship Events</b> for the technical arena, <b>Main Events</b> for workshops and talks, or <b>DTS and Fun Events</b> for the games, quizzes and showcases where the fest peaks.</p>
+          <p style={{ margin: "0" }}>Pick your world. <b>Flagship Events</b> for the technical arena, <b>Standout Events</b> for the signature showcases, <b>Main Events</b> for workshops and talks, or <b>DTS and Fun Events</b> for the games, quizzes and showcases where the fest peaks.</p>
           <div style={{ margin: "28px 0 36px", borderTop: "1px solid rgba(236,232,223,.15)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "110px minmax(0,1fr)", gap: "16px", padding: "14px 0", borderBottom: "1px solid rgba(236,232,223,.15)" }}>
               <span style={{ color: "oklch(0.8 0.12 85)" }}>Host</span>
@@ -33,7 +33,7 @@ export default function AboutPanel({ v }: { v: V }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "110px minmax(0,1fr)", gap: "16px", padding: "14px 0", borderBottom: "1px solid rgba(236,232,223,.15)" }}>
               <span style={{ color: "oklch(0.8 0.12 85)" }}>Worlds</span>
-              <span>Flagship Events · Main Events · DTS and Fun Events</span>
+              <span>Flagship Events · Standout Events · Main Events · DTS and Fun Events</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "110px minmax(0,1fr)", gap: "16px", padding: "14px 0", borderBottom: "1px solid rgba(236,232,223,.15)" }}>
               <span style={{ color: "oklch(0.8 0.12 85)" }}>Crew</span>

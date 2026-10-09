@@ -121,6 +121,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hv-lift:hover{transform:translateY(-6px) !important}
 /* Mission ticket: lifts and picks up the world accent passed in --hv-accent. */
 .hv-ticket:hover{transform:translateY(-6px) !important;border-color:var(--hv-accent) !important}
+.hv-ticket-open{transition:background-color .25s,color .25s,transform .25s}
+.hv-ticket-open:hover,.hv-ticket-open:focus-visible{background:var(--hv-accent) !important;color:#141312 !important;transform:rotate(45deg)}
 
 /* Worlds guide on phones: same message in a slimmer card, so it doesn't crowd the planet's Enter button. */
 @media (max-width:719px){.wh-card{gap:12px !important;padding:10px 12px 10px 14px !important}.wh-glyph{display:none !important}.wh-main{font-size:14px !important}.wh-sub{font-size:12px !important}}
@@ -259,6 +261,58 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hp-freeze{display:none}
 }
 
+/* ---------- touchdown field (DetailView.tsx, Main Events) ---------- */
+/* .td-at is a zero-size anchor at (--x, --y); its art centres on it with `translate`, leaving `transform` free for
+   GSAP on the anchor and for the CSS idle loops on the art. Portrait swaps in --px/--py where set. */
+.td-at{position:absolute;left:var(--x);top:var(--y);width:0;height:0;pointer-events:none}
+.td-title{padding-bottom:26vh}
+.td-sub{padding-left:.5em;font-size:clamp(11px,1vw,16px);letter-spacing:.5em}
+.td-moon{position:absolute;left:0;top:0;width:min(14vh,9vw);height:auto;translate:-50% -50%}
+.td-ringed{--p:min(52vh,30vw);position:absolute;left:calc(var(--p) / -2);top:calc(var(--p) / -2);width:var(--p);height:var(--p)}
+.td-rock{position:absolute;left:0;top:0;width:auto;height:calc(var(--k,1) * var(--s) * 1vmin)}
+.td-star{position:absolute;color:oklch(0.3 0.08 295);translate:-50% -50%;animation:td-twinkle 3.6s ease-in-out infinite}
+.td-flight{--r:min(7vh,4.6vw);position:relative;rotate:-24deg;animation:iv-hang 4.2s ease-in-out infinite}
+.td-rocket{position:absolute;left:0;top:0;width:auto;height:var(--r);translate:-50% -50%;rotate:90deg}
+.td-trail{position:absolute;right:calc(var(--r) * .42);top:-1px;width:26vw;height:2px;background:repeating-linear-gradient(90deg,oklch(0.3 0.08 295) 0 7px,transparent 7px 13px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 85%);mask-image:linear-gradient(90deg,transparent,#000 85%)}
+/* Foreground ledge: a circle of radius 70vh whose crest sits at (25vw, 74vh); the astronaut hops on the crest, low enough to clear the title. */
+.td-ledge{position:absolute;left:calc(25vw - 70vh);top:74vh;width:140vh;height:auto}
+.td-astro{position:absolute;left:0;bottom:-1.2vh;width:auto;height:17vh;translate:-50% 0}
+@keyframes td-twinkle{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(.6);opacity:.3}}
+@media (orientation:portrait){
+  .td-at{left:var(--px,var(--x));top:var(--py,var(--y))}
+  .td-title{padding-bottom:12vh}
+  .td-sub{padding-left:.3em;font-size:10px;letter-spacing:.3em}
+  .td-moon{width:20vw}
+  .td-ringed{--p:44vw}
+  .td-rock{--k:1.6}
+  .td-flight{--r:5vh}
+  .td-trail{width:40vw}
+  .td-ledge{left:-33vw;top:76vh;width:130vw}
+  .td-astro{height:15vh}
+}
+@media (prefers-reduced-motion:reduce){.td-star,.td-flight,.td-hop{animation:none}}
+
+/* ---------- spotlight stage (DetailView.tsx, Standout Events) ---------- */
+/* The moon rises behind the title; the stage is a circle of radius 90vh whose crest sits at 78vh, and the two beams
+   swing up from it toward the title. */
+.sp-moon{--p:min(62vh,40vw);position:absolute;left:calc(50% - var(--p) / 2);top:calc(42% - var(--p) / 2);width:var(--p);height:var(--p);pointer-events:none}
+.sp-sat{position:absolute;left:8%;top:16%;height:min(22vh,16vw);pointer-events:none}
+.sp-star{position:absolute;color:oklch(0.3 0.08 250);translate:-50% -50%;animation:td-twinkle 3.6s ease-in-out infinite}
+.sp-stage{position:absolute;left:calc(50% - 90vh);top:78vh;width:180vh;height:auto}
+.sp-beam{position:absolute;bottom:22vh;width:min(26vh,18vw);height:72vh;transform-origin:50% 100%;clip-path:polygon(46% 100%,54% 100%,100% 0,0 0);background:linear-gradient(0deg,rgba(255,255,255,.5),rgba(255,255,255,.14) 50%,rgba(255,255,255,0) 88%)}
+.sp-beam-l{left:calc(30% - min(13vh,9vw));--a:24deg;animation:sp-sweep 9s ease-in-out infinite}
+.sp-beam-r{right:calc(30% - min(13vh,9vw));--a:-24deg;animation:sp-sweep 9s ease-in-out -4.5s infinite}
+@keyframes sp-sweep{0%,100%{transform:rotate(var(--a))}50%{transform:rotate(calc(var(--a) * .25))}}
+@media (orientation:portrait){
+  .sp-moon{--p:50vw;top:calc(31% - var(--p) / 2)}
+  .sp-sat{left:auto;right:4%;top:12vh;height:8vh}
+  .sp-stage{left:-40vw;top:80vh;width:180vw}
+  .sp-beam{bottom:20vh;width:22vw;height:56vh}
+  .sp-beam-l{left:12vw}
+  .sp-beam-r{right:12vw}
+}
+@media (prefers-reduced-motion:reduce){.sp-star,.sp-beam{animation:none}.sp-beam{transform:rotate(calc(var(--a) * .6))}}
+
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
 .image-slot-frame{position:absolute;inset:0;overflow:hidden;background:rgba(127,127,127,.08)}
@@ -281,7 +335,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 /* --gut lines the rows up with the 1240px column while letting each carousel run to the screen edge. */
 .sc-hero,.sc-body{--gut:max(clamp(16px,4vw,64px),(100% - 1240px) / 2)}
 .sc-hero{position:relative;overflow:hidden;padding:calc(84px + 5.5vh) var(--gut) 0;background:#141312;color:#ECE8DF}
-.sc-planet{position:absolute;right:-6vw;top:clamp(20px,4vh,70px);width:min(52vw,680px);aspect-ratio:1;opacity:.92;pointer-events:none;z-index:1}
+/* The crescent starts below the ~70px nav bar (with room for its 2.4vh upward drift) so its rim never runs behind REGISTER / LOG IN. */
+.sc-planet{position:absolute;right:-6vw;top:calc(80px + 4vh);width:min(52vw,680px);aspect-ratio:1;opacity:.92;pointer-events:none;z-index:1}
 .sc-hero-copy{position:relative;z-index:2}
 .sc-title{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(48px,6.8vw,96px);line-height:1.02;color:#ECE8DF}
 .sc-lede{max-width:48ch;margin:clamp(14px,2.2vh,22px) 0 0;font-size:clamp(15px,1.15vw,18px);line-height:1.6;color:rgba(236,232,223,.84);text-wrap:pretty}
@@ -301,7 +356,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 /* Orbit Ring (dashed circle with sparkle at top right) */
 .sc-tab-orbit{position:absolute;inset:-7px;border-radius:50%;border:1.5px dashed rgba(229,184,105,0.6);pointer-events:none;opacity:0;transform:scale(0.86) rotate(-15deg);transition:opacity .45s ease,transform .55s cubic-bezier(0.16,1,0.3,1),border-color .45s ease}
-.sc-tab-orbit-sparkle{position:absolute;top:1px;right:14%;transform:translate(50%,-50%);font-size:13px;color:#FBBF24;line-height:1;text-shadow:0 0 8px rgba(251,191,36,0.95),0 0 16px rgba(245,158,11,0.7);transition:transform .45s ease,text-shadow .45s ease}
+.sc-tab-orbit-sparkle{position:absolute;top:1px;right:14%;width:13px;height:13px;transform:translate(50%,-50%);color:#FBBF24;filter:drop-shadow(0 0 4px rgba(251,191,36,0.95)) drop-shadow(0 0 8px rgba(245,158,11,0.7));transition:transform .45s ease}
 
 /* Planet Image */
 .sc-tab-planet-img{position:relative;z-index:2;width:100%;height:100%;object-fit:contain;filter:brightness(0.7) contrast(0.92);transform:scale(0.94);transition:filter .45s ease,transform .5s cubic-bezier(0.16,1,0.3,1)}
@@ -309,7 +364,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 /* Tab Info Typography */
 .sc-tab-info{display:flex;flex-direction:column;gap:5px;min-width:0}
 .sc-tab-no{display:flex;align-items:center;gap:6px;font-family:var(--font-sans);font-size:11.5px;font-weight:700;letter-spacing:.22em;color:#A3854E;transition:color .4s ease,text-shadow .4s ease}
-.sc-tab-diamond{font-size:10px;color:#E5B869;line-height:1}
+.sc-tab-diamond{width:10px;height:10px;flex:none;color:#E5B869}
 .sc-tab-theme{font-family:var(--font-display);font-weight:400;font-size:clamp(26px,2.8vw,36px);line-height:1.05;color:rgba(236,232,223,0.65);transition:color .4s ease,text-shadow .4s ease}
 .sc-tab-meta{display:flex;flex-direction:column;gap:1px;font-family:var(--font-sans);font-size:13.5px;color:rgba(236,232,223,0.45);line-height:1.3;transition:color .4s ease}
 
@@ -387,11 +442,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-day-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(36px,4.6vw,64px);line-height:1}
 .sc-day-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:12px 0 0;font-size:15px;font-weight:500;color:#5c574f}
 .sc-day-starred{display:inline-flex;align-items:center;gap:7px;color:#141312}
-@keyframes sc-fade-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: none; }
-}
-.sc-block{margin-top:clamp(44px,7vh,72px); animation: sc-fade-in 0.45s cubic-bezier(0.16,1,0.3,1) backwards;}
+/* No CSS entrance here: Innovision#schedEnter / #schedIn slide the rows in with GSAP, and a CSS animation on the same
+   transform would override GSAP's while it runs, then snap the row to GSAP's position when it ends (a visible jolt). */
+.sc-block{margin-top:clamp(44px,7vh,72px)}
 .sc-block-head{display:flex;align-items:center;justify-content:space-between;gap:clamp(12px,2vw,24px);padding:0 var(--gut);margin-bottom:8px}
 .sc-block-left{display:flex;align-items:center;gap:clamp(14px,1.8vw,22px);min-width:0;flex:none}
 .sc-block-badge{display:flex;align-items:center;justify-content:center;flex:none}
@@ -400,7 +453,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-period-afternoon{color:#D95338}
 .sc-period-evening{color:#7C5CE8}
 .sc-block-titles{display:flex;flex-direction:column;gap:5px}
-.sc-block-name{margin:0;font-family:var(--font-display);font-style:italic;font-weight:700;font-size:clamp(38px,4.2vw,56px);line-height:0.96;color:#141312;letter-spacing:-0.02em}
+.sc-block-name{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(38px,4.2vw,56px);line-height:1;color:#141312;letter-spacing:.01em}
 .sc-block-pill{display:inline-flex;align-items:center;align-self:flex-start;padding:4px 14px;border-radius:9999px;border:1px solid rgba(20,19,18,0.16);background:rgba(255,255,255,0.45);backdrop-filter:blur(4px);font-family:var(--font-sans);font-size:13px;font-weight:500;color:#5C574F;white-space:nowrap}
 .sc-block-divider{flex:1;height:1px;background:rgba(20,19,18,0.16);min-width:20px}
 .sc-nav{display:flex;gap:6px;flex:none}
@@ -409,33 +462,56 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-arrow:active:not(:disabled){transform:translateY(1px)}
 .sc-arrow:disabled{opacity:0.22;cursor:default;background:#141312;transform:none}
 
-/* The row scrolls natively (touch, trackpad, shift+wheel, arrow keys once focused) and snaps card by card. */
-.sc-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(270px,22vw,310px);gap:18px;padding:22px var(--gut) 42px;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:var(--gut);scrollbar-width:none}
+/* The row scrolls natively (touch, trackpad, shift+wheel, arrow keys once focused) and snaps card by card.
+   overflow-x:auto clips vertically too, so the padding leaves room for a lifted card and its glow; the negative
+   margins cancel the extra padding so the row sits exactly where it did. */
+.sc-track{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(270px,22vw,310px);gap:18px;padding:36px var(--gut) 66px;margin:-14px 0 -24px;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:var(--gut);scrollbar-width:none}
 .sc-track::-webkit-scrollbar{display:none}
 .sc-track:focus-visible{outline:2px solid #8a6a2a;outline-offset:-2px}
 
 /* Outer Shell: Holds the drop shadow filter so it forms the exact silhouette of the clipped card */
-.sc-card-shell{position:relative;scroll-snap-align:start;display:flex;min-width:0;border-radius:12px;filter:drop-shadow(0 4px 10px rgba(20,19,18,0.04));transition:transform .45s cubic-bezier(0.16,1,0.3,1),filter .45s cubic-bezier(0.16,1,0.3,1)}
+.sc-card-shell{position:relative;scroll-snap-align:start;display:flex;min-width:0;border-radius:12px;filter:drop-shadow(0 4px 10px rgba(20,19,18,0.04))}
 
 /* Category Color Palettes & Glow Variables - Ultra-light, airy, and soft */
 .sc-card-shell[data-world="0"]{
   --wc:#E04E38;
   --wc-border:rgba(239,68,68,0.25);
   --wc-glow:rgba(239,68,68,0.12);
+  --wc-lift:oklch(0.62 0.14 28 / 0.42);
+  --wc-ring:oklch(0.6 0.1 28 / 0.45);
 }
 .sc-card-shell[data-world="1"]{
+  --wc:#3B6FE0;
+  --wc-border:rgba(59,130,246,0.25);
+  --wc-glow:rgba(59,130,246,0.12);
+  --wc-lift:oklch(0.62 0.14 250 / 0.42);
+  --wc-ring:oklch(0.6 0.1 250 / 0.45);
+}
+.sc-card-shell[data-world="2"]{
   --wc:#7C5CE8;
   --wc-border:rgba(139,92,246,0.25);
   --wc-glow:rgba(139,92,246,0.12);
+  --wc-lift:oklch(0.62 0.14 295 / 0.42);
+  --wc-ring:oklch(0.6 0.1 295 / 0.45);
 }
-.sc-card-shell[data-world="2"]{
+.sc-card-shell[data-world="3"]{
   --wc:#059669;
   --wc-border:rgba(16,185,129,0.25);
   --wc-glow:rgba(16,185,129,0.12);
+  --wc-lift:oklch(0.62 0.14 170 / 0.42);
+  --wc-ring:oklch(0.6 0.1 170 / 0.45);
 }
 
-/* Base Card Ticket Shape */
-.sc-card{--top-h:96px;--r:10px;position:relative;display:flex;flex-direction:column;flex:1;min-width:0;background:#F7F5EE;border:1.5px solid var(--wc-border);border-radius:12px;overflow:hidden;transition:background-color .35s ease,border-color .35s ease}
+/* Base Card Ticket Shape.
+   Hover tilt: ScheduleView's pointer handler writes --h (0/1), --rx/--ry (tilt), --px/--py (-1..1) and --mx (cursor x %)
+   on .sc-card-shell; they inherit down, so the card, sheen, icon and diamond all follow one handler with no re-render.
+   At rest every variable falls back to 0, so the card looks exactly as before. */
+.sc-card{--top-h:96px;--r:10px;position:relative;display:flex;flex-direction:column;flex:1;min-width:0;background:#F7F5EE;border:1.5px solid var(--wc-border);border-radius:12px;overflow:hidden;
+  transform:perspective(1000px) translateY(calc(var(--h,0) * -6px)) scale(calc(1 + var(--h,0) * .025)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  box-shadow:0 calc(var(--h,0) * 20px) calc(var(--h,0) * 44px) calc(var(--h,0) * -10px) var(--wc-lift,color-mix(in srgb,var(--wc) 40%,transparent)),
+             0 0 0 calc(var(--h,0) * 1px) var(--wc-ring,color-mix(in srgb,var(--wc) 45%,transparent));
+  will-change:transform;
+  transition:transform .2s ease-out,box-shadow .35s ease,background-color .35s ease,border-color .35s ease}
 .sc-card[data-on]{background:#FFFFFF}
 
 /* The Left and Right Notches (painted in page background color to look like cutouts) */
@@ -450,9 +526,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-card-top-bg{position:relative;height:var(--top-h);background-color:var(--wc-glow);background-image:linear-gradient(rgba(20,19,18,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(20,19,18,0.035) 1px,transparent 1px);background-size:16px 16px;background-position:center top;z-index:1;transition:background-color .35s ease}
 .sc-card-top-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 50%,rgba(255,255,255,0.75) 0%,transparent 65%);pointer-events:none}
 
-.sc-sparkle{position:absolute;font-size:11px;color:var(--wc);opacity:0.45;line-height:1}
+.sc-sparkle{position:absolute;width:11px;height:11px;color:var(--wc);opacity:0.45;transition:transform .7s cubic-bezier(.55,0,.75,.2) var(--d),opacity .35s ease calc(var(--d) + .4s)}
 
-.sc-card-icon-ring{position:absolute;top:50%;right:32px;transform:translateY(-50%);width:90px;height:90px;border-radius:50%;border:1.2px solid rgba(20,19,18,0.04);box-shadow:inset 0 0 0 10px transparent,inset 0 0 0 11.2px rgba(20,19,18,0.04);display:grid;place-items:center;color:#141312;z-index:2}
+/* Inner frame line, lit in the world colour on hover; the notches paint over it like real ticket cut-outs. */
+.sc-card-frame{position:absolute;inset:6px;border:1px solid rgba(20,19,18,0.07);border-radius:8px;pointer-events:none;z-index:8;transition:border-color .4s ease}
+/* One sweep of light across the ticket on hover-in. It snaps back unseen (no transition) once the pointer leaves. */
+.sc-card-sheen{position:absolute;inset:0;z-index:9;pointer-events:none;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,0.7) 47%,rgba(255,255,255,0.25) 53%,transparent 68%);transform:translateX(-115%)}
+
+.sc-card-icon-ring{position:absolute;top:50%;right:32px;transform:translateY(-50%);width:90px;height:90px;border-radius:50%;border:1.2px solid rgba(20,19,18,0.04);box-shadow:inset 0 0 0 10px transparent,inset 0 0 0 11.2px rgba(20,19,18,0.04);display:grid;place-items:center;color:#141312;z-index:2;transition:background-color .4s ease}
+/* The icon drifts with the cursor (transform) and wobbles once on hover-in (rotate/scale, which stack on top). */
+.sc-card-icon{display:grid;place-items:center;transform:translate(calc(var(--px,0) * 5px),calc(var(--py,0) * 4px)) rotate(calc(var(--px,0) * 8deg));transition:transform .25s ease-out,scale .45s cubic-bezier(0.16,1,0.3,1)}
+@keyframes sc-wobble{0%{rotate:0deg}28%{rotate:-14deg}52%{rotate:8deg}74%{rotate:-4deg}100%{rotate:0deg}}
 
 /* Star Button */
 .sc-star-btn{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(20,19,18,0.08);box-shadow:0 3px 8px rgba(20,19,18,0.06);display:grid;place-items:center;cursor:pointer;z-index:20;transition:transform .25s cubic-bezier(0.34,1.56,0.64,1),box-shadow .25s ease}
@@ -461,6 +545,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 /* Bottom Content */
 .sc-card-bottom{position:relative;display:flex;flex-direction:column;flex:1;padding:18px 20px 22px;z-index:2}
+/* World-colour glow pooling in the bottom-right corner, faded in on hover. */
+.sc-card-bottom::before{content:'';position:absolute;right:-60px;bottom:-70px;width:240px;height:200px;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,var(--wc-glow),transparent);opacity:0;transition:opacity .5s ease;pointer-events:none}
 .sc-time{display:flex;align-items:baseline;gap:4px;margin:0 0 6px 0}
 .sc-time strong{font-family:var(--font-display);font-weight:400;font-size:34px;line-height:1;color:#141312}
 .sc-time span{font-family:var(--font-sans);font-size:12px;font-weight:800;letter-spacing:.08em;color:#141312}
@@ -469,47 +555,65 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sc-card-foot{display:grid;gap:10px;margin-top:auto;font-size:13px;color:#5C574F}
 .sc-card-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sc-world{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.14em;color:var(--wc)}
-.sc-diamond{width:8px;height:8px;flex:none;transform:rotate(45deg);background:var(--wc)}
+/* A diamond at rest; on hover it turns another 45deg into a square, grows a little and glows. */
+.sc-diamond{width:8px;height:8px;flex:none;transform:rotate(calc(45deg + var(--h,0) * 45deg)) scale(calc(1 + var(--h,0) * .2));box-shadow:0 0 calc(var(--h,0) * 8px) var(--wc);background:var(--wc);transition:transform .45s cubic-bezier(.3,1.5,.5,1),box-shadow .3s}
 .sc-dur{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:#5C574F}
 .sc-venue{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#5C574F}
 .sc-note{margin:48px 0 0;font-size:14px;line-height:1.6;color:#5c574f}
 
 /* ========================================================
-   LIGHT AMBIENT HOVER SHADE
+   TICKET HOVER (pointer hover, or keyboard focus inside the card), as in the Schedule design video.
+   Lift, tilt, world-colour glow and ring, icon drift and diamond-to-square come from the --h/--rx/--ry/--px/--py
+   variables (see .sc-card). On top of that the inner frame lights up, a sheen sweeps across once, the sparkles fly
+   out through the top-left corner, the icon wobbles and a world-colour glow pools in the bottom-right corner.
    ======================================================== */
 @media (hover:hover) and (pointer:fine){
-  .sc-card-shell:hover{
-    transform:translateY(-6px);
-    filter:drop-shadow(0 16px 32px var(--wc-glow)) drop-shadow(0 4px 12px rgba(20,19,18,0.06));
-    z-index:10;
-  }
-  .sc-card-shell:hover .sc-card{
-    border-color:var(--wc);
-    background:#FFFFFF;
-  }
-  .sc-card-shell:hover .sc-card::before,
-  .sc-card-shell:hover .sc-card::after{
-    border-color:var(--wc);
-    background:#ECE8DF; /* must match body bg perfectly */
-  }
-  .sc-card-shell:hover .sc-card-divider{
-    border-color:var(--wc);
-    opacity:0.8;
-  }
-  .sc-card-shell:hover .sc-card-top-bg{
-    background-color:rgba(255,255,255,0.9);
-  }
+  .sc-card-shell:hover{z-index:10}
+  .sc-card-shell:hover .sc-card{background:#FCFBF7}
+  .sc-card-shell:hover .sc-card-frame{border-color:color-mix(in srgb,var(--wc) 70%,transparent)}
+  .sc-card-shell:hover .sc-card-sheen{transform:translateX(115%);transition:transform .9s cubic-bezier(0.4,0,0.2,1)}
+  .sc-card-shell:hover .sc-sparkle{transform:translate(var(--fx),var(--fy)) rotate(135deg) scale(1.5);opacity:0}
+  .sc-card-shell:hover .sc-card-icon-ring{background-color:var(--wc-glow)}
+  .sc-card-shell:hover .sc-card-icon{scale:1.08;animation:sc-wobble .75s cubic-bezier(0.33,1,0.68,1)}
+  .sc-card-shell:hover .sc-card-bottom::before{opacity:1}
 }
+/* Keyboard focus gets the lift and glow without tilt; !important so it wins over the inline --h:0 left by mouseleave. */
+.sc-card-shell:has(:focus-visible){--h:1 !important;z-index:10}
+.sc-card-shell:has(:focus-visible) .sc-card{background:#FCFBF7}
+.sc-card-shell:has(:focus-visible) .sc-card-frame{border-color:color-mix(in srgb,var(--wc) 70%,transparent)}
+.sc-card-shell:has(:focus-visible) .sc-card-bottom::before{opacity:1}
+.sc-star-btn:focus-visible{outline:2px solid var(--wc);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){
-  .sc-card-shell,.sc-card-shell:hover{transition:none;transform:none}
+  .sc-card,.sc-card-icon{transform:none}
+  .sc-card{transition:box-shadow .35s ease,background-color .35s ease,border-color .35s ease}
+  .sc-card-sheen{display:none}
+  .sc-card-shell:hover .sc-card-icon{animation:none;scale:1}
+  .sc-sparkle{transition:opacity .2s ease}
+  .sc-card-shell:hover .sc-sparkle{transform:none}
+  .sc-diamond{transform:rotate(45deg);transition:box-shadow .2s ease}
+}
+/* Touch screens never hover, so the tilt stays flat: dropping the 3D transform and will-change spares a composited
+   layer per ticket, which otherwise flickers and judders while the page and the rows scroll. */
+@media (hover:none),(pointer:coarse){
+  .sc-card{transform:none;will-change:auto}
 }
 /* Phones: one card and a peek of the next per screen; the crescent tucks behind the tabs. */
 @media (max-width:719px){
   .sc-hero{padding-top:calc(76px + 5vh)}
   .sc-planet{top:auto;bottom:-44vw;right:-34vw;width:88vw;opacity:.3}
-  .sc-track{grid-auto-columns:min(78vw,300px);gap:14px;padding:16px var(--gut) 28px}
+  .sc-track{grid-auto-columns:min(78vw,300px);gap:14px;padding:16px var(--gut) 28px;margin:0}
   .sc-arrow{width:42px;height:42px}
   .sc-time strong{font-size:28px}
   .sc-block-name{font-size:32px}
   .sc-block-divider{display:none}
 }
+
+/* ---------- event poster popup (EventPopup.tsx) ---------- */
+.ev-pop{animation:ev-fade .3s ease-out}
+.ev-pop-box{animation:ev-rise .5s cubic-bezier(.16,1,.3,1)}
+.ev-pop-x,.ev-pop-close,.ev-pop-rule{transition:background-color .2s,color .2s,border-color .2s,filter .2s}
+.ev-pop-x:hover,.ev-pop-close:hover,.ev-pop-x:focus-visible,.ev-pop-close:focus-visible{background:#ECE8DF !important;color:#141312 !important;border-color:#ECE8DF !important}
+.ev-pop-rule:hover,.ev-pop-rule:focus-visible{filter:brightness(1.12)}
+@keyframes ev-fade{from{opacity:0}}
+@keyframes ev-rise{from{opacity:0;transform:translateY(24px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.ev-pop,.ev-pop-box{animation:none}.hv-ticket-open:hover,.hv-ticket-open:focus-visible{transform:none}}

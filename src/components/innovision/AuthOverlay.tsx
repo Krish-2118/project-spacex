@@ -14,7 +14,7 @@ export default function AuthOverlay({ v }: { v: V }) {
   <div data-auth-root="" aria-hidden={v.authHidden} style={{ position: "fixed", inset: "0", zIndex: "62", visibility: "hidden", pointerEvents: "none" }}>
     <div data-rift-veil="" style={{ position: "absolute", inset: "0", background: "#070605", opacity: "0" }}></div>
     <section data-auth="" data-screen-label="Register" role="dialog" aria-modal="true" aria-label={v.authAria} onDragOver={v.noDrop} onDrop={v.noDrop} style={{ position: "absolute", inset: "0", overflow: "hidden", background: "#0c0b0a", color: "#ECE8DF" }}>
-      <img decoding="async" src="assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".3", pointerEvents: "none" }} />
+      <img decoding="async" src="assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".3", pointerEvents: "none" }} />
       <canvas data-warp="" aria-hidden="true" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none" }}></canvas>
       <div data-a-planet-wrap="" aria-hidden="true" style={{ position: "absolute", right: "calc(min(92vh, 64vw) * -.3)", bottom: "calc(min(92vh, 64vw) * -.34)", width: "min(92vh, 64vw)", aspectRatio: "1", pointerEvents: "none" }}>
         <span style={{ position: "absolute", inset: "-16%", border: "1px solid rgba(236,232,223,.12)", borderRadius: "50%" }}></span>
@@ -234,7 +234,7 @@ export default function AuthOverlay({ v }: { v: V }) {
 <span style={{ display: v.upPay.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
 <span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.8 0.12 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
 <span style={{ fontSize: "16px", fontWeight: "500" }}>{v.upPay.prompt}</span>
-<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 2 MB</span>
+<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 1 MB</span>
 </span>
 <span style={{ display: v.upPay.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
 {v.upPay.hasImg ? (<img decoding="async" src={v.upPay.url} alt="Your payment screenshot" style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
@@ -315,7 +315,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                     <div style={{ display: v.d.pass, flexDirection: "column", gap: "22px" }}>
                       <div data-pass-wrap="">
                         <div style={{ position: "relative", overflow: "hidden", color: "#141312", background: "#ECE8DF", clipPath: "polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px)" }}>
-                          <img decoding="async" src="assets/planet-yellow.webp" alt="" style={{ position: "absolute", right: "-58px", top: "-58px", width: "140px", height: "auto", pointerEvents: "none" }} />
+                          <img decoding="async" src="assets/planet-mars.webp" alt="" style={{ position: "absolute", right: "-58px", top: "-58px", width: "140px", height: "auto", pointerEvents: "none" }} />
                           <div style={{ position: "relative", padding: "26px 26px 22px" }}>
                             <p style={{ margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: ".26em", color: "#7a5c20" }}>BOARDING PASS</p>
                             <p style={{ margin: "24px 0 6px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "#5c574f" }}>PASSENGER</p>

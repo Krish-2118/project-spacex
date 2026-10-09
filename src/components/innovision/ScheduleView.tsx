@@ -3,13 +3,47 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { Sparkle } from './icons';
 import { lazyUnlessCritical } from './data';
 import type { V } from './types';
 
 const GOLD = "oklch(0.8 0.12 85)";
 const STAR = "M12 2.8l2.7 6 6.5.6-4.9 4.3 1.5 6.4L12 16.8l-5.8 3.3 1.5-6.4-4.9-4.3 6.5-.6Z";
+// Ticket sparkles: where each sits, and (--fx, --fy) how far it flies to leave through the top-left corner on hover.
+const SPARKS = [
+  { top: '25%', left: '12%', '--fx': '-52px', '--fy': '-38px', '--d': '0ms' },
+  { top: '65%', left: '30%', '--fx': '-104px', '--fy': '-76px', '--d': '50ms' },
+  { top: '35%', left: '48%', '--fx': '-160px', '--fy': '-48px', '--d': '100ms' },
+] as CSSProperties[];
+
+/** How far (in degrees) a ticket tilts toward the cursor at its edges. */
+const TILT = 8;
+
+/**
+ * Ticket hover: writes the cursor position (0-1 across the card) as CSS variables on the card shell. Every part of the
+ * effect in globals.css (.sc-card, .sc-card-icon, .sc-diamond) reads them, so nothing re-renders.
+ * Mouse only, so a tap on a touch screen doesn't leave the card stuck in its hover pose.
+ */
+function tiltMove(e: PointerEvent<HTMLElement>) {
+  if (e.pointerType !== 'mouse') return;
+  const el = e.currentTarget, r = el.getBoundingClientRect(), s = el.style;
+  const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+  s.setProperty('--h', '1');
+  s.setProperty('--rx', (0.5 - y) * TILT + 'deg');
+  s.setProperty('--ry', (x - 0.5) * TILT + 'deg');
+  s.setProperty('--px', String((x - 0.5) * 2));
+  s.setProperty('--py', String((y - 0.5) * 2));
+}
+
+function tiltLeave(e: PointerEvent<HTMLElement>) {
+  const s = e.currentTarget.style;
+  s.setProperty('--h', '0');
+  s.setProperty('--rx', '0deg');
+  s.setProperty('--ry', '0deg');
+  s.setProperty('--px', '0');
+  s.setProperty('--py', '0');
+}
 
 function Pin({ size }: { size: number }) {
   return (
@@ -234,15 +268,21 @@ function Carousel({ b }: { b: Block }) {
             className="sc-card-shell"
             data-world={e.wIdx}
             style={{ "--wc": e.wc } as CSSProperties}
+            onPointerMove={tiltMove}
+            onPointerLeave={tiltLeave}
           >
             <article className="sc-card" data-on={e.on ? "" : undefined}>
+              <span className="sc-card-frame" aria-hidden="true" />
+              <span className="sc-card-sheen" aria-hidden="true" />
               <div className="sc-card-top-bg">
-                <span className="sc-sparkle" style={{ top: '25%', left: '12%' }}>✦</span>
-                <span className="sc-sparkle" style={{ top: '65%', left: '30%' }}>✦</span>
-                <span className="sc-sparkle" style={{ top: '35%', left: '48%' }}>✦</span>
-                
+                {SPARKS.map((s, i) => (
+                  <Sparkle key={i} aria-hidden="true" className="sc-sparkle" style={s} />
+                ))}
+
                 <div className="sc-card-icon-ring">
-                  <EventIcon title={e.title} />
+                  <span className="sc-card-icon">
+                    <EventIcon title={e.title} />
+                  </span>
                 </div>
                 
                 <button type="button" aria-pressed={e.on} aria-label={e.aria} onClick={e.toggle} className="sc-star-btn">
@@ -288,7 +328,7 @@ export default function ScheduleView({ v }: { v: V }) {
   return (
     <main data-view="schedule" data-noscroll="" data-screen-label="Schedule" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden", background: "#ECE8DF", color: "#141312" }}>
       <section className="sc-hero">
-        <img decoding="async" src="/assets/stars.webp" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div aria-hidden="true" className="sc-planet">
           <img decoding="async" loading="lazy" data-sc-planet="" src="/assets/planet-crescent.webp" alt="" style={{ width: "100%", height: "100%", animation: "iv-drift 12s ease-in-out infinite" }} />
         </div>
@@ -311,7 +351,7 @@ export default function ScheduleView({ v }: { v: V }) {
               <div className="sc-tab-planet-wrap">
                 <div className="sc-tab-halo" aria-hidden="true" />
                 <div className="sc-tab-orbit" aria-hidden="true">
-                  <span className="sc-tab-orbit-sparkle">✦</span>
+                  <Sparkle className="sc-tab-orbit-sparkle" />
                 </div>
                 <img
                   decoding="async"
@@ -323,7 +363,7 @@ export default function ScheduleView({ v }: { v: V }) {
               </div>
               <div className="sc-tab-info">
                 <span className="sc-tab-no">
-                  {d.sel && <span className="sc-tab-diamond">✦</span>}
+                  {d.sel && <Sparkle className="sc-tab-diamond" aria-hidden="true" />}
                   {d.no}
                 </span>
                 <strong className="sc-tab-theme">{d.theme}</strong>

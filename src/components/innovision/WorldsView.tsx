@@ -18,14 +18,14 @@ export default function WorldsView({ v }: { v: V }) {
           {w.deco && (
             <div data-depth=".55" aria-hidden="true" style={{ position: "absolute", left: w.decoL, top: w.decoT, height: w.decoH, pointerEvents: "none" }}>
               <div style={{ height: "100%", transform: `rotate(${w.decoR})` }}>
-                <img decoding="async" src={w.deco} alt="" style={{ height: "100%", width: "auto", mixBlendMode: "multiply", filter: "grayscale(1) contrast(1.2) brightness(1.45) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
+                <img decoding="async" src={w.deco} alt="" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.35) brightness(1.05) drop-shadow(0 18px 24px rgba(0,0,0,.18))", animation: "iv-drift 7s ease-in-out infinite" }} />
               </div>
             </div>
           )}
           <div aria-hidden="true" style={{ position: "absolute", left: "calc(clamp(16px,2.6vw,44px) + 36px)", top: "calc(72px + 3vh)", display: "flex", flexDirection: "column", gap: "7px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: w.ink, pointerEvents: "none" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: w.accent, animation: "iv-blink 1.6s steps(2) infinite" }}></span>
-              {w.statLU} · SECTOR {w.secNo}/03
+              {w.statLU} · SECTOR {w.secNo}/{w.secTotal}
             </span>
             <span style={{ paddingLeft: "17px", fontWeight: "500", opacity: ".8" }}>{w.coord}</span>
           </div>
