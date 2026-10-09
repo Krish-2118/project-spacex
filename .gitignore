@@ -45,12 +45,12 @@ next-env.d.ts
 # Antigravity Skills
 .agents/skills/taste-skill/
 
-# event import: converted poster previews (large binaries; the originals are in Drive and ImageKit)
-/output/previews/
-
 # playwright
 /test-results/
 /playwright-report/
 
 # tests (kept locally only; run with `npm test` / `npx playwright test`)
 /tests/
+
+# local tooling (check:assets, payment-proof migration; used by the local-only tests)
+/scripts/
