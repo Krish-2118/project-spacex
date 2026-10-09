@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyStaff } from '@/lib/auth-server';
+import { verifyRegistrationStaff } from '@/lib/auth-server';
 import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
 
 export const runtime = 'nodejs';
@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 // GET all registrations (with optional filtering)
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyRegistrationStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 // PATCH approve or reject registration ("once done cannot be altered")
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyRegistrationStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

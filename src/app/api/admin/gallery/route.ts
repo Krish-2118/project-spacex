@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyStaff, isWebPImage } from '@/lib/auth-server';
+import { verifyEventStaff, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
 import { formFile, formText, isImageKitPathInFolder, isUuid, readFormLimited, readJsonObject } from '@/lib/security';
 
@@ -10,7 +10,7 @@ const MAX_GALLERY_SIZE = 2 * 1024 * 1024; // 2MB strictly enforced
 // GET all gallery images (Staff access)
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 // POST: Upload an image to the gallery (Authorized IT Team & Admin)
 export async function POST(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 // PATCH: Edit image title (Authorized IT Team & Admin)
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -212,7 +212,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE: Remove an image from the gallery (Authorized IT Team & Admin)
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

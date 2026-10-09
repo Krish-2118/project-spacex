@@ -67,11 +67,11 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Allowed roles to be assigned via the web dashboard: only 'user' or 'it-team'
-    const assignableRoles = ['user', 'it-team'];
+    // Allowed roles to be assigned via the web dashboard: only 'user', 'it-team', or 'registration-team'
+    const assignableRoles = ['user', 'it-team', 'registration-team'];
     if (typeof role !== 'string' || !assignableRoles.includes(role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Only "user" and "it-team" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
+        { error: 'Invalid role. Only "user", "it-team", and "registration-team" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
         { status: 400 }
       );
     }
@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Target user profile verified as non-admin -> execute role change to 'user' or 'it-team'
+    // Target user profile verified as non-admin -> execute role change to 'user', 'it-team', or 'registration-team'
     const { data: updated, error } = await supabase
       .from('profiles')
       .update({ role, updated_at: new Date().toISOString() })

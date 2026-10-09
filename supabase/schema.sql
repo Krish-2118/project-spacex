@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   phone TEXT,
   student_type TEXT DEFAULT 'external' CHECK (student_type IN ('internal', 'external')),
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'it-team', 'admin')),
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'it-team', 'registration-team', 'admin')),
   enrollment_no TEXT,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -212,9 +212,15 @@ CREATE OR REPLACE FUNCTION public.is_admin(uid UUID) RETURNS BOOLEAN AS $$
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.is_staff(uid UUID) RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION public.is_event_staff(uid UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role IN ('admin', 'it-team')
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.is_registration_staff(uid UUID) RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role IN ('admin', 'registration-team')
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
@@ -309,7 +315,7 @@ WITH CHECK (auth.uid() = id OR public.is_admin(auth.uid()));
 -- Protect privileged profile columns from end-user API calls (role, email, student_type, id, created_at).
 -- Rules mirrored from /api/admin/users:
 --   * regular users can never change role / email / student_type;
---   * admins may switch other users between 'user' and 'it-team' only;
+--   * admins may switch other users between 'user', 'it-team', and 'registration-team' only;
 --   * the 'admin' role can only be granted or revoked directly in the database.
 -- Writes from the Supabase Dashboard / SQL Editor / service_role backend (auth.role() <> 'authenticated') are trusted.
 DROP TRIGGER IF EXISTS trg_protect_profile_role ON public.profiles;
@@ -355,7 +361,7 @@ CREATE TRIGGER trg_protect_profile_fields
 -- Registrations Policies
 DROP POLICY IF EXISTS "Users can view own registrations or staff can view all" ON public.registrations;
 CREATE POLICY "Users can view own registrations or staff can view all" ON public.registrations FOR
-SELECT TO authenticated USING (user_id = auth.uid() OR public.is_staff(auth.uid()));
+SELECT TO authenticated USING (user_id = auth.uid() OR public.is_registration_staff(auth.uid()));
 
 -- No direct INSERT for end users: every registration is created by /api/register (service role), which applies the
 -- rules the database can't (ITER - SOA email domain, proof object really uploaded by the same user, rate limits). The INSERT privilege itself is revoked in section 11; the insert trigger below stays as defense in depth.
@@ -363,7 +369,7 @@ DROP POLICY IF EXISTS "Users can create their registration" ON public.registrati
 
 DROP POLICY IF EXISTS "Staff can review pending registrations" ON public.registrations;
 CREATE POLICY "Staff can review pending registrations" ON public.registrations FOR
-UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+UPDATE TO authenticated USING (public.is_registration_staff(auth.uid())) WITH CHECK (public.is_registration_staff(auth.uid()));
 
 -- Registrations inserted directly through the Supabase API by an end user can't choose their own status, fee,
 -- student type or email: these are derived from the verified auth account exactly like /api/register does.
@@ -525,17 +531,17 @@ SELECT USING (true);
 -- Authorized IT team member and admin can insert events
 DROP POLICY IF EXISTS "Staff can insert events" ON public.events;
 CREATE POLICY "Staff can insert events" ON public.events FOR
-INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+INSERT TO authenticated WITH CHECK (public.is_event_staff(auth.uid()));
 
 -- Authorized IT team member and admin can update events
 DROP POLICY IF EXISTS "Staff can update events" ON public.events;
 CREATE POLICY "Staff can update events" ON public.events FOR
-UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+UPDATE TO authenticated USING (public.is_event_staff(auth.uid())) WITH CHECK (public.is_event_staff(auth.uid()));
 
 -- Authorized IT team member and admin can delete events
 DROP POLICY IF EXISTS "Staff can delete events" ON public.events;
 CREATE POLICY "Staff can delete events" ON public.events FOR
-DELETE TO authenticated USING (public.is_staff(auth.uid()));
+DELETE TO authenticated USING (public.is_event_staff(auth.uid()));
 
 
 -- 8. GALLERY TABLE
@@ -565,17 +571,17 @@ SELECT USING (true);
 -- Authorized IT team member and admin can insert gallery images
 DROP POLICY IF EXISTS "Staff can insert gallery" ON public.gallery;
 CREATE POLICY "Staff can insert gallery" ON public.gallery FOR
-INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+INSERT TO authenticated WITH CHECK (public.is_event_staff(auth.uid()));
 
 -- Authorized IT team member and admin can update gallery images
 DROP POLICY IF EXISTS "Staff can update gallery" ON public.gallery;
 CREATE POLICY "Staff can update gallery" ON public.gallery FOR
-UPDATE TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
+UPDATE TO authenticated USING (public.is_event_staff(auth.uid())) WITH CHECK (public.is_event_staff(auth.uid()));
 
 -- Authorized IT team member and admin can delete gallery images
 DROP POLICY IF EXISTS "Staff can delete gallery" ON public.gallery;
 CREATE POLICY "Staff can delete gallery" ON public.gallery FOR
-DELETE TO authenticated USING (public.is_staff(auth.uid()));
+DELETE TO authenticated USING (public.is_event_staff(auth.uid()));
 
 
 -- 9. FUNCTION PRIVILEGES
@@ -583,9 +589,11 @@ DELETE TO authenticated USING (public.is_staff(auth.uid()));
 -- (authenticated keeps EXECUTE because the RLS policies above call is_admin / is_staff.)
 REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_admin(UUID) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.is_staff(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_event_staff(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_registration_staff(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_staff(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_event_staff(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_registration_staff(UUID) TO authenticated;
 -- get_user_role isn't used by any policy or by the app.
 REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM authenticated;
 
