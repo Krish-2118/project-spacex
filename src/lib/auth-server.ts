@@ -4,7 +4,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 export interface StaffAuthSuccess {
   user: User;
-  role: 'admin' | 'it-team';
+  role: 'admin' | 'it-team' | 'registration-team';
   supabase: SupabaseClient;
 }
 
@@ -79,7 +79,7 @@ export async function getAuthenticatedUser(req: NextRequest): Promise<Authentica
  * Server-side helper to verify that the request originates from an authorized
  * IT Team member or Administrator ('admin' or 'it-team' role).
  */
-export async function verifyStaff(req: NextRequest): Promise<StaffAuthResult> {
+export async function verifyEventStaff(req: NextRequest): Promise<StaffAuthResult> {
   const auth = await getAuthenticatedUser(req);
   if (!auth) {
     return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
@@ -96,17 +96,52 @@ export async function verifyStaff(req: NextRequest): Promise<StaffAuthResult> {
     return { error: 'Forbidden: Admin or IT-Team authorization required.', status: 403 };
   }
 
-  return { user: auth.user, role: profile.role as 'admin' | 'it-team', supabase };
+  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase };
+}
+
+/**
+ * Server-side helper to verify that the request originates from an authorized
+ * Registration Team member or Administrator ('admin' or 'registration-team' role).
+ */
+export async function verifyRegistrationStaff(req: NextRequest): Promise<StaffAuthResult> {
+  const auth = await getAuthenticatedUser(req);
+  if (!auth) {
+    return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
+  }
+
+  const supabase = getSupabaseAdmin(auth.token);
+  const { data: profile, error: profErr } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  if (profErr || !profile || !['admin', 'registration-team'].includes(profile.role)) {
+    return { error: 'Forbidden: Admin or Registration-Team authorization required.', status: 403 };
+  }
+
+  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase };
 }
 
 /** Like verifyStaff, but only lets the 'admin' role through. */
 export async function verifyAdmin(req: NextRequest): Promise<StaffAuthResult> {
-  const staff = await verifyStaff(req);
-  if ('error' in staff) return staff;
-  if (staff.role !== 'admin') {
+  const auth = await getAuthenticatedUser(req);
+  if (!auth) {
+    return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
+  }
+
+  const supabase = getSupabaseAdmin(auth.token);
+  const { data: profile, error: profErr } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  if (profErr || !profile || profile.role !== 'admin') {
     return { error: 'Forbidden: Superadmin access required to modify user roles', status: 403 };
   }
-  return staff;
+
+  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase };
 }
 
 export { isValidGoogleDriveUrl } from '@/lib/validation';

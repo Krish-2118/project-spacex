@@ -13,7 +13,7 @@ export interface UserProfile {
   avatar_url: string;
   phone: string | null;
   student_type: 'internal' | 'external';
-  role: 'user' | 'it-team' | 'admin';
+  role: 'user' | 'it-team' | 'registration-team' | 'admin';
   enrollment_no?: string | null;
   created_at?: string;
   updated_at?: string;

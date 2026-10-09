@@ -33,7 +33,7 @@ export default function ProfileOverlay({
 
   if (!isOpen || !user) return null;
 
-  const isStaff = user.role === 'admin' || user.role === 'it-team';
+  const isStaff = user.role === 'admin' || user.role === 'it-team' || user.role === 'registration-team';
   const isInternal = user.student_type === 'internal' || user.email.toLowerCase().endsWith('@nitrkl.ac.in');
 
   const handleSavePhone = async (e: React.FormEvent) => {
@@ -220,7 +220,7 @@ export default function ProfileOverlay({
                       background:
                         user.role === 'admin'
                           ? 'oklch(0.65 0.18 30)'
-                          : user.role === 'it-team'
+                          : user.role === 'it-team' || user.role === 'registration-team'
                           ? 'oklch(0.65 0.15 240)'
                           : 'rgba(236,232,223,0.1)',
                       color: '#ECE8DF',
@@ -514,7 +514,7 @@ export default function ProfileOverlay({
                 </span>
               </div>
               <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(236,232,223,0.8)', lineHeight: 1.45 }}>
-                You have {user.role === 'admin' ? 'Administrator' : 'IT-Team'} privileges to review registrations, verify payment proofs, and export records.
+                You have {user.role === 'admin' ? 'Administrator' : user.role === 'it-team' ? 'IT-Team' : 'Registration-Team'} privileges to review registrations, verify payment proofs, and export records.
               </p>
               <button
                 id="open-admin-dashboard-btn"

@@ -21,9 +21,12 @@ export default function AdminDashboard({
   currentUser,
 }: AdminDashboardProps) {
   const isAdmin = currentUser.role === 'admin';
-  const isStaff = isAdmin || currentUser.role === 'it-team';
+  const isItTeam = currentUser.role === 'it-team';
+  const isRegTeam = currentUser.role === 'registration-team';
+  const isStaff = isAdmin || isItTeam || isRegTeam;
 
-  const [tab, setTab] = useState<'registrations' | 'events' | 'gallery' | 'users'>('registrations');
+  const defaultTab = isAdmin || isRegTeam ? 'registrations' : 'events';
+  const [tab, setTab] = useState<'registrations' | 'events' | 'gallery' | 'users'>(defaultTab);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(false);
@@ -190,8 +193,11 @@ export default function AdminDashboard({
     return () => clearTimeout(timer);
   }, [isOpen, fetchRegistrations, fetchUsers, isAdmin]);
 
-  // Active tab: 'users' is strictly admin-only; staff (admin & it-team) can access registrations, events, gallery
-  const activeTab = tab === 'users' && !isAdmin ? 'registrations' : tab;
+  // Active tab: 'users' is strictly admin-only; staff have their own tabs
+  let activeTab = tab;
+  if (tab === 'users' && !isAdmin) activeTab = defaultTab;
+  if (tab === 'registrations' && !isAdmin && !isRegTeam) activeTab = defaultTab;
+  if ((tab === 'events' || tab === 'gallery') && !isAdmin && !isItTeam) activeTab = defaultTab;
 
   if (!isOpen || !isStaff) return null;
 
@@ -253,19 +259,19 @@ export default function AdminDashboard({
     }
   };
 
-  // Handle Role Change using Modal / Toast (Only 'user' and 'it-team'; Admin role is DB only)
-  const handleChangeRole = (userId: string, newRole: 'user' | 'it-team', userEmail: string) => {
+  // Handle Role Change using Modal / Toast (Only 'user', 'it-team', 'registration-team'; Admin role is DB only)
+  const handleChangeRole = (userId: string, newRole: 'user' | 'it-team' | 'registration-team', userEmail: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Update User Role',
-      message: `Are you sure you want to change the role of ${userEmail} to "${newRole === 'it-team' ? 'IT-TEAM' : 'USER'}"?`,
+      message: `Are you sure you want to change the role of ${userEmail} to "${newRole.toUpperCase()}"?`,
       actionText: 'CONFIRM ROLE CHANGE',
       actionType: 'role',
       onConfirm: () => executeChangeRole(userId, newRole, userEmail),
     });
   };
 
-  const executeChangeRole = async (userId: string, newRole: 'user' | 'it-team', userEmail: string) => {
+  const executeChangeRole = async (userId: string, newRole: 'user' | 'it-team' | 'registration-team', userEmail: string) => {
     try {
       setRoleBusyId(userId);
       const token = await getAuthToken();
@@ -287,7 +293,7 @@ export default function AdminDashboard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to change role');
 
-      showToast(`Updated role for ${userEmail} to ${newRole === 'it-team' ? 'IT-TEAM' : 'USER'}`, 'success');
+      showToast(`Updated role for ${userEmail} to ${newRole.toUpperCase()}`, 'success');
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
@@ -776,6 +782,7 @@ export default function AdminDashboard({
 
           {/* Navigation Tabs */}
           <nav style={{ display: 'flex', gap: '8px', marginLeft: '24px' }}>
+            {(isAdmin || isRegTeam) && (
             <button
               id="tab-registrations"
               type="button"
@@ -794,7 +801,9 @@ export default function AdminDashboard({
             >
               REGISTRATIONS ({totalRegs})
             </button>
+            )}
 
+            {(isAdmin || isItTeam) && (
             <button
               id="tab-events"
               type="button"
@@ -813,7 +822,9 @@ export default function AdminDashboard({
             >
               EVENTS
             </button>
+            )}
 
+            {(isAdmin || isItTeam) && (
             <button
               id="tab-gallery"
               type="button"
@@ -832,6 +843,7 @@ export default function AdminDashboard({
             >
               GALLERY
             </button>
+            )}
 
             {isAdmin && (
               <button
@@ -1623,14 +1635,14 @@ export default function AdminDashboard({
                                   value={u.role}
                                   disabled={isRoleBusy}
                                   onChange={(e) =>
-                                    handleChangeRole(u.id, e.target.value as 'user' | 'it-team', u.email)
+                                    handleChangeRole(u.id, e.target.value as 'user' | 'it-team' | 'registration-team', u.email)
                                   }
                                   style={{
                                     padding: '6px 10px',
                                     background: '#141312',
                                     border: '1px solid rgba(236,232,223,0.3)',
                                     color:
-                                      u.role === 'it-team'
+                                      u.role === 'it-team' || u.role === 'registration-team'
                                         ? 'oklch(0.8 0.15 240)'
                                         : '#ECE8DF',
                                     fontSize: '12px',
@@ -1641,6 +1653,7 @@ export default function AdminDashboard({
                                 >
                                   <option value="user">User (Normal)</option>
                                   <option value="it-team">IT-Team</option>
+                                  <option value="registration-team">Registration-Team</option>
                                 </select>
                                 {isRoleBusy && <span style={{ fontSize: '11px', color: 'oklch(0.8 0.12 85)' }}>Updating...</span>}
                               </div>

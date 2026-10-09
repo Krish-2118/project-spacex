@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyStaff, isValidGoogleDriveUrl, isWebPImage } from '@/lib/auth-server';
+import { verifyEventStaff, isValidGoogleDriveUrl, isWebPImage } from '@/lib/auth-server';
 import { imagekit } from '@/lib/imagekit';
 import { formFile, formText, isUuid, jsonText, readFormLimited, readJsonObject } from '@/lib/security';
 
@@ -34,7 +34,7 @@ function textLimitError(fields: Partial<Record<keyof typeof TEXT_LIMITS, string 
 // GET all events (Staff access)
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 // POST: Create a new event (Authorized IT Team & Admin)
 export async function POST(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
 // PATCH: Edit event details (Authorized IT Team & Admin)
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
@@ -426,7 +426,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE: Delete an event (Authorized IT Team & Admin)
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyEventStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

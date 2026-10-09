@@ -2717,7 +2717,7 @@ export default class Innovision extends Component<Props, State> {
         if (s.user?.id) this.refreshUserProfile(s.user.id);
         this.setState({ adminOpen: true, profileOpen: false });
       },
-      isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team')),
+      isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team')),
       hasRegistered: !!(s.registration || this.pass),
       openPass: () => this.openAuth('pass'),
       // @ts-ignore
@@ -2801,7 +2801,7 @@ export default class Innovision extends Component<Props, State> {
           onClose={() => this.setState({ phoneModalOpen: false })}
           userEmail={s.user?.email}
         />
-        {s.user && (s.user.role === 'admin' || s.user.role === 'it-team') && (
+        {s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team') && (
           <AdminDashboard
             isOpen={s.adminOpen}
             onClose={() => this.setState({ adminOpen: false })}

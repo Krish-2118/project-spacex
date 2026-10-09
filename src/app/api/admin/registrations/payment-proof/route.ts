@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyStaff } from '@/lib/auth-server';
+import { verifyRegistrationStaff } from '@/lib/auth-server';
 import { isPaymentProofPath, isUuid, PAYMENT_PROOF_URL_TTL_SECONDS } from '@/lib/security';
 import { signPaymentProofUrl } from '@/lib/payment-proofs';
 
@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyStaff(req);
+    const auth = await verifyRegistrationStaff(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
