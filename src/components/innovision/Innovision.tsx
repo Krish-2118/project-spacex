@@ -34,7 +34,7 @@ import type { V } from './types';
 import {
   getSupabase,
   getOrCreateUserProfile,
-  updateUserProfile,
+  updateUserPhone,
   fetchUserRegistration,
   createRegistration,
   signInWithGoogle,
@@ -1721,7 +1721,7 @@ export default class Innovision extends Component<Props, State> {
 
   handleUpdatePhone = async (phone: string) => {
     if (!this.state.user) return;
-    const res = await updateUserProfile(this.state.user.id, { phone });
+    const res = await updateUserPhone(phone);
     if (!res.success) throw new Error(res.error || 'Failed to update phone');
     this.setState((st: any) => ({
       user: st.user ? { ...st.user, phone } : null,

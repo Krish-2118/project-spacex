@@ -78,7 +78,7 @@ export default function HomeView({ v }: { v: V }) {
                 </div>
 
                 <div data-h-cta="">
-                  <a href={v.noUser || !v.hasRegistered ? "#register" : "#pass"} onClick={v.register} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "rgba(236,232,223,.85)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hv-gold">
+                  <a href={v.noUser || !v.hasRegistered ? "#register" : "#pass"} onClick={v.register} onMouseEnter={v.hover} style={{ position: "relative", isolation: "isolate", minWidth: "168px", color: "#ECE8DF", background: "rgba(236,232,223,.85)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)" }} className="hero-cta hv-gold">
                     <span style={{ position: "absolute", inset: "1.5px", zIndex: "-1", background: "#141312", clipPath: "polygon(11px 0,100% 0,100% calc(100% - 11px),calc(100% - 11px) 100%,0 100%,0 11px)" }}></span>
                     <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
 
@@ -256,7 +256,7 @@ export default function HomeView({ v }: { v: V }) {
         <div data-reveal="" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <h2 style={{ margin: "0 0 22px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
           <p style={{ margin: "0 auto 36px", maxWidth: "520px", fontSize: "18px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>Innovision 2026 is boarding soon at NIT Rourkela. Claim your seat on the voyage.</p>
-          <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="cta-pair" style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
 
             <a href={v.noUser || !v.hasRegistered ? "#register" : "#pass"} onClick={v.register} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", background: "#141312", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-bronze-fill">
               <span data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>

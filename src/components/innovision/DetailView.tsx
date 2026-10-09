@@ -326,7 +326,7 @@ export default function DetailView({ v }: { v: V }) {
 
             {/* ---- copy ---- */}
             {v.compact && (
-              <h2 style={{ position: "absolute", top: "max(88px, 12%)", left: "0", right: "0", width: v.taglineW, margin: "0 auto", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(26px,3.1vw,56px)", lineHeight: "1.04", textAlign: "center", color: "#fff", mixBlendMode: "difference", pointerEvents: "none" }}>
+              <h2 className={v.isHighpoint ? "hp-tagline" : undefined} style={{ position: "absolute", top: v.isHighpoint ? undefined : "max(88px, 12%)", left: "0", right: "0", width: v.taglineW, margin: "0 auto", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(26px,3.1vw,56px)", lineHeight: "1.04", textAlign: "center", color: "#fff", mixBlendMode: "difference", pointerEvents: "none" }}>
                 {cw.words.map((wd, wdI) => (
                   <span key={wdI} data-d-word="" style={{ display: "inline-block", margin: "0 .14em" }}>{wd.t}</span>
                 ))}

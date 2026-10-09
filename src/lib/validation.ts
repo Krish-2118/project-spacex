@@ -5,6 +5,16 @@
 export const ITER_SOA_ERROR_MESSAGE =
   'Registration is not allowed for students from ITER - SOA.';
 
+export const PHONE_IN_USE_ERROR_MESSAGE =
+  'This phone number is already linked to another account. Please use a different number.';
+
+/** True for a Postgres unique violation (23505) on a phone column, e.g. `profiles_phone_key`. */
+export function isDuplicatePhoneError(
+  err: { code?: string; message?: string; details?: string | null } | null | undefined
+): boolean {
+  return !!err && err.code === '23505' && /phone/i.test(`${err.message ?? ''} ${err.details ?? ''}`);
+}
+
 /** Gender options for registration (values must match the registrations.gender CHECK in supabase/schema.sql). */
 export const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },

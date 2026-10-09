@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
-import { safeHttpUrl } from '@/lib/validation';
+import { isDuplicatePhoneError, PHONE_IN_USE_ERROR_MESSAGE, safeHttpUrl } from '@/lib/validation';
 import { readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
@@ -64,11 +64,18 @@ export async function POST(req: NextRequest) {
     };
 
     // 3. Insert only: never overwrite an existing row (and its role) with defaults.
-    const { data: inserted, error: insertErr } = await supabase
-      .from('profiles')
-      .upsert(newProfile, { onConflict: 'id', ignoreDuplicates: true })
-      .select()
-      .maybeSingle();
+    const insertProfile = (profile: typeof newProfile) =>
+      supabase
+        .from('profiles')
+        .upsert(profile, { onConflict: 'id', ignoreDuplicates: true })
+        .select()
+        .maybeSingle();
+
+    let { data: inserted, error: insertErr } = await insertProfile(newProfile);
+    // The sign-in phone already belongs to another profile: create this one without it (the app then asks for one).
+    if (isDuplicatePhoneError(insertErr)) {
+      ({ data: inserted, error: insertErr } = await insertProfile({ ...newProfile, phone: null }));
+    }
 
     if (insertErr) {
       console.error('Error in /api/auth/profile upsert:', insertErr);
@@ -87,5 +94,52 @@ export async function POST(req: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * PATCH /api/auth/profile
+ * Updates the CALLER's phone number. Runs on the server so it works whenever the session cookies are valid, even if
+ * the browser Supabase client has no session (its requests would then run as `anon`, which has no access to profiles).
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const auth = await getAuthenticatedUser(req);
+    if (!auth) {
+      return NextResponse.json({ error: 'Your session has expired. Please log in again.' }, { status: 401 });
+    }
+
+    const parsed = await readJsonObject(req);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const rawPhone = typeof parsed.value.phone === 'string' ? parsed.value.phone : '';
+    const phone = rawPhone.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return NextResponse.json({ error: 'Please enter a valid 10-digit Indian mobile number.' }, { status: 400 });
+    }
+
+    const { data: profile, error } = await getSupabaseAdmin(auth.token)
+      .from('profiles')
+      .update({ phone, updated_at: new Date().toISOString() })
+      .eq('id', auth.user.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      if (isDuplicatePhoneError(error)) {
+        return NextResponse.json({ error: PHONE_IN_USE_ERROR_MESSAGE }, { status: 409 });
+      }
+      console.error('Error in /api/auth/profile PATCH:', error);
+      return NextResponse.json({ error: 'Failed to save phone number. Please try again.' }, { status: 500 });
+    }
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found. Please log in again.' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, profile });
+  } catch (err: unknown) {
+    console.error('API /api/auth/profile PATCH error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

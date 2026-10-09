@@ -3,7 +3,13 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
 import { paymentProofExists } from '@/lib/payment-proofs';
-import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+import {
+  isDuplicatePhoneError,
+  isIterSoaCollege,
+  isIterSoaEmail,
+  ITER_SOA_ERROR_MESSAGE,
+  PHONE_IN_USE_ERROR_MESSAGE,
+} from '@/lib/validation';
 import {
   createRateLimiter,
   generateRegistrationId,
@@ -214,6 +220,9 @@ export async function POST(req: NextRequest) {
           { error: 'This UPI transaction ID (UTR) has already been used for another registration.' },
           { status: 409 }
         );
+      }
+      if (isDuplicatePhoneError(regError)) {
+        return NextResponse.json({ error: PHONE_IN_USE_ERROR_MESSAGE }, { status: 409 });
       }
       // Unique violation on user_id (concurrent double submit): return the registration that won.
       if (!/registration_id/i.test(`${regError.message} ${regError.details ?? ''}`)) {

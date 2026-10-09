@@ -485,31 +485,29 @@ export async function getOrCreateUserProfile(user: User | null): Promise<UserPro
 }
 
 /**
- * Update user profile
+ * Save the signed-in user's phone number through the server (PATCH /api/auth/profile). A direct client update would
+ * run as `anon` whenever the browser Supabase client has lost its session, and fail with "permission denied".
  */
-export async function updateUserProfile(
-  userId: string,
-  updates: Partial<UserProfile>
+export async function updateUserPhone(
+  phone: string
 ): Promise<{ success: boolean; error?: string; profile?: UserProfile }> {
-  const supabase = getSupabase();
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-      .select()
-      .maybeSingle();
-
-    if (error) {
-      return { success: false, error: error.message };
+    const { data: { session } } = await getSupabase().auth.getSession();
+    const res = await fetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ phone }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: result.error || 'Failed to save phone number. Please try again.' };
     }
-    return { success: true, profile: data as UserProfile };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update profile';
-    return { success: false, error: message };
+    return { success: true, profile: result.profile as UserProfile };
+  } catch {
+    return { success: false, error: 'Network error. Please check your connection and try again.' };
   }
 }
 

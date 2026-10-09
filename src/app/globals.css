@@ -200,6 +200,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hero-cta{width:100%}
   .hero-sub-rule{display:none}
 }
+/* The closing REGISTER / EXPLORE THE WORLDS pair stacks at the same width as the hero buttons on phones. */
+@media (max-width:459px){
+  .cta-pair{flex-direction:column;flex-wrap:nowrap !important;align-items:stretch;width:min(100%,300px)}
+  .cta-pair>a{width:100%}
+}
 
 /* ---------- compact menu ---------- */
 .menu-panel{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#141312;color:#ECE8DF}
@@ -251,15 +256,21 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hp-wave{position:absolute;left:calc(50% - 58vh);bottom:0;width:116vh;height:58vh}
 .hp-asteroid{position:absolute;right:10%;top:-12%;height:88%;pointer-events:none}
 .hp-asteroid-rock{height:18%;margin-top:60vh}
-/* Portrait: sized and centred on the curl and surfer (viewBox x 660-1400, centred on 1030) so they stay on screen,
-   scaled down until the surfer (from y -150) clears the title and the curl (y 250) clears the worlds nav.
-   --s is one viewBox unit in px; 6vw is about half the fitted title's height. */
+.hp-tagline{top:max(88px,12%)}
+/* Portrait: centred on the surfer and its viewfinder (viewBox x 1045-1385, centred on 1215), sized so the curl's lip
+   (x 765) still fits on the left, and scaled down until the surfer (from y -150) clears the title and the curl (y 250)
+   clears the worlds nav. --s is one viewBox unit in px; 6vw is about half the fitted title's height.
+   Vertically, the viewfinder's middle (y 58) sits halfway between the title's foot (50% + 6vw + 2px) and the top of
+   the worlds nav (100% - 135px), so tall phones don't leave the rider hugging the title over an empty gap. */
 @media (orientation:portrait){
-  .hp-wave{--s:max(.2px,min(calc(100vw / 740),calc((50vh - 6vw - 157px) / 400)));left:calc(50% - var(--s) * 1030);top:calc(50% + 6vw + 12px + var(--s) * 150);bottom:auto;width:calc(var(--s) * 1600);height:calc(var(--s) * 800)}
+  .hp-wave{--s:max(.2px,min(calc(100vw / 900),calc((50vh - 6vw - 157px) / 400)));left:calc(50% - var(--s) * 1215);top:calc(75% + 3vw - 66px - var(--s) * 58);bottom:auto;width:calc(var(--s) * 1600);height:calc(var(--s) * 800)}
   /* The asteroid drifts in the open sky left of the surfer, below the title; the caption would run off the right edge. */
   .hp-asteroid{left:6%;right:auto;top:calc(50% + 6vw + 36px);height:min(11vh,22vw)}
   .hp-asteroid-rock{height:100%;margin-top:0}
   .hp-freeze{display:none}
+  /* The tagline that fades in on scroll is centred in the open sky left once the planet scrolls away: between the HUD
+     (about 60px) and the viewfinder's top, which settles 48px above where .hp-wave first puts it (y -115). */
+  .hp-tagline{--s:max(.2px,min(calc(100vw / 900),calc((50vh - 6vw - 157px) / 400)));top:calc(37.5% + 1.5vw - 27px - var(--s) * 86.5);translate:0 -50%}
 }
 
 /* ---------- touchdown field (DetailView.tsx, Main Events) ---------- */
