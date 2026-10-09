@@ -10,6 +10,8 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 img{display:block;max-width:none;user-select:none;-webkit-user-drag:none}
 button{font:inherit;color:inherit}
+/* Native cursor everywhere; anything clickable shows the pointer. :where keeps it at zero specificity so a component's own cursor still wins. */
+:where(a[href],button:not(:disabled),[role=button],[role=tab],[role=link],label[for],select,summary,input[type=checkbox],input[type=radio],input[type=file]){cursor:pointer}
 a{color:#141312}
 a:hover{color:#8a6a2a}
 :focus-visible{outline:2px solid #c9a24a;outline-offset:4px}
@@ -230,7 +232,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 /* Signed in, the LOG IN slot becomes the visitor's profile: an initials badge in the HUD colour plus their first name
    (Hud.tsx); phones get the badge alone. While the first session check runs, the slot shows an empty, dimmed frame. */
 .hud-profile{gap:10px;padding-left:clamp(9px,.7vw,11px) !important}
-.hud-avatar{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;font-size:10.5px;font-weight:800;letter-spacing:.04em;line-height:1;transition:background-color .4s,color .4s}
+.hud-avatar{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;font-size:10.5px;font-weight:800;letter-spacing:.04em;line-height:1}
 .hud-profile-name{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hud-avatar-btn{display:grid;place-items:center;min-width:40px;min-height:40px;color:inherit;text-decoration:none}
 .hud-avatar-btn .hud-avatar{width:30px;height:30px;font-size:11.5px}

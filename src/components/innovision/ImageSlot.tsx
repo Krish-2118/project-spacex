@@ -7,8 +7,6 @@ interface Props {
   fit?: 'cover' | 'contain';
   placeholder?: string;
   style?: CSSProperties;
-  /** Strength of the home page's attract-to-cursor effect (data-attract). */
-  attract?: string;
   /** 'lazy' for slots in secondary views (gallery, store); never on the first screen. */
   loading?: 'lazy' | 'eager';
 }
@@ -19,11 +17,11 @@ const RADIUS = { rect: '', rounded: '12px', circle: '50%', pill: '9999px' };
  * Image placeholder matching the design's <image-slot>: shows the slot's image when one is
  * configured in SLOT_IMAGES, otherwise an empty frame with an icon and caption.
  */
-export default function ImageSlot({ id, shape = 'rounded', fit = 'cover', placeholder = 'Drop an image', style, attract }: Props) {
+export default function ImageSlot({ id, shape = 'rounded', fit = 'cover', placeholder = 'Drop an image', style }: Props) {
   const img = SLOT_IMAGES[id];
   const radius = RADIUS[shape];
   return (
-    <div data-slot={id} data-attract={attract} className="image-slot" style={style}>
+    <div data-slot={id} className="image-slot" style={style}>
       <div className="image-slot-frame" style={{ borderRadius: radius }}>
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element

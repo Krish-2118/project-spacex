@@ -26,7 +26,6 @@ import EventPopup from './EventPopup';
 import AdminDashboard from './AdminDashboard';
 import CartPill from './CartPill';
 import Toast from './Toast';
-import Cursor from './Cursor';
 import WorldHint from './WorldHint';
 import DetailNotice from './DetailNotice';
 import Loader from './Loader';
@@ -299,7 +298,6 @@ export default class Innovision extends Component<Props, State> {
       this.loops();
       this.syncLoops();
       this.parallax();
-      this.magnet();
       this.tapRipple();
       this.attract();
       this.homeScroll();
@@ -940,7 +938,8 @@ export default class Innovision extends Component<Props, State> {
   }
   homeScroll() {
     const sc = this.$('[data-view="home"]');
-    gsap.timeline({ scrollTrigger: { trigger: this.$('[data-hero-wrap]'), scroller: sc, start: 'top top', end: 'bottom top', scrub: true } })
+    // Ends the moment the briefing fully covers the pinned hero.
+    gsap.timeline({ scrollTrigger: { trigger: this.$('[data-hero-wrap]'), scroller: sc, start: 'top top', end: 'bottom bottom', scrub: true } })
       .fromTo(this.$('[data-h-par]'), { scale: 1, yPercent: 0 }, { scale: .93, yPercent: 6, ease: 'none' }, 0)
       .fromTo(this.$('[data-h-dim]'), { opacity: 0 }, { opacity: .3, ease: 'none' }, 0);
     const tun = this.$('[data-tunnel]');
@@ -1396,42 +1395,7 @@ export default class Innovision extends Component<Props, State> {
     this.listen(window, 'mousemove', mm, { passive: true });
     this.cleanups.push(() => cancelAnimationFrame(raf));
   }
-  /** Custom cursor ring/dot plus magnetic pull on [data-magnet] links (home page and HUD). */
-  magnet() {
-    if (matchMedia('(pointer: coarse)').matches) return;
-    const g = gsap, ring = this.$('[data-cursor]')!, dot = this.$('[data-cursor-dot]')!;
-    const rx = g.quickTo(ring, 'x', { duration: .45, ease: 'power3' }), ry = g.quickTo(ring, 'y', { duration: .45, ease: 'power3' });
-    const dx = g.quickTo(dot, 'x', { duration: .1, ease: 'power3' }), dy = g.quickTo(dot, 'y', { duration: .1, ease: 'power3' });
-    const els = this.$$('[data-view="home"] [data-magnet], [data-hud] [data-magnet]');
-    let active: HTMLElement | null = null, shown = false;
-    const release = () => { if (active) { g.to(active, { x: 0, y: 0, duration: 1, ease: 'elastic.out(1,.4)' }); active = null; g.to(ring, { scale: 1, duration: .5, ease: 'expo.out' }); } };
-    const move = (ev: Event) => {
-      const e = ev as globalThis.MouseEvent;
-      const home = this.state.view === 'home', x = e.clientX, y = e.clientY;
-      if (home !== shown) { shown = home; g.to([ring, dot], { autoAlpha: home ? 1 : 0, duration: .4 }); }
-      dx(x); dy(y);
-      if (!home) { release(); rx(x); ry(y); return; }
-      let hit: { el: HTMLElement; cx: number; cy: number; ox: number; oy: number } | null = null;
-      for (const el of els) {
-        const r = el.getBoundingClientRect();
-        if (!r.width) continue;
-        const cx = r.left + r.width / 2 - (Number(g.getProperty(el, 'x')) || 0), cy = r.top + r.height / 2 - (Number(g.getProperty(el, 'y')) || 0);
-        const ox = x - cx, oy = y - cy;
-        if (Math.abs(ox) < r.width / 2 + 40 && Math.abs(oy) < r.height / 2 + 40) { hit = { el, cx, cy, ox, oy }; break; }
-      }
-      if (active && (!hit || hit.el !== active)) release();
-      if (hit) {
-        if (!active) g.to(ring, { scale: 1.9, duration: .5, ease: 'expo.out' });
-        active = hit.el;
-        g.to(hit.el, { x: hit.ox * .3, y: hit.oy * .4, duration: .6, ease: 'power3.out', overwrite: 'auto' });
-        rx(hit.cx + hit.ox * .5); ry(hit.cy + hit.oy * .5);
-      } else { rx(x); ry(y); }
-    };
-    const out = () => { release(); shown = false; g.to([ring, dot], { autoAlpha: 0, duration: .3 }); };
-    this.listen(window, 'mousemove', move, { passive: true });
-    this.listen(document.documentElement, 'mouseleave', out);
-  }
-  /** Elements marked [data-attract] on the home page drift toward the cursor when it is near. */
+  /** The hero INNOVISION letters ([data-attract]) drift toward the cursor when it is near; nothing else on the site follows the pointer. */
   attract() {
     if (matchMedia('(pointer: coarse)').matches || this.reduce) return;
     const els = this.$$('[data-view="home"] [data-attract]') as Attracted[];
@@ -2816,7 +2780,6 @@ export default class Innovision extends Component<Props, State> {
         {s.lazy.bag && <BagPanel v={v} />}
         <CartPill v={v} />
         <Toast v={v} />
-        <Cursor />
         <LoaderV v={v} deps={[]} />
         </LiveV>
       </div>
