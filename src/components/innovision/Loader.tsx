@@ -70,14 +70,6 @@ export default function Loader({ v }: { v: V }) {
             <span data-l-status="">ALIGNING THE ORBITS</span>
           </div>
         </div>
-        <div data-l-fade="" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 26px", marginTop: "6px", fontSize: "11px", fontWeight: "700", letterSpacing: ".26em" }}>
-          {['FLAGSHIP', 'MAIN', 'DTS & FUN'].map((t) => (
-            <span key={t} data-l-world="" style={{ display: "flex", alignItems: "center", gap: "8px", opacity: ".4" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "currentColor" }}></span>
-              {t}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );

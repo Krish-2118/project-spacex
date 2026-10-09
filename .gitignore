@@ -45,6 +45,9 @@ next-env.d.ts
 # Antigravity Skills
 .agents/skills/taste-skill/
 
+# event import: converted poster previews (large binaries; the originals are in Drive and ImageKit)
+/output/previews/
+
 # playwright
 /test-results/
 /playwright-report/

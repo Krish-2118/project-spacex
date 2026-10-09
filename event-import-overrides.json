@@ -1,0 +1,21 @@
+{
+  "exclude": {
+    "Car Show / Automotive Exhibition": "duplicate of \"Car Show\", which is kept",
+    "Roadies Food Saga": "duplicate of \"Roadies: The Food Saga 4.0\", which is kept",
+    "Virtual Car Simulator": "duplicate of \"Virtual racing competition\", which is kept"
+  },
+  "posterFiles": {
+    "Mazehunt": "Genesys_Mazehunt_A3 - Aarya Borkar.png",
+    "Astronaut In Distress": "PARIKRAMAKA_ASTRONAUT_IN_DISTRESS_A3 - Parikramaka Club NITR.png",
+    "OMEGA": "Axiom_Omega_IG_Teaser - AXIOM Questions.png",
+    "Interstellar": "STEELLUN _Interstellar_IG - DEVYANI.png",
+    "FINAL FRONTIER": "FINAL FRONTIER event poster (5) - Sachin Fouzdar.png",
+    "MATERIALVERSE": "BIS_MME_MATERIALVERSE_IG - 124mm0052 (Khistidevyani Bipin).png"
+  },
+  "descriptionFixes": {
+    "REACT": [
+      ["eƯiciently", "efficiently"],
+      ["eƯectively", "effectively"]
+    ]
+  }
+}

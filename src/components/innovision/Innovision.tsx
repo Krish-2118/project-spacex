@@ -713,8 +713,8 @@ export default class Innovision extends Component<Props, State> {
       const cap9 = setTimeout(() => { loaded = N; }, 9000);
       const cnt = this.$('[data-l-count]')!, prog = this.$('[data-l-progress]')!;
       // The three planets swing in from their start angles and lock onto one line as loading
-      // progresses; the dotted link follows them and each locked world lights up below.
-      const R = [24, 36, 50], T = [.34, .67, 1], link = this.$('[data-l-link]'), wl = this.$$('[data-l-world]');
+      // progresses and the dotted link follows them.
+      const R = [24, 36, 50], T = [.34, .67, 1], link = this.$('[data-l-link]');
       // quickSetter writes the same transform as gsap.set without allocating a tween every frame.
       const orbs = this.$$('[data-l-orb]').map((o) => ({ o, rot: gsap.quickSetter(o, 'rotation', 'deg'), i: +(o.dataset.i || 0), a0: +(o.dataset.a0 || 0), lock: o.querySelector('[data-l-lock]'), done: false })).sort((a, b) => a.i - b.i);
       let pts0 = '';
@@ -727,7 +727,6 @@ export default class Innovision extends Component<Props, State> {
           if (q >= 1 && !b.done) {
             b.done = true;
             gsap.fromTo(b.lock, { scale: .6, autoAlpha: 1 }, { scale: 2.6, autoAlpha: 0, duration: 1.1, ease: 'expo.out' });
-            if (wl[b.i]) gsap.to(wl[b.i], { opacity: 1, color: '#8a6a2a', duration: .4 });
           }
         });
         const s = pts.join(' ');
