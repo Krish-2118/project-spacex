@@ -41,7 +41,7 @@ export interface Registration {
   updated_at?: string;
 }
 
-export type EventCategory = 'flagship events' | 'main events' | 'fun events' | 'dts events';
+export type EventCategory = 'flagship events' | 'standout events' | 'main events' | 'dts events' | 'fun events';
 
 export interface EventItem {
   id?: string;

@@ -292,6 +292,27 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 }
 @media (prefers-reduced-motion:reduce){.td-star,.td-flight,.td-hop{animation:none}}
 
+/* ---------- spotlight stage (DetailView.tsx, Standout Events) ---------- */
+/* The moon rises behind the title; the stage is a circle of radius 90vh whose crest sits at 78vh, and the two beams
+   swing up from it toward the title. */
+.sp-moon{--p:min(62vh,40vw);position:absolute;left:calc(50% - var(--p) / 2);top:calc(42% - var(--p) / 2);width:var(--p);height:var(--p);pointer-events:none}
+.sp-sat{position:absolute;left:8%;top:16%;height:min(22vh,16vw);pointer-events:none}
+.sp-star{position:absolute;color:oklch(0.3 0.08 250);translate:-50% -50%;animation:td-twinkle 3.6s ease-in-out infinite}
+.sp-stage{position:absolute;left:calc(50% - 90vh);top:78vh;width:180vh;height:auto}
+.sp-beam{position:absolute;bottom:22vh;width:min(26vh,18vw);height:72vh;transform-origin:50% 100%;clip-path:polygon(46% 100%,54% 100%,100% 0,0 0);background:linear-gradient(0deg,rgba(255,255,255,.5),rgba(255,255,255,.14) 50%,rgba(255,255,255,0) 88%)}
+.sp-beam-l{left:calc(30% - min(13vh,9vw));--a:24deg;animation:sp-sweep 9s ease-in-out infinite}
+.sp-beam-r{right:calc(30% - min(13vh,9vw));--a:-24deg;animation:sp-sweep 9s ease-in-out -4.5s infinite}
+@keyframes sp-sweep{0%,100%{transform:rotate(var(--a))}50%{transform:rotate(calc(var(--a) * .25))}}
+@media (orientation:portrait){
+  .sp-moon{--p:50vw;top:calc(31% - var(--p) / 2)}
+  .sp-sat{left:auto;right:4%;top:12vh;height:8vh}
+  .sp-stage{left:-40vw;top:80vh;width:180vw}
+  .sp-beam{bottom:20vh;width:22vw;height:56vh}
+  .sp-beam-l{left:12vw}
+  .sp-beam-r{right:12vw}
+}
+@media (prefers-reduced-motion:reduce){.sp-star,.sp-beam{animation:none}.sp-beam{transform:rotate(calc(var(--a) * .6))}}
+
 /* ---------- image slot ---------- */
 .image-slot{display:block;position:relative;font:13px/1.3 system-ui,-apple-system,sans-serif;width:100%;height:100%;aspect-ratio:3/2}
 .image-slot-frame{position:absolute;inset:0;overflow:hidden;background:rgba(127,127,127,.08)}
@@ -460,13 +481,20 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   --wc-ring:oklch(0.6 0.1 28 / 0.45);
 }
 .sc-card-shell[data-world="1"]{
+  --wc:#3B6FE0;
+  --wc-border:rgba(59,130,246,0.25);
+  --wc-glow:rgba(59,130,246,0.12);
+  --wc-lift:oklch(0.62 0.14 250 / 0.42);
+  --wc-ring:oklch(0.6 0.1 250 / 0.45);
+}
+.sc-card-shell[data-world="2"]{
   --wc:#7C5CE8;
   --wc-border:rgba(139,92,246,0.25);
   --wc-glow:rgba(139,92,246,0.12);
   --wc-lift:oklch(0.62 0.14 295 / 0.42);
   --wc-ring:oklch(0.6 0.1 295 / 0.45);
 }
-.sc-card-shell[data-world="2"]{
+.sc-card-shell[data-world="3"]{
   --wc:#059669;
   --wc-border:rgba(16,185,129,0.25);
   --wc-glow:rgba(16,185,129,0.12);

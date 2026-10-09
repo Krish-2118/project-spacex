@@ -483,7 +483,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   description TEXT NOT NULL,
   poster_url TEXT NOT NULL,
   brochure_url TEXT, -- Optional Google Drive link
-  category TEXT NOT NULL CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events')),
+  category TEXT NOT NULL CHECK (category IN ('flagship events', 'standout events', 'main events', 'dts events', 'fun events')),
   format TEXT DEFAULT 'Solo / Team',
   duration TEXT DEFAULT 'TBA',
   venue TEXT DEFAULT 'NIT Rourkela',
@@ -504,7 +504,7 @@ BEGIN
     ALTER TABLE public.events ALTER COLUMN duration DROP NOT NULL;
     ALTER TABLE public.events ALTER COLUMN venue DROP NOT NULL;
     ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_category_check;
-    ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'main events', 'fun events', 'dts events'));
+    ALTER TABLE public.events ADD CONSTRAINT events_category_check CHECK (category IN ('flagship events', 'standout events', 'main events', 'dts events', 'fun events'));
     -- Brochure links are rendered as public hrefs: only Google Drive/Docs URLs (never javascript:/data:).
     ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_poster_url_check;
     ALTER TABLE public.events ADD CONSTRAINT events_poster_url_check

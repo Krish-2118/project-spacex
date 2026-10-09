@@ -164,6 +164,52 @@ function TouchdownFront() {
   );
 }
 
+// "Spotlight" (Standout Events) scene: a full moon rising behind the title, picked out by two searchlights sweeping up
+// from a stage on the horizon. The site's mono art is tinted blue to sit in this world's palette.
+const BLUE = "grayscale(1) sepia(.5) hue-rotate(173deg) saturate(1.35) contrast(1.25) brightness(1.03)";
+/** Four-point stars: [x, y, size px, twinkle delay s]. */
+const SP_STARS: [string, string, number, number][] = [['12%', '22%', 26, .4], ['84%', '12%', 30, 1.6], ['70%', '40%', 18, 2.4], ['22%', '58%', 20, 1.1], ['92%', '62%', 14, .2]];
+
+function SpotlightBack() {
+  return (
+    <>
+      <div data-speed="-0.012" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
+        <OrbitBackdrop top="38%" />
+      </div>
+      <div data-speed="-0.12" className="sp-moon">
+        <div data-depth=".2" style={{ position: "relative", width: "100%", height: "100%" }}>
+          <img decoding="async" src="/assets/moon-full.webp" alt="" style={{ width: "100%", height: "100%", filter: BLUE, animation: "iv-drift 10s ease-in-out infinite" }} />
+          <span style={{ position: "absolute", inset: "-12%", borderRadius: "50%", border: "1px dashed rgba(20,19,18,.35)", animation: "iv-spin 90s linear infinite" }}></span>
+        </div>
+      </div>
+      <div data-speed="-0.15" aria-hidden="true" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
+        <div data-depth=".35" style={{ position: "absolute", inset: "0" }}>
+          {SP_STARS.map(([x, y, s, d], k) => (
+            <Sparkle key={k} className="sp-star" style={{ left: x, top: y, width: s, height: s, animationDelay: `-${d}s` }} />
+          ))}
+        </div>
+      </div>
+      <div data-speed="-0.22" data-sx="0.06" className="sp-sat">
+        <div data-depth=".45" style={{ height: "100%" }}>
+          <img decoding="async" src="/assets/satellite.webp" alt="" style={{ height: "100%", width: "auto", transform: "rotate(-12deg)", filter: BLUE + " drop-shadow(0 14px 18px rgba(0,0,0,.2))", animation: "iv-drift 7s ease-in-out infinite" }} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SpotlightFront() {
+  return (
+    <div data-speed="0.18" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
+      <div data-depth=".4" style={{ position: "absolute", inset: "0" }}>
+        <span className="sp-beam sp-beam-l"></span>
+        <span className="sp-beam sp-beam-r"></span>
+        <img decoding="async" src="/assets/planet-moon.webp" alt="" className="sp-stage" style={{ filter: BLUE + " contrast(1.15) brightness(.9)" }} />
+      </div>
+    </div>
+  );
+}
+
 /** Scroll-driven world detail page with missions. */
 export default function DetailView({ v }: { v: V }) {
   const cw = v.cw;
@@ -197,6 +243,7 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
               </>
             )}
+            {v.isSpotlight && <SpotlightBack />}
             {v.isTouchdown && <TouchdownBack />}
             {v.isHighpoint && (
               <>
@@ -267,6 +314,7 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
               </div>
             )}
+            {v.isSpotlight && <SpotlightFront />}
             {v.isTouchdown && <TouchdownFront />}
             {v.isHighpoint && (
               <div data-speed="-0.03" style={{ position: "absolute", inset: "0", pointerEvents: "none" }}>
@@ -406,154 +454,167 @@ export default function DetailView({ v }: { v: V }) {
               <span style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", letterSpacing: ".3em", color: "rgba(236,232,223,.65)" }}><span>EVENTS</span><span>ON BOARD</span></span>
             </div>
           </header>
-          <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,500px),1fr))", gap: "22px" }}>
-            {cw.missions.map((m, mI) => (
+          {/* One block of tickets per group: a world that combines categories (DTS and Fun) titles each one. */}
+          {cw.groups.map((g, gI) => (
+            <div key={g.key} style={{ position: "relative", maxWidth: "1240px", margin: gI ? "72px auto 0" : "0 auto" }}>
+              {g.titleU && (
+                <div data-d-card="" style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "26px" }}>
+                  <span style={{ width: "10px", height: "10px", flex: "none", transform: "rotate(45deg)", background: cw.accentL }}></span>
+                  <h3 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.6vw,40px)", lineHeight: "1", letterSpacing: ".04em" }}>{g.titleU}</h3>
+                  <span aria-hidden="true" style={{ flex: "1", height: "1.5px", background: "repeating-linear-gradient(90deg,rgba(236,232,223,.3) 0 6px,transparent 6px 12px)" }}></span>
+                  <span style={{ flex: "none", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: cw.accentL }}>{g.count} {g.missions.length === 1 ? "EVENT" : "EVENTS"}</span>
+                </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,500px),1fr))", gap: "22px" }}>
+                {g.missions.map((m) => (
 
-              <article key={m.no} data-d-card="" onMouseEnter={v.beep} style={{ display: "flex" }}>
-                <div
-                  className="hv-ticket"
-                  style={{
-                    "--hv-accent": cw.accentL,
-                    position: "relative",
-                    flex: "1",
-                    display: "grid",
-                    gridTemplateColumns: "120px minmax(0,1fr)",
-                    minHeight: "270px",
-                    background: "#191816",
-                    border: "1px solid rgba(236,232,223,.16)",
-                    borderRadius: "18px",
-                    overflow: "hidden",
-                    WebkitMask: TICKET_MASK,
-                    mask: TICKET_MASK,
-                    transition: "transform .6s cubic-bezier(.25,1,.1,1),border-color .6s cubic-bezier(.25,1,.1,1)",
-                  } as CSSProperties}
-                >
-                  {/* Poster Background with atmospheric sci-fi overlay */}
-                  {m.posterUrl ? (
+                  <article key={m.no} data-d-card="" onMouseEnter={v.beep} style={{ display: "flex" }}>
                     <div
+                      className="hv-ticket"
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        zIndex: 0,
+                        "--hv-accent": cw.accentL,
+                        position: "relative",
+                        flex: "1",
+                        display: "grid",
+                        gridTemplateColumns: "120px minmax(0,1fr)",
+                        minHeight: "270px",
+                        background: "#191816",
+                        border: "1px solid rgba(236,232,223,.16)",
+                        borderRadius: "18px",
                         overflow: "hidden",
-                        pointerEvents: "none",
-                      }}
+                        WebkitMask: TICKET_MASK,
+                        mask: TICKET_MASK,
+                        transition: "transform .6s cubic-bezier(.25,1,.1,1),border-color .6s cubic-bezier(.25,1,.1,1)",
+                      } as CSSProperties}
                     >
-                      <img
-                        src={m.posterUrl}
-                        alt=""
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          opacity: 0.35,
-                          filter: "contrast(1.15) brightness(0.9)",
-                        }}
-                      />
+                      {/* Poster Background with atmospheric sci-fi overlay */}
+                      {m.posterUrl ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            zIndex: 0,
+                            overflow: "hidden",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          <img
+                            src={m.posterUrl}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              opacity: 0.35,
+                              filter: "contrast(1.15) brightness(0.9)",
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background:
+                                "linear-gradient(135deg, rgba(16,15,14,0.94) 0%, rgba(20,19,18,0.85) 45%, rgba(16,15,14,0.78) 100%)",
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            zIndex: 0,
+                            pointerEvents: "none",
+                            background:
+                              "radial-gradient(rgba(236,232,223,.06) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(160deg,#23211e,#191816 70%)",
+                          }}
+                        />
+                      )}
+
+                      {/* Left Column: GATE and Porthole */}
                       <div
                         style={{
-                          position: "absolute",
-                          inset: 0,
-                          background:
-                            "linear-gradient(135deg, rgba(16,15,14,0.94) 0%, rgba(20,19,18,0.85) 45%, rgba(16,15,14,0.78) 100%)",
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        zIndex: 0,
-                        pointerEvents: "none",
-                        background:
-                          "radial-gradient(rgba(236,232,223,.06) 1px,transparent 1.3px) 0 0/14px 14px,linear-gradient(160deg,#23211e,#191816 70%)",
-                      }}
-                    />
-                  )}
-
-                  {/* Left Column: GATE and Porthole */}
-                  <div
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "16px",
-                      padding: "24px 10px",
-                      borderRight: "1.5px dashed rgba(236,232,223,.22)",
-                    }}
-                  >
-
-                    <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: "rgba(236,232,223,.6)" }}>GATE</span>
-                    <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
-                    <span style={{ position: "relative", width: "80px", height: "80px" }}>
-                      <span style={{ position: "absolute", inset: "0", display: "grid", gridTemplate: "100%/100%", placeItems: "center", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 32% 28%,rgba(236,232,223,.16),transparent 58%),url(/assets/starfield.svg) center/260% auto,#0d0c0b", boxShadow: "inset 0 0 0 3px #2b2926,inset 0 0 0 4px rgba(236,232,223,.3),inset 0 12px 20px rgba(0,0,0,.65)" }}>
-                        <img decoding="async" src={m.img} alt="" style={{ height: "62px", width: "auto", maxWidth: "88%", objectFit: "contain", filter: "grayscale(1) contrast(1.3) brightness(1.15) drop-shadow(0 6px 8px rgba(0,0,0,.5))", animation: "iv-porthole 5s ease-in-out infinite" }} />
-                      </span>
-                      <span style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "1.5px dotted rgba(236,232,223,.4)" }}></span>
-                    </span>
-                  </div>
-
-                  {/* Right Column: Mission Details */}
-                  <div
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px",
-                      padding: "24px clamp(18px,2vw,28px) 20px",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: cw.accentL }}>
-                      <span>{cw.statLU}</span>
-                      <span style={{ color: "rgba(236,232,223,.55)" }}>{cw.serial} · {m.no}</span>
-                    </div>
-
-                    <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1", color: "#ECE8DF" }}>
-                      {m.name}
-                    </h3>
-                    <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>
-                      {m.text}
-                    </p>
-
-                    {/* Bottom Row: barcode, and the arrow that opens this event's poster and rulebook (EventPopup). */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "auto", paddingTop: "20px" }}>
-                      <span aria-hidden="true" style={{ flex: "1", height: "26px", opacity: ".55", background: barcode("#ECE8DF") }}></span>
-                      <button
-                        type="button"
-                        onClick={() => v.openEvent(mI)}
-                        aria-haspopup="dialog"
-                        aria-label={"Poster and rulebook: " + m.name}
-                        className="hv-ticket-open"
-                        style={{
-                          flex: "none",
-                          display: "grid",
-                          placeItems: "center",
-                          width: "48px",
-                          height: "48px",
-                          padding: "0",
-                          borderRadius: "50%",
-                          border: `1.5px solid ${cw.accentL}`,
-                          background: "rgba(236,232,223,0.08)",
-                          color: cw.accentL,
-                          cursor: "pointer",
-                          boxShadow: `0 0 16px color-mix(in oklab, ${cw.accentL} 25%, transparent)`,
+                          position: "relative",
+                          zIndex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "16px",
+                          padding: "24px 10px",
+                          borderRight: "1.5px dashed rgba(236,232,223,.22)",
                         }}
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "18px", height: "18px" }}>
-                          <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2" />
-                        </svg>
-                      </button>
+
+                        <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: "rgba(236,232,223,.6)" }}>GATE</span>
+                        <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "48px", lineHeight: "1", color: cw.accentL }}>{m.no}</span>
+                        <span style={{ position: "relative", width: "80px", height: "80px" }}>
+                          <span style={{ position: "absolute", inset: "0", display: "grid", gridTemplate: "100%/100%", placeItems: "center", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 32% 28%,rgba(236,232,223,.16),transparent 58%),url(/assets/starfield.svg) center/260% auto,#0d0c0b", boxShadow: "inset 0 0 0 3px #2b2926,inset 0 0 0 4px rgba(236,232,223,.3),inset 0 12px 20px rgba(0,0,0,.65)" }}>
+                            <img decoding="async" src={m.img} alt="" style={{ height: "62px", width: "auto", maxWidth: "88%", objectFit: "contain", filter: "grayscale(1) contrast(1.3) brightness(1.15) drop-shadow(0 6px 8px rgba(0,0,0,.5))", animation: "iv-porthole 5s ease-in-out infinite" }} />
+                          </span>
+                          <span style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "1.5px dotted rgba(236,232,223,.4)" }}></span>
+                        </span>
+                      </div>
+
+                      {/* Right Column: Mission Details */}
+                      <div
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "12px",
+                          padding: "24px clamp(18px,2vw,28px) 20px",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: cw.accentL }}>
+                          <span>{m.tag}</span>
+                          <span style={{ color: "rgba(236,232,223,.55)" }}>{cw.serial} · {m.no}</span>
+                        </div>
+
+                        <h3 style={{ margin: "0", fontFamily: "var(--font-cinzel),serif", fontWeight: "900", fontSize: "clamp(24px,2.4vw,34px)", lineHeight: "1.1", color: "#ECE8DF" }}>
+                          {m.name}
+                        </h3>
+                        <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>
+                          {m.text}
+                        </p>
+
+                        {/* Bottom Row: barcode, and the arrow that opens this event's poster and rulebook (EventPopup). */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "auto", paddingTop: "20px" }}>
+                          <span aria-hidden="true" style={{ flex: "1", height: "26px", opacity: ".55", background: barcode("#ECE8DF") }}></span>
+                          <button
+                            type="button"
+                            onClick={() => v.openEvent(m.idx)}
+                            aria-haspopup="dialog"
+                            aria-label={"Poster and rulebook: " + m.name}
+                            className="hv-ticket-open"
+                            style={{
+                              flex: "none",
+                              display: "grid",
+                              placeItems: "center",
+                              width: "48px",
+                              height: "48px",
+                              padding: "0",
+                              borderRadius: "50%",
+                              border: `1.5px solid ${cw.accentL}`,
+                              background: "rgba(236,232,223,0.08)",
+                              color: cw.accentL,
+                              cursor: "pointer",
+                              boxShadow: `0 0 16px color-mix(in oklab, ${cw.accentL} 25%, transparent)`,
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "18px", height: "18px" }}>
+                              <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))}
           <div style={{ position: "relative", display: "flex", justifyContent: "center", marginTop: "96px" }}>
             <a href={v.nw.href} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "6px", textDecoration: "none", color: "#ECE8DF" }}>
               <span style={{ position: "relative", width: "88px", height: "88px", marginBottom: "12px" }}>

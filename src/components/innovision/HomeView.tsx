@@ -125,9 +125,9 @@ export default function HomeView({ v }: { v: V }) {
             ))}
           </h2>
           <div data-reveal="" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(32px,5vw,80px)", marginTop: "clamp(48px,8vh,96px)", paddingTop: "28px", borderTop: "1px solid rgba(20,19,18,.18)" }}>
-            <p style={{ margin: "0", maxWidth: "60ch", fontSize: "18px", lineHeight: "1.65", color: "#2b2926", textWrap: "pretty" }}>Innovision is the techno-management fest of NIT Rourkela. This year it charts a Celestial Odyssey across three worlds: <b>Flagship Events</b> for the technical arena, <b>Main Events</b> for workshops and talks, and <b>DTS and Fun Events</b> for the games, quizzes and showcases where the fest peaks.</p>
+            <p style={{ margin: "0", maxWidth: "60ch", fontSize: "18px", lineHeight: "1.65", color: "#2b2926", textWrap: "pretty" }}>Innovision is the techno-management fest of NIT Rourkela. This year it charts a Celestial Odyssey across four worlds: <b>Flagship Events</b> for the technical arena, <b>Standout Events</b> for the signature showcases, <b>Main Events</b> for workshops and talks, and <b>DTS and Fun Events</b> for the games, quizzes and showcases where the fest peaks.</p>
             <dl style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", margin: "0", alignSelf: "start" }}>
-              {[['HOST', 'NIT Rourkela, Odisha'], ['WORLDS', 'Three, each with its own line-up'], ['CREW', 'Students, makers & dreamers']].map(([dt, dd]) => (
+              {[['HOST', 'NIT Rourkela, Odisha'], ['WORLDS', 'Four, each with its own line-up'], ['CREW', 'Students, makers & dreamers']].map(([dt, dd]) => (
                 <div key={dt} style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0 18px", borderLeft: "1px dashed rgba(20,19,18,.3)" }}>
                   <dt style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".28em", color: "#8a6a2a" }}>{dt}</dt>
                   <dd style={{ margin: "0", fontSize: "16px", fontWeight: "500", lineHeight: "1.4" }}>{dd}</dd>
@@ -142,7 +142,7 @@ export default function HomeView({ v }: { v: V }) {
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto" }}>
           <header data-reveal="" style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "48px" }}>
             <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>The Odyssey Map</h2>
-            <p style={{ maxWidth: "52ch", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "rgba(236,232,223,.8)", textWrap: "pretty" }}>Three worlds, three kinds of mission. Each one opens into its own line-up of events.</p>
+            <p style={{ maxWidth: "52ch", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "rgba(236,232,223,.8)", textWrap: "pretty" }}>Four worlds, four kinds of mission. Each one opens into its own line-up of events.</p>
           </header>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "14px" }}>
             {v.worlds.map((w, wI) => (

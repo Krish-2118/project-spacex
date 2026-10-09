@@ -1211,7 +1211,7 @@ export default class Innovision extends Component<Props, State> {
     const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
     const dur = (m: number) => m >= 600 ? Math.round(m / 60) + ' HRS' : m >= 120 && m % 60 === 0 ? m / 60 + ' HRS' : m + ' MIN';
     const count = (n: number) => n + (n === 1 ? ' event' : ' events');
-    const names = ['FLAGSHIP', 'MAIN', 'FUN'];
+    const names = ['FLAGSHIP', 'STANDOUT', 'MAIN', 'FUN'];
     const nar = s.narrow;
     const starred = list.filter((x) => s.saved.includes(x.id)).length;
     return {
@@ -1346,7 +1346,7 @@ export default class Innovision extends Component<Props, State> {
     if (this.busy || this.state.view !== 'worlds') return;
     this.dismissHint();
     this.slideDir = d;
-    this.go('#/worlds/' + WORLDS[(this.state.index + d + 3) % 3].slug, true);
+    this.go('#/worlds/' + WORLDS[(this.state.index + d + WORLDS.length) % WORLDS.length].slug, true);
   }
   navTo(k: number) {
     const key = WORLDS[k].slug;
@@ -2520,7 +2520,7 @@ export default class Innovision extends Component<Props, State> {
 
   renderVals() {
     // Handlers below read this.state when they run: memoised views may hold an older v.
-    const s = this.state, i = s.index, w = WORLDS[i], dw = WORLDS[s.dIndex], nx = WORLDS[(s.dIndex + 1) % 3];
+    const s = this.state, i = s.index, w = WORLDS[i], dw = WORLDS[s.dIndex], nx = WORLDS[(s.dIndex + 1) % WORLDS.length];
     const navOn = s.view === 'worlds' || s.view === 'detail';
     const act = s.view === 'merch' ? 'merch' : s.view === 'gallery' ? 'gallery' : s.view === 'schedule' ? 'schedule' : navOn ? 'events' : 'home';
     const routed = (k: string) => k === 'events' || k === 'merch' || k === 'gallery' || k === 'schedule';
@@ -2560,7 +2560,7 @@ export default class Innovision extends Component<Props, State> {
             x,
             y,
             ar,
-            c: TUNNEL_C[k % 3],
+            c: TUNNEL_C[k % TUNNEL_C.length],
             imageUrl: photo ? photo.image_url : undefined,
           };
         });
@@ -2609,7 +2609,7 @@ export default class Innovision extends Component<Props, State> {
       heroSparks: HERO_SPARKS,
       loaderSparks: LOADER_SPARKS,
       worlds: WORLDS.map((x, k) => ({
-        ...x, secNo: String(k + 1).padStart(2, '0'), sealText: x.statL.toUpperCase() + ' · ' + x.category.toUpperCase() + ' · ',
+        ...x, secNo: String(k + 1).padStart(2, '0'), secTotal: String(WORLDS.length).padStart(2, '0'), sealText: x.statL.toUpperCase() + ' · ' + x.category.toUpperCase() + ' · ',
         href: '#/world/' + x.slug, stroke: 'color-mix(in oklab, ' + x.ink + ' 36%, transparent)', statLU: x.statL.toUpperCase(), categoryU: x.category.toUpperCase(),
         astroBottom: x.astroSit ? 'calc(100% - 7vh)' : 'calc(100% - 3.5vh)', astroH: x.astroSit ? (s.narrow ? '32vh' : '42vh') : (s.narrow ? '30vh' : '40vh'),
         onExplore: () => this.go('#/world/' + x.slug),
@@ -2617,43 +2617,46 @@ export default class Innovision extends Component<Props, State> {
       })),
 
       cw: (() => {
-        const catEvents = (s.dbEvents || []).filter((ev) => {
-          if (!ev.category) return true;
-          const cat = ev.category.toLowerCase().trim();
-          if (dw.key === 'takeoff') {
-            return cat === 'flagship events' || cat.includes('flagship') || cat.includes('tech');
-          }
-          if (dw.key === 'touchdown') {
-            return cat === 'main events' || cat.includes('main') || cat.includes('workshop');
-          }
-          if (dw.key === 'highpoint') {
-            return cat === 'fun events' || cat === 'dts events' || cat.includes('fun') || cat.includes('dts');
-          }
-          return true;
-        });
+        // Events belong to the world that lists their category; an event without one shows in every world.
+        const catEvents = (s.dbEvents || []).filter((ev) => !ev.category || dw.categories.includes(ev.category.toLowerCase().trim()));
 
         const useDynamic = catEvents.length > 0;
-        const missions = useDynamic
-          ? catEvents.map((ev, k) => ({
-              no: String(k + 1).padStart(2, '0'),
+        const list = useDynamic
+          ? catEvents.map((ev) => ({
               name: ev.title,
               text: ev.description,
-              format: '',
-              dur: '',
-              img: A + dw.gates[k % dw.gates.length],
+              cat: (ev.category || '').toLowerCase().trim(),
               posterUrl: ev.poster_url || '',
               brochureUrl: ev.brochure_url && isValidGoogleDriveUrl(ev.brochure_url) ? ev.brochure_url : '',
             }))
-          : dw.missions.map(([name, text], k) => ({
+          : dw.missions.map(([name, text, , , cat]) => ({ name, text, cat: cat || '', posterUrl: '', brochureUrl: '' }));
+
+        // A world that combines categories (DTS and Fun) lists each one under its own heading, in dw.groups order;
+        // anything that fits none of them (no category) closes the list untitled.
+        const sections = dw.groups
+          ? [...dw.groups.map(([cat, title]) => ({ key: cat, title, items: list.filter((m) => m.cat === cat) })),
+             { key: 'other', title: '', items: list.filter((m) => !dw.groups!.some(([cat]) => cat === m.cat)) }]
+          : [{ key: 'all', title: '', items: list }];
+        // Numbered in display order; idx is the ticket's place in missions, which the event popup reads.
+        let n = 0;
+        const groups = sections.filter((g) => g.items.length).map((g) => ({
+          key: g.key,
+          titleU: g.title.toUpperCase(),
+          count: String(g.items.length).padStart(2, '0'),
+          missions: g.items.map((m) => {
+            const k = n++;
+            return {
+              ...m,
+              idx: k,
               no: String(k + 1).padStart(2, '0'),
-              name,
-              text,
+              tag: g.title ? g.title.toUpperCase() : dw.statL.toUpperCase(),
               format: '',
               dur: '',
               img: A + dw.gates[k % dw.gates.length],
-              posterUrl: '',
-              brochureUrl: '',
-            }));
+            };
+          }),
+        }));
+        const missions = groups.flatMap((g) => g.missions);
 
         return {
           ...dw,
@@ -2668,6 +2671,7 @@ export default class Innovision extends Component<Props, State> {
           specs: dw.specs.map(([k, v], j) => ({ k, v, i: String(j + 1).padStart(2, '0') })),
           missionCount: String(missions.length).padStart(2, '0'),
           missions,
+          groups,
         };
       })(),
       nw: { href: '#/world/' + nx.slug, nameU: nx.name.toUpperCase(), planet: nx.planet },
@@ -2676,7 +2680,7 @@ export default class Innovision extends Component<Props, State> {
       closeEvent: () => this.setState({ eventPop: null }),
 
       titleShadow: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${n}px ${n}px 0 ${dw.accent}`).join(', '),
-      isTakeoff: dw.key === 'takeoff', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
+      isTakeoff: dw.key === 'takeoff', isSpotlight: dw.key === 'spotlight', isTouchdown: dw.key === 'touchdown', isHighpoint: dw.key === 'highpoint',
       isDetail: s.view === 'detail',
       compact: s.compact, notCompact: !s.compact,
       taglineW: s.compact ? '88vw' : 'min(640px, 34vw)',
@@ -2684,6 +2688,7 @@ export default class Innovision extends Component<Props, State> {
       backHref: '#/worlds/' + w.slug,
       nav: WORLDS.map((x, k) => ({ no: String(k + 1).padStart(2, '0'), label: x.name.toUpperCase(), current: k === i, color: k === i ? '#ECE8DF' : 'rgba(20,19,18,.72)', onClick: () => this.navTo(k) })),
       navX: (i * 100) + '%',
+      navW: (100 / WORLDS.length) + '%',
       navGlow: '#141312',
       navO: navOn ? 1 : 0, navY: navOn ? '0px' : '30px', navPE: (navOn ? 'auto' : 'none') as 'auto' | 'none',
       navBottom: s.narrow ? 'calc(clamp(16px,2.6vw,44px) + 40px)' : 'clamp(16px,2.6vw,44px)',
@@ -2693,9 +2698,9 @@ export default class Innovision extends Component<Props, State> {
         if (sc && hw) sc.scrollTo({ top: hw.offsetTop + hw.offsetHeight, behavior: this.reduce ? 'auto' : 'smooth' });
       },
       hintOn: s.hint && s.view === 'worlds' && !s.auth && !s.menu,
-      // Entering is spelled out by the world's Enter button; the guide covers what isn't on screen: there are three worlds.
+      // Entering is spelled out by the world's Enter button; the guide covers what isn't on screen: there are four worlds.
       // Name only the controls this screen shows: no side arrows on narrow screens, no keys on touch.
-      hintMain: s.coarse ? 'Swipe left or right to visit all three worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all three worlds' : 'Use the side arrows or ← → keys to visit all three worlds',
+      hintMain: s.coarse ? 'Swipe left or right to visit all four worlds' : s.narrow ? 'Use the ← → keys or the switcher below to visit all four worlds' : 'Use the side arrows or ← → keys to visit all four worlds',
       hintSub: s.coarse ? 'Tap Enter, or the planet itself, to step inside one.' : 'Hover over a planet, then click Enter to step inside.',
       dismissHint: this.dismissHint,
       aboutVis: (s.about ? 'visible' : 'hidden') as 'visible' | 'hidden', aboutDelay: s.about ? '0s' : '.8s', aboutO: s.about ? 1 : 0, aboutX: s.about ? '0%' : '100%',

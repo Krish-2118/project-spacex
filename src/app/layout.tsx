@@ -19,7 +19,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "INNOVISION 2026 · The Celestial Odyssey · NIT Rourkela",
   description:
-    "Innovision is the techno-management fest of NIT Rourkela. Three worlds, one celestial odyssey: Flagship Events, Main Events, and DTS and Fun Events.",
+    "Innovision is the techno-management fest of NIT Rourkela. Four worlds, one celestial odyssey: Flagship Events, Standout Events, Main Events, and DTS and Fun Events.",
 };
 
 export const viewport: Viewport = {

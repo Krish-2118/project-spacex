@@ -25,7 +25,7 @@ export default function WorldsView({ v }: { v: V }) {
           <div aria-hidden="true" style={{ position: "absolute", left: "calc(clamp(16px,2.6vw,44px) + 36px)", top: "calc(72px + 3vh)", display: "flex", flexDirection: "column", gap: "7px", fontSize: "11px", fontWeight: "700", letterSpacing: ".28em", color: w.ink, pointerEvents: "none" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: w.accent, animation: "iv-blink 1.6s steps(2) infinite" }}></span>
-              {w.statLU} · SECTOR {w.secNo}/03
+              {w.statLU} · SECTOR {w.secNo}/{w.secTotal}
             </span>
             <span style={{ paddingLeft: "17px", fontWeight: "500", opacity: ".8" }}>{w.coord}</span>
           </div>
