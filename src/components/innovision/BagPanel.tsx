@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
-import { Sparkle } from './icons';
 import type { V } from './types';
 
 /** Shopping bag drawer (opened from the store's cart pill). */
@@ -20,7 +19,6 @@ export default function BagPanel({ v }: { v: V }) {
         <div data-noscroll="" style={{ flex: "1", overflowY: "auto", scrollbarWidth: "none", padding: "8px clamp(22px,3vw,36px)" }}>
           {v.bagEmpty && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", padding: "64px 0", textAlign: "center", color: "#4a4641" }}>
-              <Sparkle style={{ width: "22px", height: "22px", color: "#8a6a2a" }} />
               <p style={{ margin: "0", maxWidth: "260px", fontSize: "15px", lineHeight: "1.6" }}>Your bag is floating in zero gravity. Add something from the collection.</p>
             </div>
           )}

@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
-import { Sparkle } from './icons';
 import ImageSlot from './ImageSlot';
 import type { V } from './types';
 
@@ -11,7 +10,7 @@ export default function MerchView({ v }: { v: V }) {
         <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".7", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "28px" }}>
           <div data-m-reveal="">
-            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH · INNOVISION 2026</p>
+            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}>OFFICIAL MERCH · INNOVISION 2026</p>
             <h1 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8vw,140px)", lineHeight: ".95" }}>The Odyssey Store</h1>
           </div>
           <p data-m-reveal="" style={{ maxWidth: "400px", margin: "0", fontSize: "17px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Limited-run gear for the crew. Pre-order now, collect at the merch desk during the fest.</p>

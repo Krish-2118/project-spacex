@@ -1,4 +1,3 @@
-import { Sparkle } from './icons';
 import type { V } from './types';
 
 /** A tiny seeded random generator (mulberry32), so every render draws the same clouds on server and client. */
@@ -71,7 +70,6 @@ export default function Curtain({ v }: { v: V }) {
           <Clouds l={l} />
           {k === LAYERS.length - 1 ? (
             <div style={{ position: "relative", height: "calc(100vh + 4px)", margin: "-2px 0", background: l.color, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "14px", textAlign: "center", color: "#141312", padding: "0 20px" }}>
-              <Sparkle data-c-spark="" style={{ width: "22px", height: "22px" }} />
               <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".34em" }}>{v.curtainKicker}</span>
               <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,6vw,96px)", lineHeight: "1", letterSpacing: ".02em" }}>{v.curtainLabel}</span>
             </div>

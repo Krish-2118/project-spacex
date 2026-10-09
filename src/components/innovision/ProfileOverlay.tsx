@@ -243,7 +243,7 @@ export default function ProfileOverlay({
                     color: isInternal ? 'oklch(0.8 0.12 85)' : 'rgba(236,232,223,0.6)',
                   }}
                 >
-                  {isInternal ? '✦ NIT ROURKELA STUDENT (INTERNAL)' : '✦ EXTERNAL VISITOR'}
+                  {isInternal ? 'NIT ROURKELA STUDENT (INTERNAL)' : 'EXTERNAL VISITOR'}
                 </span>
               </div>
             </div>

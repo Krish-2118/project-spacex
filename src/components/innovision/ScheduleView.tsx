@@ -333,7 +333,7 @@ export default function ScheduleView({ v }: { v: V }) {
           <img decoding="async" loading="lazy" data-sc-planet="" src="/assets/planet-crescent.webp" alt="" style={{ width: "100%", height: "100%", animation: "iv-drift 12s ease-in-out infinite" }} />
         </div>
         <div className="sc-hero-copy">
-          <p data-sc-reveal="" style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: GOLD }}><Sparkle style={{ width: "12px", height: "12px" }} />FLIGHT PLAN · INNOVISION 2026</p>
+          <p data-sc-reveal="" style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: GOLD }}>FLIGHT PLAN · INNOVISION 2026</p>
           <h1 data-sc-reveal="" className="sc-title">Mission Schedule</h1>
           <p data-sc-reveal="" className="sc-lede">Three days and {v.schedTotal} events across NIT Rourkela. Pick a day, swipe through it by time, and star the ones you can&apos;t miss.</p>
         </div>

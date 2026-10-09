@@ -281,11 +281,9 @@ export default function DetailView({ v }: { v: V }) {
                 </div>
               )}
               <h1 data-d-title="" data-size={v.isTouchdown ? "clamp(48px, 10vw, 200px)" : undefined} aria-label={cw.name} style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(56px,13vw,250px)", lineHeight: "1", letterSpacing: "-.01em", whiteSpace: "nowrap", color: cw.ink, textShadow: v.titleShadow }}>
-                {cw.chars.map((c, cI) => (v.isTouchdown && !c.ch.trim() ? (
-                  <span key={cI} data-d-ch="" style={{ display: "inline-block", margin: "0 .14em", verticalAlign: ".22em" }}><Sparkle style={{ display: "block", width: ".34em", height: ".34em", color: cw.accent }} /></span>
-                ) : (
+                {cw.chars.map((c, cI) => (
                   <span key={cI} data-d-ch="" style={{ display: "inline-block" }}>{c.ch}</span>
-                )))}
+                ))}
               </h1>
               {cw.sub && <p data-d-sub="" className="td-sub" style={{ margin: ".9em 0 0", fontWeight: "700", textTransform: "uppercase", color: cw.ink }}>{cw.sub}</p>}
             </div>
@@ -371,7 +369,6 @@ export default function DetailView({ v }: { v: V }) {
                         <text style={{ fontSize: "20px", fontWeight: "700", letterSpacing: "3px", fill: "currentColor" }}><textPath href={"#stamp-" + cw.key}>{cw.stampText}</textPath></text>
                       </svg>
                     </span>
-                    <Sparkle style={{ position: "absolute", left: "50%", top: "50%", width: "24px", height: "24px", margin: "-12px 0 0 -12px" }} />
                   </span>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px", marginBottom: "6px", paddingRight: "44px" }}>
                     <span style={{ fontFamily: "var(--font-display)", whiteSpace: "nowrap", fontWeight: "400", fontSize: "clamp(17px,1.35vw,22px)", color: "#141312" }}>Flight data</span>
@@ -396,10 +393,6 @@ export default function DetailView({ v }: { v: V }) {
 
             <CornerFrame color={cw.frame} rulers={['34%', '30%']} />
             <div data-d-fade="" style={{ position: "absolute", left: "0", right: "0", bottom: "0", height: "45%", background: "linear-gradient(180deg,rgba(20,19,18,0),#141312 85%)", pointerEvents: "none" }}></div>
-            <div data-d-hint="" aria-hidden="true" style={{ position: "absolute", left: "0", right: "0", bottom: "calc(clamp(16px,2.6vw,44px) + 110px)", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", fontSize: "12px", letterSpacing: ".3em", color: cw.ink, pointerEvents: "none" }}>
-              <span>SCROLL</span>
-              <i data-hint-line="" style={{ display: "block", width: "1.5px", height: "38px", background: `linear-gradient(${cw.ink},transparent)` }}></i>
-            </div>
           </div>
         </div>
 
@@ -414,7 +407,7 @@ export default function DetailView({ v }: { v: V }) {
             <div style={{ display: "inline-flex", whiteSpace: "nowrap", animation: "iv-tick 40s linear infinite" }}>
               {cw.ticker.map((b, bI) => (
                 <span key={bI} style={{ display: "inline-flex", alignItems: "center", gap: "clamp(14px,1.4vw,22px)", paddingRight: "clamp(14px,1.4vw,22px)", fontWeight: "700", fontSize: "clamp(11px,1vw,15px)", letterSpacing: ".08em", lineHeight: "1", textTransform: "uppercase" }}>
-                  <Sparkle style={{ width: ".8em", height: ".8em", flex: "none" }} />{b.t}
+                  <span aria-hidden="true" style={{ width: ".4em", height: ".4em", flex: "none", borderRadius: "50%", background: "currentColor" }}></span>{b.t}
                 </span>
               ))}
             </div>

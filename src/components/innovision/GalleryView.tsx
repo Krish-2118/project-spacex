@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element -- decorative layers are animated directly by GSAP */
-import { Sparkle } from './icons';
 import ImageSlot from './ImageSlot';
 import type { V } from './types';
 
@@ -32,7 +31,7 @@ export default function GalleryView({ v }: { v: V }) {
         </div>
       </div>
       <div data-g-ui="" style={{ position: "absolute", left: "clamp(16px,2.6vw,44px)", bottom: "calc(clamp(16px,2.6vw,44px) + 56px)", pointerEvents: "none", mixBlendMode: "difference", color: "#fff" }}>
-        <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 10px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.84 0.09 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />THE ARCHIVE</p>
+        <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 10px", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.84 0.09 85)" }}>THE ARCHIVE</p>
         <h1 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,7vw,112px)", lineHeight: ".9" }}>Gallery</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: "14px", marginTop: "18px", fontSize: "13px", letterSpacing: ".18em" }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "28px", letterSpacing: "0" }}>{v.gCur.no}</span>
@@ -42,12 +41,6 @@ export default function GalleryView({ v }: { v: V }) {
       </div>
       <div data-g-ui="" style={{ position: "absolute", right: "clamp(16px,2.6vw,44px)", top: "50%", marginTop: "-90px", width: "1.5px", height: "180px", background: "rgba(236,232,223,.2)", pointerEvents: "none" }}>
         <span data-g-bar="" style={{ position: "absolute", inset: "0", background: "#ECE8DF", transformOrigin: "top", transform: "scaleY(0)" }}></span>
-      </div>
-      <div data-g-ui="" style={{ position: "absolute", left: "0", right: "0", bottom: "calc(clamp(16px,2.6vw,44px) + 6px)", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-        <div data-g-hint="" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", fontSize: "12px", letterSpacing: ".3em", transition: "opacity .6s" }}>
-          <span>SCROLL TO TRAVEL INWARD</span>
-          <i data-hint-line="" style={{ display: "block", width: "1.5px", height: "30px", background: "linear-gradient(#ECE8DF,transparent)" }}></i>
-        </div>
       </div>
       <div data-g-end="" style={{ position: "absolute", inset: "0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "0 20px", textAlign: "center", color: "#141312", opacity: "0", pointerEvents: "none", transition: "opacity .6s" }}>
         <p style={{ margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em" }}>END OF THE ARCHIVE</p>

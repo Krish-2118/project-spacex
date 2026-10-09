@@ -39,7 +39,6 @@ export default function HomeView({ v }: { v: V }) {
             {/* Own layer: the cursor pull nudges it every frame, which otherwise re-rasters the starfield. */}
             <div data-hero-disc="" data-attract=".03" className="hero-disc" style={{ borderRadius: "50%", background: "#141312", overflow: "hidden", willChange: "transform" }}>
               <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".95" }} />
-              <span aria-hidden="true" style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
               <span aria-hidden="true" style={{ position: "absolute", inset: "18%", borderRadius: "50%", border: "1px dashed rgba(236,232,223,.12)" }}></span>
               <span style={{ position: "absolute", inset: "4%", borderRadius: "50%", border: "1px solid rgba(236,232,223,.14)" }}></span>
             </div>
@@ -48,40 +47,30 @@ export default function HomeView({ v }: { v: V }) {
                 <Sparkle data-twinkle="" style={{ display: "block", width: "100%", height: "100%" }} />
               </div>
             ))}
-            <div data-depth=".6" className="hero-planet" style={{ pointerEvents: "none" }}>
-              <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
-                {/* The storm texture is lit from one side, so it holds still instead of spinning. */}
-                <img decoding="async" src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
-              </div>
-            </div>
-            <div data-depth=".4" className="hero-astro" style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
-              <div data-h-astro="" data-attract=".14" style={{ width: "100%", height: "100%" }}>
-                {/* Same box and tilt as the image, so the bob moves it exactly as before while the filter stays static. */}
-                <div data-bob="" style={{ width: "fit-content", height: "100%", marginLeft: "auto", transform: "rotate(-8deg)" }}>
-                  <img decoding="async" src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
-                </div>
-              </div>
-            </div>
             <div className="hero-copy" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", pointerEvents: "none" }}>
               {/* Wide screens: display contents, so copy and buttons share one centred column. Stacked screens: a box the size of the disc. */}
               <div className="hero-copy-disc">
                 <div data-h-kicker="" data-attract=".1" className="hero-kicker" style={{ display: "flex", alignItems: "center", color: "#ECE8DF", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
-                  <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
                   <span className="hero-track">NIT ROURKELA PRESENTS</span>
-                  <Sparkle className="hero-kicker-star" style={{ color: "oklch(0.8 0.12 85)" }} />
                 </div>
                 <h1 aria-label="Innovision" className="hero-title" style={{ display: "flex", fontFamily: "var(--font-display)", fontWeight: "400", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
                   {v.heroChars.map((c, cI) => (
                     <span key={cI} data-h-ch="" data-attract=".22" style={{ display: "inline-block" }}>{c.ch}</span>
                   ))}
                 </h1>
-                <div data-h-sub="" data-attract=".1" className="hero-sub" style={{ display: "flex", alignItems: "center", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
+                {/* Radar sweep, painted just above the title with lighten: it brightens the dark disc but not the letters, so it reads
+                    as passing behind INNOVISION (under the difference-blended title it dimmed them instead). Same box and cursor pull
+                    as the disc; the subtitle, buttons, planet and astronaut are painted after it, so they stay in front of it. */}
+                <div data-hero-sweep="" data-attract=".03" aria-hidden="true" className="hero-sweep" style={{ borderRadius: "50%", overflow: "hidden", mixBlendMode: "lighten", pointerEvents: "none" }}>
+                  <span style={{ position: "absolute", inset: "0", borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0 292deg,rgba(236,232,223,.16) 360deg)", animation: "iv-spin 14s linear infinite" }}></span>
+                </div>
+                <div data-h-sub="" data-attract=".1" className="hero-sub" style={{ position: "relative", display: "flex", alignItems: "center", color: "oklch(0.8 0.12 85)", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
                   <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
                   <span className="hero-track">2026 · THE CELESTIAL ODYSSEY</span>
                   <span className="hero-sub-rule" style={{ height: "1px", background: "currentColor" }}></span>
                 </div>
               </div>
-              <div className="hero-ctas" style={{ display: "flex", justifyContent: "center", pointerEvents: "auto" }}>
+              <div className="hero-ctas" style={{ position: "relative", zIndex: "1", display: "flex", justifyContent: "center", pointerEvents: "auto" }}>
                 <div data-h-cta="" className="hero-cta-slot">
                   <a data-magnet="" href="#/worlds/flagship-events" onMouseEnter={v.hover} className="hero-cta hero-cta-primary hv-gold-fill" style={{ clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1), color .4s cubic-bezier(.25,1,.1,1)" }}>
                     <span data-scr="">BEGIN THE ODYSSEY</span>
@@ -97,23 +86,27 @@ export default function HomeView({ v }: { v: V }) {
                 </div>
               </div>
             </div>
-            {/* Scroll cue: sits on the HUD's bottom line in the same frosted chip, so it reads over the paper and the dark disc alike. Clicking it scrolls on.
-                Stacked screens drop it: there it would collide with INSTAGRAM. */}
-            <div className="hero-scroll" style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(16px,2.6vw,44px)", zIndex: "3", justifyContent: "center", marginBottom: "-8px", pointerEvents: "none" }}>
-            <button data-h-scroll="" type="button" onClick={v.scrollNext} className="hv-scroll-cue" style={{ display: "inline-flex", alignItems: "center", gap: "12px", padding: "9px 18px 9px 14px", pointerEvents: "auto", border: "1px solid rgba(20,19,18,.14)", borderRadius: "999px", background: "rgba(236,232,223,.88)", backdropFilter: "blur(14px) saturate(1.2)", WebkitBackdropFilter: "blur(14px) saturate(1.2)", boxShadow: "0 12px 30px -16px rgba(20,19,18,.45)", color: "#141312", cursor: "pointer", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", whiteSpace: "nowrap" }}>
-              <svg viewBox="0 0 16 24" aria-hidden="true" style={{ width: "15px", height: "23px", overflow: "visible" }}>
-                <rect x="1" y="1" width="14" height="22" rx="7" fill="none" stroke="currentColor" strokeWidth="1.6"></rect>
-                <circle data-scroll-wheel="" cx="8" cy="7" r="1.9" fill="currentColor"></circle>
-              </svg>
-              <span>SCROLL TO EXPLORE</span>
-            </button>
+            {/* Planet and astronaut come after the copy so they stay in front of the radar sweep, as they are in front of the disc. */}
+            <div data-depth=".6" className="hero-planet" style={{ pointerEvents: "none" }}>
+              <div data-h-planet="" data-attract=".1" style={{ width: "100%", height: "100%" }}>
+                {/* The storm texture is lit from one side, so it holds still instead of spinning. */}
+                <img decoding="async" src="/assets/planet-storm.webp" alt="" style={{ width: "100%", height: "100%", filter: "grayscale(1) contrast(1.35) brightness(1.05)" }} />
+              </div>
+            </div>
+            <div data-depth=".4" className="hero-astro" style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "none" }}>
+              <div data-h-astro="" data-attract=".14" style={{ width: "100%", height: "100%" }}>
+                {/* Same box and tilt as the image, so the bob moves it exactly as before while the filter stays static. */}
+                <div data-bob="" style={{ width: "fit-content", height: "100%", marginLeft: "auto", transform: "rotate(-8deg)" }}>
+                  <img decoding="async" src="/assets/indian-astronaut.webp" alt="Astronaut drifting beside the celestial disc" style={{ height: "100%", width: "auto", filter: "grayscale(1) contrast(1.12) drop-shadow(0 24px 30px rgba(0,0,0,.35))" }} />
+                </div>
+              </div>
             </div>
             <CornerFrame color="rgba(20,19,18,.5)">
               <span className="hero-coords" style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", fontSize: "11px", fontWeight: "700", letterSpacing: ".3em", color: "#141312" }}>22.2533° N · 84.9011° E · NIT ROURKELA</span>
             </CornerFrame>
-            {/* Scroll dimming: black at opacity a matches filter: brightness(1 - a) on the whole hero, but
+            {/* Scroll dimming (z-index 1 like the buttons, which must stay over the planet on phones): black at opacity a matches filter: brightness(1 - a) on the whole hero, but
                 fades on the compositor instead of re-filtering the full-screen scene every frame. */}
-            <div data-h-dim="" aria-hidden="true" style={{ position: "absolute", inset: "0", background: "#000", opacity: "0", willChange: "opacity", pointerEvents: "none" }}></div>
+            <div data-h-dim="" aria-hidden="true" style={{ position: "absolute", inset: "0", zIndex: "1", background: "#000", opacity: "0", willChange: "opacity", pointerEvents: "none" }}></div>
           </div>
         </section>
       </div>
@@ -199,7 +192,7 @@ export default function HomeView({ v }: { v: V }) {
             </div>
           </div>
           <header style={{ position: "absolute", left: "clamp(20px,4vw,64px)", top: "calc(72px + 4vh)", maxWidth: "440px", pointerEvents: "none" }}>
-            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />GALLERY</p>
+            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}>GALLERY</p>
             <h2 data-attract=".05" style={{ margin: "0 0 14px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(34px,4.4vw,68px)", lineHeight: "1" }}>Into the archive</h2>
             <p style={{ margin: "0", fontSize: "16px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Keep scrolling to fly through moments from Innovision past.</p>
           </header>
@@ -213,7 +206,7 @@ export default function HomeView({ v }: { v: V }) {
         <div style={{ maxWidth: "1240px", margin: "0 auto" }}>
           <header data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "end", justifyContent: "space-between", gap: "24px", marginBottom: "56px" }}>
             <div>
-              <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}><Sparkle style={{ width: "12px", height: "12px" }} />OUR CO-PILOTS</p>
+              <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "#8a6a2a" }}>OUR CO-PILOTS</p>
               <h2 data-attract=".05" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1" }}>Sponsors &amp; partners</h2>
             </div>
             <p style={{ maxWidth: "380px", margin: "0", fontSize: "16px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>The brands fuelling Innovision 2026. Full line-up announced closer to launch.</p>
@@ -231,7 +224,7 @@ export default function HomeView({ v }: { v: V }) {
         <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
         <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "clamp(40px,6vw,96px)", alignItems: "center" }}>
           <div data-reveal="">
-            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}><Sparkle style={{ width: "12px", height: "12px" }} />OFFICIAL MERCH</p>
+            <p style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0 0 16px", fontSize: "13px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}>OFFICIAL MERCH</p>
             <h2 data-attract=".05" style={{ margin: "0 0 18px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(40px,5.4vw,88px)", lineHeight: "1" }}>Wear the odyssey.</h2>
             <p style={{ margin: "0 0 32px", maxWidth: "420px", fontSize: "17px", lineHeight: "1.6", color: "rgba(236,232,223,.82)", textWrap: "pretty" }}>Limited-run tees, hoodies and keepsakes. Pre-order online, collect on campus during the fest.</p>
             <a data-magnet="" href="#/merch" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)", color: "#141312", background: "#ECE8DF" }} className="hv-gold-fill">
@@ -262,8 +255,7 @@ export default function HomeView({ v }: { v: V }) {
           <span style={{ width: "2px", height: "70vh", background: "repeating-linear-gradient(180deg,rgba(20,19,18,.45) 0 8px,transparent 8px 18px)" }}></span>
         </div>
         <div data-reveal="" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <Sparkle style={{ width: "28px", height: "28px", color: "#8a6a2a" }} />
-          <h2 data-attract=".05" style={{ margin: "22px 0 22px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
+          <h2 data-attract=".05" style={{ margin: "0 0 22px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(48px,8.4vw,150px)", lineHeight: ".95", letterSpacing: "-.01em" }}>The odyssey<br />awaits.</h2>
           <p style={{ margin: "0 auto 36px", maxWidth: "520px", fontSize: "18px", lineHeight: "1.6", color: "#3a3733", textWrap: "pretty" }}>Innovision 2026 is boarding soon at NIT Rourkela. Claim your seat on the voyage.</p>
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center" }}>
 
