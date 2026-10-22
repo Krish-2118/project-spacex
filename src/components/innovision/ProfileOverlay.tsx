@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useDialogFocus } from './useDialogFocus';
 import type { UserProfile, Registration } from '@/lib/supabase';
 import EntryPassCard from './EntryPassCard';
+import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 
 interface ProfileOverlayProps {
   isOpen: boolean;
@@ -27,6 +29,8 @@ export default function ProfileOverlay({
   onLogout,
   onUpdatePhone,
 }: ProfileOverlayProps) {
+  const dialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(isOpen, dialog, onClose);
   const [editingPhone, setEditingPhone] = useState(false);
   const [phoneVal, setPhoneVal] = useState(user?.phone || '');
   const [phoneError, setPhoneError] = useState('');
@@ -59,6 +63,8 @@ export default function ProfileOverlay({
 
   return (
     <div
+      ref={dialog}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="User Profile"
@@ -425,7 +431,12 @@ export default function ProfileOverlay({
                   </span>
                 </div>
 
-                <EntryPassCard key={`${registration.registration_id}-${registration.status}`} />
+                <EntryPassCard key={`${registration.registration_id}-${registration.status}`} onContinue={onClose} previewPass={REGISTRATION_PREVIEW_ENABLED && user?.id === 'dev-preview-user' ? {
+                  registrationStatus: registration.status,
+                  passStatus: registration.status === 'confirmed' ? 'active' : 'none',
+                  registrationId: registration.registration_id, name: registration.name,
+                  college: registration.college, checkedIn: false, token: null,
+                } : undefined} />
 
                 <button
                   id="view-pass-btn"

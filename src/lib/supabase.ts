@@ -239,6 +239,8 @@ export function cleanAuthUrl() {
       params.delete('token_type');
       params.delete('type');
       params.delete('code');
+      params.delete('auth');
+      params.delete('required');
       const paramStr = params.toString();
       newSearch = paramStr ? `?${paramStr}` : '';
       urlChanged = true;
@@ -565,29 +567,10 @@ export async function updateUserPhone(
 }
 
 /**
- * Fetch existing registration for a user with local caching and server fallback
+ * Fetch the authenticated registration from the backend
  */
 export async function fetchUserRegistration(userId: string, email?: string): Promise<Registration | null> {
-  // Check local cache first for instant rendering
-  if (typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem(`inv_reg_${userId}`) || (email ? localStorage.getItem(`inv_reg_${email}`) : null);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // Copies cached before referral codes existed lack referral_code: those are fetched again below.
-        if (parsed && (parsed.registration_id || parsed.id) && parsed.referral_code) {
-          // Re-verify in background with server
-          setTimeout(() => {
-            fetchUserRegistrationServer(userId, email);
-          }, 50);
-          return parsed as Registration;
-        }
-      }
-    } catch {
-      // Ignore cache errors
-    }
-  }
-
+  // Financial status must come from the authenticated backend, never a cached registration.
   return fetchUserRegistrationServer(userId, email);
 }
 

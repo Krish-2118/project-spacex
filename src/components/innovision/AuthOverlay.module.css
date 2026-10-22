@@ -1,0 +1,69 @@
+.layout { position:relative; display:flex; flex-direction:column; align-items:center; gap:18px; width:100%; max-width:640px; margin:0 auto; padding:10px 24px 32px; transition:max-width .4s ease; }
+.intro { min-width:0; width:100%; text-align:center; --auth-title-size:clamp(32px,3.5vw,46px); }
+.intro p { margin-inline:auto!important; margin-top:12px!important; }
+.intro ol { text-align:left; }
+.panelBody :focus-visible { outline-color:#c8b17a; }
+.previewNote { margin:0 auto 12px; padding:8px 16px; color:#e4d3a4; font:11px/1.5 var(--font-sans),sans-serif; text-align:center; }
+.previewApprove { padding:12px 18px; min-height:44px; border:1px dashed #c8b17a; border-radius:4px; color:#e4d3a4; background:#c8b17a14; cursor:pointer; }
+
+/* When pass view is active — expand to full desktop proportions */
+.layout[data-pass-view="true"],
+.layout[data-approved="true"] {
+  max-width: 1140px !important;
+  width: 100% !important;
+  padding: 8px 24px 32px !important;
+}
+
+.layout[data-pass-view="true"] > .intro,
+.layout[data-approved="true"] > .intro {
+  display: none !important;
+}
+
+.layout[data-pass-view="true"] .panel,
+.layout[data-approved="true"] .panel {
+  max-width: 1140px !important;
+  width: 100% !important;
+}
+
+.layout[data-pass-view="true"] .panelBorder,
+.layout[data-approved="true"] .panelBorder,
+.panelBorder[data-pass-border="true"] {
+  background: transparent !important;
+  padding: 0 !important;
+  clip-path: none !important;
+}
+
+.layout[data-pass-view="true"] .panelBody,
+.layout[data-approved="true"] .panelBody,
+.panelBody[data-pass-panel="true"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  clip-path: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.panel { position:relative; width:100%; min-width:0; max-width:560px; }
+.panelBody { position:relative; padding:clamp(22px,3vw,36px); background:rgba(16,15,14,.9); backdrop-filter:blur(10px); clip-path:polygon(19.5px 0,100% 0,100% calc(100% - 19.5px),calc(100% - 19.5px) 100%,0 100%,0 19.5px); }
+/* Static orbital details give the centered form a setting without rendering work. */
+@media(min-width:1100px) {
+  .layout:not([data-pass-view="true"])::before,
+  .layout:not([data-pass-view="true"])::after { content:''; position:absolute; width:210px; height:210px; border:1px solid rgba(200,177,122,.12); border-radius:50%; pointer-events:none; background:radial-gradient(circle at 50% 0,#c8b17a66 0 2px,transparent 3px); }
+  .layout:not([data-pass-view="true"])::before { left:-214px; top:170px; box-shadow:0 0 0 36px rgba(200,177,122,.025); }
+  .layout:not([data-pass-view="true"])::after { right:-214px; top:330px; width:140px; height:140px; border-style:dashed; }
+}
+@media(max-width:900px) {
+  .layout { gap:22px; padding:16px 20px 36px; }
+  .intro,.panel { width:100%; max-width:540px; justify-self:center; }
+  .intro { padding-top:0; }
+  .layout[data-pass-view="true"] .panel,
+  .layout[data-approved="true"] .panel { max-width: 100% !important; }
+}
+@media(max-width:480px) {
+  .layout { padding-inline:14px; gap:18px; }
+  .panelBody { padding:22px 18px; }
+  .panelBody[data-pass-panel=true] { padding:0 !important; }
+  .layout[data-pass-view="true"],.layout[data-approved="true"] { padding:8px 16px 28px!important; }
+}
+@media(prefers-reduced-motion:reduce) { .layout { transition:none; } }

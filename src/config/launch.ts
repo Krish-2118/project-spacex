@@ -13,8 +13,13 @@
  * REGISTRATIONS_OPEN gates the proxy auth gate, /register, the REGISTER buttons and the /api/register + /api/upload
  * writes (src/lib/registration-gate.ts), the same way in every environment.
  */
-export const REGISTRATIONS_OPEN = false;
+export const REGISTRATIONS_OPEN = true;
 export const MERCH_STORE_OPEN = true;
+
+/** Review-only registration preview. Set false and redeploy to disable ALL mock users,
+ * preview links, simulated uploads and simulated approval. Real API authorization is
+ * always enforced; preview data is kept in memory and never submitted to the backend. */
+export const REGISTRATION_PREVIEW_ENABLED = true;
 
 /** Where the REGISTER buttons point while registrations are closed. */
 export const REGISTRATIONS_SOON_PATH = '/register';

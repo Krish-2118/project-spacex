@@ -19,7 +19,7 @@ const authLimiter = createRateLimiter({ limit: 300, windowMs: 60 * 1000 });
  * user and are rate limited per user in the route instead. CSRF and body-size checks still apply.
  */
 function isPerUserLimitedVenueRoute(pathname: string): boolean {
-  return pathname === '/api/pass' || pathname.startsWith('/api/admin/entry/');
+  return pathname === '/api/pass' || pathname.startsWith('/api/pass/') || pathname.startsWith('/api/admin/entry/');
 }
 
 const tooMany = () =>

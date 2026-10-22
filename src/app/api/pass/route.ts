@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/auth-server';
 import { getSupabaseAsUser } from '@/lib/supabase';
 import { createRateLimiter } from '@/lib/security';
 import { decryptEntryToken, encryptEntryToken, entryPassKey, mintEntryToken } from '@/lib/entry-pass';
+import type { ParticipantPass } from '@/lib/pass-experience';
 
 export const runtime = 'nodejs';
 
@@ -45,22 +46,27 @@ export async function POST(req: NextRequest) {
     }
     const mine = data as MyEntryPass;
 
-    const pass = {
+    const details = await db.from('registrations').select('college')
+      .eq('user_id', auth.user.id).eq('registration_id', mine.registration_id ?? '').maybeSingle();
+    if (details.error) return NextResponse.json({ error: 'Could not load your registration.' }, { status: 500 });
+    const pass: ParticipantPass = {
       registrationStatus: mine.registration_status,
       passStatus: mine.pass_status,
       registrationId: mine.registration_id ?? null,
       name: mine.name ?? null,
+      college: details.data?.college ?? null,
       checkedIn: !!mine.checked_in,
       token: null as string | null,
     };
     if (mine.registration_status !== 'confirmed' || mine.pass_status !== 'active' || !mine.pass) {
-      return NextResponse.json({ success: true, pass });
+      return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
     }
 
     const key = entryPassKey();
     if (!key) {
       console.error('/api/pass: ENTRY_PASS_ENCRYPTION_KEY is missing or not 32 bytes');
-      return NextResponse.json({ error: 'Entry passes are not available yet. Please try again later.' }, { status: 503 });
+      pass.qrUnavailable = 'Your payment is verified. The check-in QR is temporarily unavailable; please check again later.';
+      return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
     }
 
     let ciphertext = mine.token_ciphertext ?? null;
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
       console.error('/api/pass: stored token does not decrypt (wrong ENTRY_PASS_ENCRYPTION_KEY?)');
       return NextResponse.json({ error: 'Your pass could not be loaded. Please contact the help desk.' }, { status: 500 });
     }
-    return NextResponse.json({ success: true, pass });
+    return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err: unknown) {
     console.error('/api/pass error:', err);
     return NextResponse.json({ error: 'Could not load your pass.' }, { status: 500 });

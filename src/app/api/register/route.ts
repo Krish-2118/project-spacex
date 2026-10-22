@@ -11,7 +11,6 @@ import {
   generateRegistrationId,
   isFilterSafeEmail,
   NEW_REGISTRATION_STATUS,
-  NIT_ROURKELA_COLLEGE,
   readJsonObject,
   REGISTRATION_FEE_INR,
   validateRegistrationInput,
@@ -145,7 +144,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error, field: parsed.field }, { status: 400 });
     }
     const input = parsed.data;
-    const college = studentType === 'internal' ? NIT_ROURKELA_COLLEGE : input.college;
+    const college = input.college;
 
     const adminClient = getSupabaseAdmin(token);
 

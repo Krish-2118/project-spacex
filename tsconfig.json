@@ -25,6 +25,10 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/components/ui/*": [
+        "./src/components/ui/*",
+        "./components/ui/*"
       ]
     }
   },

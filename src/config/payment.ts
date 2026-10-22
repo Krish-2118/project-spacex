@@ -15,8 +15,8 @@
  * symbol fails to decode in ZXing (the reader behind many Android apps). Check it scans to the new link.
  */
 export const REGISTRATION_FEE = 999;
-export const UPI_ID = 'innovision@sbi';
-export const UPI_PAYEE_NAME = 'Innovision NIT Rourkela';
+export const UPI_ID = '85002429435@sbi';
+export const UPI_PAYEE_NAME = 'PLAN FUND NIT ROURKELA';
 export const UPI_NOTE = 'Innovision 2026 registration';
 
 /**
@@ -29,5 +29,6 @@ export const UPI_PAY_LINK =
   '&am=' + REGISTRATION_FEE +
   '&cu=INR&tn=' + encodeURIComponent(UPI_NOTE);
 
-/** Static QR code for UPI_PAY_LINK. */
-export const UPI_QR_SRC = '/assets/upi-qr.svg';
+/** Official SBI QR code standee in webp format. */
+export const UPI_QR_SRC = '/assets/payment-qr.webp';
+export const UPI_QR_CODE_SRC = '/assets/payment-qr-code.webp';

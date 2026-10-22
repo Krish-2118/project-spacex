@@ -49,8 +49,10 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 
-# tests (kept locally only; run with `npm test` / `npx playwright test`)
-/tests/
+# Regression tests are versioned; generated results remain ignored above.
 
 # local tooling (check:assets, payment-proof migration; used by the local-only tests)
 /scripts/
+
+# Isolated pass component test bundle
+.pass-test/

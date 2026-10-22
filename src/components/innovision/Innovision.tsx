@@ -22,6 +22,7 @@ import WorldNav from './WorldNav';
 import Curtain from './Curtain';
 import AboutPanel from './AboutPanel';
 import ProfileOverlay from './ProfileOverlay';
+import RegistrationStatusSync from './RegistrationStatusSync';
 import PhoneModal from './PhoneModal';
 import EventPopup from './EventPopup';
 import AdminDashboard from './AdminDashboard';
@@ -50,7 +51,7 @@ import {
   type EventItem,
   type GalleryPhoto,
 } from '@/lib/supabase';
-import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH } from '@/config/launch';
+import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH, REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
 import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, REFERRAL_CODE_PATTERN } from '@/lib/validation';
@@ -353,17 +354,41 @@ export class Innovision extends Component<Props, State> {
       const isOpenRegister = search.get('open') === 'register' || window.location.hash === '#register';
       const isOpenLogin = search.get('open') === 'login';
 
-      // Registrations closed (src/config/launch.ts): a register deep link lands on the "opening soon" page instead.
-      if (!REGISTRATIONS_OPEN && (isOpenRegister || search.get('required') === 'register')) {
+      // Local dev shortcuts: ?preview=pass, #pass, #ticket or #receipt opens the boarding pass & ticket directly; ?preview=register or #dev-register opens the form
+      if (REGISTRATION_PREVIEW_ENABLED && (search.get('preview') === 'pass' || window.location.hash === '#pass' || window.location.hash === '#ticket' || window.location.hash === '#receipt')) {
+        setTimeout(() => this.devOpenPass(), 600);
+      } else if (REGISTRATION_PREVIEW_ENABLED && (search.get('preview') === 'register' || window.location.hash === '#dev-register')) {
+        setTimeout(() => this.devOpenRegister(), 600);
+      } else if (!REGISTRATIONS_OPEN && (isOpenRegister || search.get('required') === 'register')) {
         this.showRegistrationsSoon(true);
       } else if (isAuthRequired) {
         // Remembered across the Google sign-in round trip, so the student lands on the form once signed in, and a
         // volunteer sent here by the check-in scanner ("Log in again") goes straight back to /admin/scan.
         const required = search.get('required');
         if (required === 'register' || required === 'scan') sessionStorage.setItem('inv_pending_action', required);
-        setTimeout(() => {
-          this.openAuth('login');
-          this.toast(required === 'scan' ? 'Please log in again to continue scanning.' : 'Please log in to register.');
+
+        // Clean auth and required query params from URL so they don't loop on refresh
+        try {
+          const cleanParams = new URLSearchParams(window.location.search);
+          cleanParams.delete('auth');
+          cleanParams.delete('required');
+          const cleanQuery = cleanParams.toString();
+          window.history.replaceState(null, '', window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '') + window.location.hash);
+        } catch {}
+
+        setTimeout(async () => {
+          if (!this._authReady.done) await this._authReady.p;
+          if (!this.alive) return;
+          if (!this.state.user) {
+            this.openAuth('login');
+            this.toast(required === 'scan' ? 'Please log in again to continue scanning.' : 'Please log in to register.');
+          } else if (required === 'scan') {
+            this.leaveTo('/admin/scan', true);
+          } else if (this.state.registration || this.pass) {
+            this.openAuth('pass');
+          } else {
+            this.openAuth('register');
+          }
         }, 1200);
       } else if (isOpenRegister) {
         // Waits for the session check, so a signed-in student isn't sent to log in first.
@@ -1431,6 +1456,7 @@ export class Innovision extends Component<Props, State> {
   }
   onKey(e: KeyboardEvent) {
     const s = this.state;
+    if (s.auth || s.profileOpen || s.phoneModalOpen) return;
     if (e.key === 'Escape' && s.eventPop != null && s.view === 'detail') { this.setState({ eventPop: null }); return; }
     if (e.key === 'Escape' && (s.about || s.menu)) { this.setState({ about: false, menu: false }); return; }
     const v = s.view;
@@ -1744,7 +1770,7 @@ export class Innovision extends Component<Props, State> {
         college: registration.college,
         id: registration.registration_id,
         email: registration.email,
-        status: (registration.status || 'CONFIRMED').toUpperCase(),
+        status: (registration.status || 'pending').toUpperCase(),
         utr: registration.utr,
       };
     }
@@ -1787,6 +1813,17 @@ export class Innovision extends Component<Props, State> {
         this.setState({ authMode: 'register', step: 0 });
       }
     }
+  };
+
+  syncRegistration = (registration: Registration | null) => {
+    if (!this.alive || (registration && registration.user_id !== this.state.user?.id)) return;
+    if (JSON.stringify(registration) === JSON.stringify(this.state.registration)) return;
+    this.pass = registration ? {
+      name: registration.name, college: registration.college, id: registration.registration_id,
+      email: registration.email, status: registration.status.toUpperCase(), utr: registration.utr,
+    } : null;
+    this.setState({ registration });
+    if (registration?.status === 'confirmed' && this.state.authMode === 'pass') this.authSpin(false);
   };
 
   refreshUserProfile = async (userId: string) => {
@@ -1990,7 +2027,7 @@ export class Innovision extends Component<Props, State> {
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
     const ins = this.$$('[data-a-in]'), ui = this.$('[data-a-ui]'), planet = this.$('[data-a-planet-wrap]');
     g.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
-    this.authSpin(true);
+    this.authSpin(mode !== 'pass');
     g.set(planet, { rotation: -Math.min(this.state.step, 4) * 26 });
     if (this.reduce) {
       sec.style.clipPath = 'none';
@@ -2070,6 +2107,7 @@ export class Innovision extends Component<Props, State> {
   }
   // @ts-ignore
   focusAuth() {
+    if (this.state.authMode === 'pass') { this.$('[data-auth]')?.focus({ preventScroll: true }); return; }
     if (matchMedia('(pointer: coarse)').matches) return;
   // @ts-ignore
     const el = this.$$('[data-auth] input').find((i) => i.type !== 'file' && i.offsetParent);
@@ -2107,7 +2145,7 @@ export class Innovision extends Component<Props, State> {
     }
 
 
-    playClick();
+    if (m !== 'pass') playClick();
     this.setState({ authMode: m, step: m === 'pass' ? 4 : s.step, err: {}, gErr: '' }, () => {
       if (m === 'pass') {
         this.passReveal();
@@ -2177,6 +2215,13 @@ export class Innovision extends Component<Props, State> {
     if (old && old.url && old.url.startsWith('blob:')) URL.revokeObjectURL(old.url);
 
     const previewUrl = isImg ? URL.createObjectURL(f) : '';
+    if (REGISTRATION_PREVIEW_ENABLED && this.state.user?.id === 'dev-preview-user') {
+      this.setState((st) => ({
+        files: { ...st.files, [kind]: { name: f.name, size: f.size, url: previewUrl, pdf: false, status: 'done', remotePath: 'preview/local-only' } },
+        err: this.drop(st.err, ek),
+      }));
+      return;
+    }
     this.setState(
       (st) => ({
         files: { ...st.files, [kind]: { name: f.name, size: f.size, url: previewUrl, pdf: !isImg, status: 'up' } },
@@ -2289,6 +2334,10 @@ export class Innovision extends Component<Props, State> {
     const files = s.files || {};
     const user = s.user;
     const isInternal = (user?.student_type === 'internal') || (user?.email?.toLowerCase().endsWith('@nitrkl.ac.in'));
+    if (user?.id === 'dev-preview-user' && !REGISTRATION_PREVIEW_ENABLED) {
+      this.toast('Preview is disabled. Please sign in with Google.');
+      return;
+    }
 
     if (s.authMode === 'login') {
       const em = v('lemail'), id = v('lid').toUpperCase().replace(/\s+/g, '');
@@ -2333,7 +2382,7 @@ export class Innovision extends Component<Props, State> {
 
     if (s.step === 0) {
       const name = v('name').replace(/\s+/g, ' ');
-      const college = isInternal ? 'National Institute of Technology, Rourkela' : v('college').replace(/\s+/g, ' ');
+      const college = v('college').replace(/\s+/g, ' ');
       const email = user.email; // LOCKED - CANNOT BE ALTERED
       const phone = v('phone').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
       const enrollment_no = v('enrollment_no');
@@ -2342,13 +2391,13 @@ export class Innovision extends Component<Props, State> {
       if (name.length < 2) err.name = 'Tell us your full name.';
       else if (name.length > 100) err.name = 'Keep your name under 100 characters.';
       if (!GENDERS.some((g) => g.value === gender)) err.gender = 'Select your gender.';
-      if (!isInternal && college.length < 3) {
+      if (college.length < 3) {
         err.college = 'Which college are you from?';
-      } else if (!isInternal && college.length > 200) {
+      } else if (college.length > 200) {
         err.college = 'Keep the college name under 200 characters.';
       }
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
-      if (isInternal && !enrollment_no) err.enrollment_no = 'Enter your NIT Rourkela Roll / Enrollment number.';
+      if (!enrollment_no) err.enrollment_no = 'Enter your college roll / enrollment number.';
       else if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
         err.enrollment_no = 'Use only letters, numbers, spaces and / _ - (up to 50 characters).';
       }
@@ -2366,6 +2415,53 @@ export class Innovision extends Component<Props, State> {
     } else if (s.step === 1) {
       this.toStep(2);
     } else if (s.step === 2) {
+      if (REGISTRATION_PREVIEW_ENABLED && user.id === 'dev-preview-user') {
+        const utr = v('utr').replace(/\s+/g, '');
+        if (!files.pay || files.pay.status !== 'done') err.payfile = 'Choose an image to preview the payment screenshot upload.';
+        if (!/^\d{12}$/.test(utr)) err.utr = 'Enter a 12-digit UTR to test this step. No payment is submitted.';
+        if (this.fail(err)) return;
+        this.wait('SUBMITTING', 600).then(() => {
+          const r = this.reg || {};
+          const regId = 'PREVIEW-9042';
+          this.pass = {
+            name: r.name || 'Alex Explorer',
+            college: r.college,
+            id: regId,
+            email: user.email,
+            status: 'PENDING',
+            utr,
+          };
+          const mockReg = {
+            id: 'dev-reg-temp',
+            registration_id: regId,
+            user_id: user.id,
+            name: this.pass.name,
+            email: user.email,
+            college: this.pass.college,
+            phone: r.phone || '9876543210',
+            enrollment_no: r.enrollment_no,
+            gender: r.gender,
+            student_type: 'external' as const,
+            payment_proof_path: 'mock/proof.png',
+            utr,
+            amount: 999,
+            status: 'pending' as const,
+            referral_code: 'INNO-' + Math.floor(1000 + Math.random() * 9000),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          this.setState(
+            {
+              authMode: 'pass',
+              step: 4,
+              registration: mockReg as Registration,
+              busyLbl: '',
+            },
+            () => this.passReveal()
+          );
+        });
+        return;
+      }
       const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
       else if (fp.status === 'failed') err.payfile = 'Your screenshot did not upload. Use RETRY UPLOAD to send it again.';
@@ -2395,7 +2491,7 @@ export class Innovision extends Component<Props, State> {
         };
 
         const saveRes = await createRegistration(regPayload);
-        const savedReg = saveRes.registration || (saveRes.success ? regPayload : null);
+        const savedReg = saveRes.registration;
         if (!savedReg) {
           const msg = saveRes.error || 'Registration failed';
           this.toast(msg);
@@ -2448,15 +2544,106 @@ export class Innovision extends Component<Props, State> {
   };
   // @ts-ignore
   passReveal() {
+    this.authSpin(false);
     const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
     this.animPane(1, true);
-    if (this.reduce) return;
-    this.warp(1.8 / this.speed());
-    gsap.to(this.$('[data-a-planet-wrap]'), { rotation: -4 * 26, duration: 1.8, ease: 'expo.out' });
-    const w = this.$('[data-pass-wrap]');
-    if (w) gsap.fromTo(w, { clipPath: 'inset(0% 0% 100% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.2, ease: 'expo.out', delay: .1, onComplete: () => gsap.set(w, { clearProps: 'clipPath' }) });
-    setTimeout(() => this.scan('pass'), 260);
   }
+  // @ts-ignore
+  devOpenPass = async () => {
+    if (!REGISTRATION_PREVIEW_ENABLED) return;
+    const mockUser: any = {
+      id: 'dev-preview-user',
+      email: 'alex.explorer@nitrkl.ac.in',
+      full_name: 'Alex Explorer',
+      student_type: 'internal',
+      role: 'user',
+      avatar_url: '',
+      phone: '9876543210',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const mockReg: any = {
+      id: 'dev-reg-1',
+      registration_id: 'PREVIEW-9042',
+      user_id: mockUser.id,
+      name: 'Alex Explorer',
+      email: mockUser.email,
+      college: 'Example Institute of Technology',
+      phone: '9876543210',
+      enrollment_no: '122MN0999',
+      gender: 'Male',
+      student_type: 'internal',
+      payment_proof_path: 'mock/payment.png',
+      utr: '987654321098',
+      amount: 999,
+      status: 'confirmed',
+      referral_code: 'INNO-CELESTIAL',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.pass = {
+      name: mockReg.name,
+      college: mockReg.college,
+      id: mockReg.registration_id,
+      email: mockReg.email,
+      status: 'CONFIRMED',
+      utr: mockReg.utr,
+    };
+    if (!this.state.auth) {
+      await this.openAuth('pass');
+    }
+    this.setState(
+      {
+        user: mockUser,
+        registration: mockReg,
+        auth: true,
+        authMode: 'pass',
+        step: 4,
+      },
+      () => this.passReveal()
+    );
+  };
+
+  // @ts-ignore
+  devOpenRegister = async () => {
+    if (!REGISTRATION_PREVIEW_ENABLED) return;
+    const mockUser: any = {
+      id: 'dev-preview-user',
+      email: 'alex.explorer@nitrkl.ac.in',
+      full_name: 'Alex Explorer',
+      student_type: 'internal',
+      role: 'user',
+      avatar_url: '',
+      phone: '9876543210',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.reg = {
+      name: 'Alex Explorer',
+      college: '',
+      phone: '9876543210',
+      enrollment_no: '122MN0999',
+      gender: 'Male',
+      referred_by_code: '',
+    };
+    this.pass = null;
+    this.setState(
+      {
+        user: mockUser,
+        registration: null,
+      },
+      async () => {
+        await this.openAuth('register');
+        this.setState({ step: 0 });
+        const sc = this.$('[data-auth-scroll]'); if (sc) sc.scrollTop = 0;
+      }
+    );
+  };
+  devApproveRegistration = () => {
+    if (!REGISTRATION_PREVIEW_ENABLED || this.state.user?.id !== 'dev-preview-user' || this.state.registration?.status !== 'pending') return;
+    this.pass = { ...this.pass, status: 'CONFIRMED' };
+    this.setState((st) => ({ registration: { ...st.registration, status: 'confirmed' } }), () => this.passReveal());
+  };
   // @ts-ignore
   clearErr = (e) => {
     const n = e.target && e.target.name;
@@ -2467,7 +2654,7 @@ export class Innovision extends Component<Props, State> {
   // @ts-ignore
   authVals(s) {
   // @ts-ignore
-    const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.8 0.12 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
+    const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.78 0.075 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
     const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', referred_by_code: '', payfile: '', utr: '', lemail: '', lid: '', form: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
@@ -2477,7 +2664,7 @@ export class Innovision extends Component<Props, State> {
     const isInternal = (user?.student_type === 'internal') || (user?.email?.toLowerCase().endsWith('@nitrkl.ac.in'));
     const regVals = {
       name: user?.full_name || R.name || '',
-      college: isInternal ? 'National Institute of Technology, Rourkela' : (R.college || ''),
+      college: R.college || s.registration?.college || '',
       email: user?.email || '',
       phone: user?.phone || R.phone || '',
       enrollment_no: user?.enrollment_no || s.registration?.enrollment_no || R.enrollment_no || '',
@@ -2494,21 +2681,21 @@ export class Innovision extends Component<Props, State> {
         pick: this.pickFile(kind), over: this.dragOver(kind), leave: this.dragLeave(kind), drop: this.dropFile(kind), remove: () => this.removeFile(kind), replace: () => this.replaceFile(kind), retry: () => this.retryUpload(kind),
       };
     };
-    const showRail = reg || (am === 'pass' && st === 4);
+    const showRail = reg;
     const notes = [regVals.name, 'by UPI', 'Submitted'];
 
     // Same three steps for every student: there is no free tier.
-    const railSteps = [['DETAILS', 'Name, gender, college, phone', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['CONFIRM', 'Screenshot and transaction ID', 'CONFIRM']];
+    const railSteps = [['DETAILS', 'Name, gender, college, phone', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['SUBMIT', 'Screenshot and transaction ID, then team review', 'SUBMIT']];
 
     return {
       noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
       authHidden: String(!s.auth),
       authAria: reg ? 'Register for Innovision 2026' : am === 'login' ? 'Log in to Innovision' : 'Your boarding pass',
       authCols: s.narrow ? 'minmax(0,1fr)' : 'minmax(0,.9fr) minmax(0,1fr)',
-      authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : "You're on board",
+      authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : P.status === 'CONFIRMED' ? 'Your place in the odyssey' : P.status === 'REJECTED' ? 'Payment not approved' : 'Registration received',
       authSub: reg
         ? 'Three short stops to register for Innovision 2026 at NIT Rourkela.'
-        : am === 'login' ? 'Sign in using your Google account.' : 'Your boarding pass is ready. See you at NIT Rourkela.',
+        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? 'Please contact the registration helpdesk for assistance.' : 'Your payment is under review by the registration team. Your pass appears here after approval.',
       railD: show(showRail && !s.narrow), hprogD: showRail && s.narrow ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
@@ -2536,20 +2723,36 @@ export class Innovision extends Component<Props, State> {
       passName: P.name || '', passCollege: P.college || '', passCollegeD: P.college ? 'block' : 'none', passId: P.id || P.registration_id || '', passStatus: P.status ? P.status.toUpperCase() : 'PAYMENT UNDER REVIEW',
       // Mounted only while the pass is open, so the QR is fetched then and not on every page load.
       passQr: !!s.auth && am === 'pass' && !!s.user,
+      passUserId: s.user?.id,
       passNote: P.status === 'CONFIRMED'
         ? 'You are confirmed. Download your entry pass now and show the QR with your college ID at the registration desk, so entry at NIT Rourkela is quick.'
         : P.status === 'REJECTED'
         ? 'Your registration could not be approved. Please contact the helpdesk.'
-        : 'Your payment is being verified and your registration will be approved soon. Keep checking MY PASS: once approved, your entry QR appears here, ready to download.',
+        : 'Your payment is under review. Only the registration team can approve it. This page updates automatically while you are here.',
       // The registrant's own referral code, shared from the pass (not once the registration was rejected).
       refCode: String(P.status || '').toUpperCase() !== 'REJECTED' ? s.registration?.referral_code || '' : '',
       copyRefCode: this.copyReferral, refCodeLbl: s.refCopied ? 'COPIED' : 'COPY CODE',
       exploreFromPass: this.exploreFromPass,
       googleLogin: this.googleLogin, gBusy: s.gBusy, gErr: s.gErr, gLbl: s.gBusy ? 'Waiting for Google…' : 'Continue with Google',
-      gNote: reg && st === 0 && s.user ? 'Signed in as ' + s.user.email + (isInternal ? ' (NIT RKL Student)' : '') + '.' : '',
+      gNote: reg && st === 0 && s.user ? 'Signed in as ' + s.user.email + '.' : '',
       regVals,
       isInternal,
       user: s.user,
+      isDev: REGISTRATION_PREVIEW_ENABLED,
+      isPreviewUser: REGISTRATION_PREVIEW_ENABLED && s.user?.id === 'dev-preview-user',
+      previewPending: REGISTRATION_PREVIEW_ENABLED && s.user?.id === 'dev-preview-user' && s.registration?.status === 'pending',
+      previewPass: REGISTRATION_PREVIEW_ENABLED && s.user?.id === 'dev-preview-user' && s.registration ? {
+        registrationStatus: s.registration.status,
+        passStatus: s.registration.status === 'confirmed' ? 'active' : 'none',
+        registrationId: s.registration.registration_id,
+        name: s.registration.name,
+        college: s.registration.college,
+        checkedIn: false,
+        token: null,
+      } : undefined,
+      devApproveRegistration: this.devApproveRegistration,
+      devOpenPass: this.devOpenPass,
+      devOpenRegister: this.devOpenRegister,
     };
   }
   linkGo = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -2787,6 +2990,7 @@ export class Innovision extends Component<Props, State> {
     // reads the live values through LiveV). Small overlays render with every update.
     return (
       <div ref={this.rootRef} data-booting="" style={{ position: 'fixed', inset: '0', overflow: 'hidden', background: '#ECE8DF', color: '#141312', fontFamily: "var(--font-sans)" }}>
+        {s.user && (s.auth || s.profileOpen) && <RegistrationStatusSync userId={s.user.id} onChange={this.syncRegistration} />}
         <LiveV value={v}>
         <HomeV v={v} deps={[]} />
         <WorldsV v={v} deps={[s.narrow, s.compact, s.dbEvents]} />

@@ -326,6 +326,9 @@ export function validateRegistrationInput(
   }
 
   const enrollment_no = enrollment ? enrollment.trim() : '';
+  if (!enrollment_no) {
+    return { ok: false, error: 'Enter your college roll / enrollment number.', field: 'enrollment_no' };
+  }
   if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
     return { ok: false, error: 'Enrollment number contains invalid characters.', field: 'enrollment_no' };
   }

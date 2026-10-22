@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ---------- base (from the Innovision 2026 design) ---------- */
 *,*::before,*::after{box-sizing:border-box}
 /* ---------- typography ----------
@@ -6,7 +10,51 @@
    --font-sans     Manrope, variable: subheadings, eyebrow labels, buttons, navigation, body copy and data (IDs, prices
                    in lists). Weights by role: 400 body, 500 navigation and secondary text, 700 labels, buttons and
                    subheadings, 800 small badges and ID numbers. Display text is never bolded (the face has no bold). */
-:root{--font-display:var(--font-dm-serif),'Times New Roman',serif;--font-sans:var(--font-manrope),'Segoe UI',system-ui,sans-serif}
+:root {
+  --background: 42 22% 90%;
+  --foreground: 30 5% 8%;
+  --card: 42 22% 90%;
+  --card-foreground: 30 5% 8%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 30 5% 8%;
+  --primary: 38 92% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 10% 80%;
+  --secondary-foreground: 30 5% 8%;
+  --muted: 40 10% 85%;
+  --muted-foreground: 30 5% 45%;
+  --accent: 38 92% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 40 10% 75%;
+  --input: 40 10% 75%;
+  --ring: 38 92% 50%;
+  --radius: 0.5rem;
+  --font-display:var(--font-dm-serif),'Times New Roman',serif;
+  --font-sans:var(--font-manrope),'Segoe UI',system-ui,sans-serif;
+}
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+}
 html,body{margin:0;height:100%;overflow:hidden;background:#ECE8DF;color:#141312;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 img{display:block;max-width:none;user-select:none;-webkit-user-drag:none}
 button{font:inherit;color:inherit}

@@ -1,0 +1,7 @@
+.root { display:block; position:relative; }
+.accessible { display:block; opacity:0; overflow-wrap:anywhere; }
+.visual { position:absolute; inset:0; overflow:hidden; overflow-wrap:anywhere; }
+@media print {
+  .visual { display:none; }
+  .accessible { opacity:1; }
+}
