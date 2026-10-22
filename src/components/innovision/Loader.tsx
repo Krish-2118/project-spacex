@@ -64,7 +64,7 @@ export default function Loader({ v }: { v: V }) {
         <div data-l-fade="" style={{ overflow: "hidden" }}>
           <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>
             NIT ROURKELA
-            <span style={{ display: "block", marginTop: "6px", fontSize: "10px", letterSpacing: ".24em", opacity: ".75" }}>STUDENT ACTIVITY CENTRE PRESENTS</span>
+            <span style={{ display: "block", marginTop: "6px", fontSize: "min(11px, 3.2vw)", fontWeight: "700", letterSpacing: ".24em", opacity: ".75" }}>STUDENT ACTIVITY CENTRE PRESENTS</span>
           </div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
