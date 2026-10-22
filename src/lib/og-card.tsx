@@ -43,7 +43,7 @@ export async function ogCard({ kicker, kickerSub, title, subtitle }: { kicker: s
           {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders plain <img> only */}
           <img src={`data:image/png;base64,${logo.toString('base64')}`} alt="" width={84} height={84} style={{ marginBottom: 18 }} />
           <div style={{ color: BONE, fontSize: 20, letterSpacing: 6, fontWeight: 700 }}>{kicker}</div>
-          {kickerSub && <div style={{ color: BONE, opacity: 0.78, fontSize: 14, letterSpacing: 4, fontWeight: 500, marginTop: 8 }}>{kickerSub}</div>}
+          {kickerSub && <div style={{ color: BONE, opacity: 0.78, fontSize: 17, letterSpacing: 4, fontWeight: 700, marginTop: 8 }}>{kickerSub}</div>}
           <div
             style={{
               display: 'flex', justifyContent: 'center', maxWidth: 470, textAlign: 'center', color: '#fff', fontFamily: 'DM Serif Display',
