@@ -16,10 +16,10 @@
 export const REGISTRATIONS_OPEN = true;
 export const MERCH_STORE_OPEN = true;
 
-/** Review-only registration preview. Set false and redeploy to disable ALL mock users,
+/** Review-only registration preview. Keep false in production: false disables ALL mock users,
  * preview links, simulated uploads and simulated approval. Real API authorization is
  * always enforced; preview data is kept in memory and never submitted to the backend. */
-export const REGISTRATION_PREVIEW_ENABLED = true;
+export const REGISTRATION_PREVIEW_ENABLED = false;
 
 /** Where the REGISTER buttons point while registrations are closed. */
 export const REGISTRATIONS_SOON_PATH = '/register';
