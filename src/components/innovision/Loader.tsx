@@ -60,7 +60,7 @@ export default function Loader({ v }: { v: V }) {
       </div>
       <div style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(30px,6.5vh,80px)", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center" }}>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
-          <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>NIT ROURKELA PRESENTS</div>
+          <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>NIT ROURKELA SAC PRESENTS</div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
           <div data-l-line="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>

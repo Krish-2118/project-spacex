@@ -14,7 +14,7 @@ const GOLD = '#D9B661'; // oklch(0.8 0.12 85), the hero subtitle
 export const OG_SIZE = { width: OG_IMAGE.width, height: OG_IMAGE.height };
 
 /**
- * @param kicker small caps line above the title, e.g. 'NIT ROURKELA PRESENTS'.
+ * @param kicker small caps line above the title, e.g. 'NIT ROURKELA SAC PRESENTS'.
  * @param title the big serif line; anything longer than INNOVISION is set smaller and may wrap onto two lines.
  * @param subtitle the gold line under the title.
  */

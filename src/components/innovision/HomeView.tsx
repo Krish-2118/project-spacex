@@ -55,11 +55,11 @@ export default function HomeView({ v }: { v: V }) {
             </div>
             <div className="hero-copy" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", pointerEvents: "none" }}>
               {/* Wide screens: display contents, so copy and buttons share one centred column. Stacked screens: a box the size of the disc.
-                  The page's one heading is the whole visible line-up: NIT ROURKELA PRESENTS / INNOVISION / 2026 · THE CELESTIAL ODYSSEY.
+                  The page's one heading is the whole visible line-up: NIT ROURKELA SAC PRESENTS / INNOVISION / 2026 · THE CELESTIAL ODYSSEY.
                   Its parts are spans (phrasing content); the spaces between them are not rendered between flex items but keep the words apart in the text. */}
-              <h1 aria-label="NIT Rourkela presents Innovision 2026: The Celestial Odyssey" className="hero-copy-disc" style={{ margin: "0", fontSize: "inherit", fontWeight: "inherit" }}>
+              <h1 aria-label="NIT Rourkela SAC presents Innovision 2026: The Celestial Odyssey" className="hero-copy-disc" style={{ margin: "0", fontSize: "inherit", fontWeight: "inherit" }}>
                 <span data-h-kicker="" className="hero-kicker" style={{ display: "flex", alignItems: "center", color: "#ECE8DF", fontFamily: "var(--font-sans)", fontWeight: "700", whiteSpace: "nowrap" }}>
-                  <span className="hero-track">NIT ROURKELA PRESENTS</span>
+                  <span className="hero-track">NIT ROURKELA SAC PRESENTS</span>
                 </span>{" "}
                 <span className="hero-title" style={{ display: "flex", fontFamily: "var(--font-display)", fontWeight: "400", lineHeight: ".95", letterSpacing: ".01em", color: "#fff", mixBlendMode: "difference", whiteSpace: "nowrap" }}>
                   {v.heroChars.map((c, cI) => (
