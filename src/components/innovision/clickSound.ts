@@ -4,9 +4,10 @@ import { A } from './data';
  * The site's only sound: a short tick when a button, link or tab is clicked.
  *
  * The 8 kB sample (beep.mp3, a 50 ms tick) is fetched right after boot and decoded through Web Audio, so a click
- * never waits on the network. Browsers block audio until the first gesture, so the AudioContext is created on the
- * first pointer or key press (unlockClick). Until the sample is decoded, or if it fails to load, a synthesized tick
- * plays instead, so every click is heard.
+ * never waits on the network. Browsers block audio until the first gesture: the AudioContext is created ahead, while
+ * the page is idle (warmClick; it starts suspended), and the first pointer or key press only resumes it (unlockClick).
+ * Creating it inside that first tap stalled a phone for ~25-90 ms just as the tapped menu or form began to animate.
+ * Until the sample is decoded, or if it fails to load, a synthesized tick plays instead, so every click is heard.
  */
 
 /** What counts as a button: anything a click on should answer with the tick. */
@@ -19,6 +20,8 @@ let ctx: AudioContext | null = null;
 let out: GainNode | null = null;
 let buf: AudioBuffer | null = null;
 let bytes: Promise<ArrayBuffer | null> | null = null;
+/** A gesture has woken the context (unlockClick ran). */
+let unlocked = false;
 /** Time of the last tick: a click on a <label> also clicks its input, which should not tick twice. */
 let last = -1e9;
 
@@ -38,25 +41,38 @@ function decode(c: BaseAudioContext, ab: ArrayBuffer) {
   return new Promise<AudioBuffer>((res, rej) => { const r = c.decodeAudioData(ab, res, rej); if (r && typeof r.then === 'function') r.then(res, rej); });
 }
 
-/** Creates the AudioContext inside a user gesture and decodes the sample into it. */
-export function unlockClick() {
-  if (ctx) { if (ctx.state === 'suspended') void ctx.resume().catch(() => {}); return; }
+/** The AudioContext and its output, created once. Outside a gesture it starts suspended. */
+function context() {
+  if (ctx) return ctx;
   const AC = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AC) return;
+  if (!AC) return null;
   const c = new AC();
   ctx = c;
   out = c.createGain();
   out.gain.value = VOLUME;
   out.connect(c.destination);
-  // Some browsers (iOS Safari) need a sound started inside the gesture to wake the context.
-  const s = c.createBufferSource();
-  s.buffer = c.createBuffer(1, 1, 22050);
-  s.connect(c.destination);
-  s.start(0);
+  return c;
+}
+
+/** Creates the (suspended) AudioContext while the page is idle, so the first tap doesn't pay for it. */
+export function warmClick() { context(); }
+
+/** Wakes the AudioContext inside a user gesture and decodes the sample into it. */
+export function unlockClick() {
+  const c = context();
+  if (!c) return;
+  if (!unlocked) {
+    unlocked = true;
+    // Some browsers (iOS Safari) need a sound started inside the gesture to wake the context.
+    const s = c.createBufferSource();
+    s.buffer = c.createBuffer(1, 1, 22050);
+    s.connect(c.destination);
+    s.start(0);
+    preloadClick();
+    // Fallback for browsers without OfflineAudioContext: decode in the live context instead.
+    if (!buf) void bytes!.then((ab) => (ab && !buf ? decode(c, ab.slice(0)) : null)).then((b) => { if (b) buf ??= b; }).catch(() => {});
+  }
   if (c.state === 'suspended') void c.resume().catch(() => {});
-  preloadClick();
-  // Fallback for browsers without OfflineAudioContext: decode in the live context instead.
-  if (!buf) void bytes!.then((ab) => (ab && !buf ? decode(c, ab.slice(0)) : null)).then((b) => { if (b) buf ??= b; }).catch(() => {});
 }
 
 /** Plays the tick now: the decoded sample, or a synthesized one while it is not ready. */
@@ -64,7 +80,7 @@ export function playClick() {
   const now = performance.now();
   if (now - last < 60) return;
   last = now;
-  if (!ctx) unlockClick();
+  if (!unlocked) unlockClick();
   const c = ctx, o = out;
   if (!c || !o) return;
   if (c.state === 'suspended') void c.resume().catch(() => {});

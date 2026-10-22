@@ -45,11 +45,15 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
         inset: 0,
         zIndex: 90,
         display: 'grid',
+        // One column the width of the screen: an auto column grew to the card's content (the input's default width),
+        // so under ~375px the card ran off the right edge and took the close button with it.
+        gridTemplateColumns: 'minmax(0, 1fr)',
         placeItems: 'center',
+        overflowY: 'auto',
         background: 'rgba(7, 6, 5, 0.88)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        padding: '20px',
+        padding: 'clamp(12px, 4vw, 20px)',
       }}
     >
       <div
@@ -66,14 +70,15 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
         <div
           style={{
             position: 'relative',
-            padding: '32px 28px',
+            padding: 'clamp(26px, 7vw, 32px) clamp(18px, 6vw, 28px)',
             background: 'rgba(16, 15, 14, 0.96)',
             color: '#ECE8DF',
             clipPath:
               'polygon(15.5px 0, 100% 0, 100% calc(100% - 15.5px), calc(100% - 15.5px) 100%, 0 100%, 0 15.5px)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          {/* Right padding keeps the label clear of the close button on narrow screens. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', paddingRight: '36px' }}>
             <span
               style={{
                 width: '8px',
@@ -122,7 +127,7 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
           </p>
 
           {userEmail && (
-            <p style={{ margin: '-16px 0 20px', fontSize: '12px', color: 'oklch(0.8 0.12 85)' }}>
+            <p style={{ margin: '-16px 0 20px', fontSize: '12px', color: 'oklch(0.8 0.12 85)', overflowWrap: 'anywhere' }}>
               Logged in as: {userEmail}
             </p>
           )}
@@ -134,8 +139,13 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
               aria-label="Close"
               style={{
                 position: 'absolute',
-                top: '20px',
-                right: '20px',
+                top: '8px',
+                right: '8px',
+                display: 'grid',
+                placeItems: 'center',
+                width: '44px',
+                height: '44px',
+                padding: 0,
                 background: 'transparent',
                 border: 0,
                 color: 'rgba(236,232,223,0.6)',
@@ -178,6 +188,7 @@ export default function PhoneModal({ isOpen, onSave, onClose, userEmail }: Phone
                   }}
                   style={{
                     flex: 1,
+                    minWidth: 0,
                     height: '52px',
                     padding: '0 16px',
                     borderRadius: 0,

@@ -9,5 +9,5 @@ export const size = OG_SIZE;
 export const contentType = 'image/png';
 
 export default function OpengraphImage() {
-  return ogCard({ kicker: 'NIT ROURKELA SAC PRESENTS', title: 'INNOVISION', subtitle: '2026 · THE CELESTIAL ODYSSEY' });
+  return ogCard({ kicker: 'NIT ROURKELA', kickerSub: 'STUDENT ACTIVITY CENTRE PRESENTS', title: 'INNOVISION', subtitle: '2026 · THE CELESTIAL ODYSSEY' });
 }

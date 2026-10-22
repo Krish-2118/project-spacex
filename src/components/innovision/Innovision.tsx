@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment -- GSAP class component uses @ts-ignore extensively for dynamic internal state */
 // @ts-nocheck
 "use client";
-import { CLICKABLE, preloadClick, unlockClick, playClick } from './clickSound';
+import { CLICKABLE, preloadClick, warmClick, unlockClick, playClick } from './clickSound';
 /* eslint-disable @typescript-eslint/no-explicit-any -- view-model is dynamically constructed and consumed across many child views */
 /* eslint-disable @typescript-eslint/no-unused-vars -- some destructured vars are kept for future use */
 
@@ -262,14 +262,17 @@ export class Innovision extends Component<Props, State> {
     try { this.hintSeen = localStorage.getItem(HINT_KEY) === '1'; } catch {}
     this.setState({ saved, compact: innerWidth < 1100, narrow: innerWidth < 720, coarse: matchMedia('(pointer: coarse)').matches });
     if (lowPowerDevice()) this.goLowPower();
-    // Resize work forces layout (title fit, map panels), so it runs at most once per frame.
-    let rz = 0;
+    // Resize work forces layout (title fit, map panels), so it runs at most once per frame. Both depend on the width
+    // only: a phone's toolbar or keyboard changes just the height, and re-tweening the map panels then cost a second of layout.
+    let rz = 0, rw = innerWidth;
     this.listen(window, 'resize', () => {
       if (rz) return;
       rz = requestAnimationFrame(() => {
         rz = 0;
         const c = innerWidth < 1100, n = innerWidth < 720;
         if (c !== this.state.compact || n !== this.state.narrow) this.setState({ compact: c, narrow: n }, () => { if (this.state.view === 'detail') this.setupDetailScroll(true); });
+        if (innerWidth === rw) return;
+        rw = innerWidth;
         this.fitTitle();
         if (this.ctx) this.openMap(this.mapOpen);
       });
@@ -666,6 +669,8 @@ export class Innovision extends Component<Props, State> {
   /** The only sound is the click (clickSound.ts): every button, link or tab clicked anywhere answers with a tick. */
   sound() {
     preloadClick();
+    // Created while the loader counts up, so that a first tap during the landing animation doesn't stall it either.
+    this.cleanups.push(this.idle(warmClick));
     ['pointerdown', 'keydown'].forEach((ev) => this.listen(window, ev, unlockClick, { once: true, capture: true }));
     this.listen(document, 'click', (e) => {
       const t = (e.target as Element | null)?.closest?.(CLICKABLE);
@@ -702,6 +707,12 @@ export class Innovision extends Component<Props, State> {
     // The overlay and view a visitor is most likely to open next are fetched ahead too (their own hover/tap also does).
     // The pages of their own too, so MERCH (and REGISTER while closed) open at once (a no-op on the dev server).
     this.cleanups.push(this.idle(() => { this.prefetch('auth'); this.prefetch('detail'); OWN_PAGES.forEach((p) => this.props.router?.prefetch(p)); }));
+    // The menu (where the top bar has a MENU button) and the register / log-in overlay are mounted, closed, ahead of
+    // time: mounting one on its first tap blocked a phone for ~100 ms just as its reveal began. One per idle period.
+    this.cleanups.push(this.idle(() => {
+      if (this.state.compact) void this.mount('menu');
+      this.cleanups.push(this.idle(() => { void this.mount('auth'); }));
+    }));
     const queue = [...PRELOAD_DEFERRED];
     let cancel = () => {}, live = true;
     const batch = () => {
@@ -1528,7 +1539,9 @@ export class Innovision extends Component<Props, State> {
     this.pEls = v ? [...v.querySelectorAll<HTMLElement>('[data-depth]')].filter((el) => { const s = el.closest<HTMLElement>('[data-slide]'); return !s || +(s.dataset.slide || 0) === this.state.index; }) : [];
   }
   hover = (e: MouseEvent<HTMLElement>) => {
-    if (this.reduce || !this.ctx) return;
+    // Touch screens fire mouseenter on every tap: the scramble swaps in letters of other widths, so the tapped label
+    // (MENU, REGISTER) changed width for half a second and the top bar around it shook. Hover effects are for mice only.
+    if (this.reduce || !this.ctx || this.state.coarse) return;
     const sp = e.currentTarget.querySelector<HTMLElement>('[data-scr]');
     if (!sp) return;
     sp.dataset.text = sp.dataset.text || sp.textContent || '';
@@ -1922,7 +1935,8 @@ export class Innovision extends Component<Props, State> {
   pagePush(z) {
     const sc = z ? String(1 + .12 * z) : '', o = this.authO, to = z && o ? o.x.toFixed(0) + 'px ' + o.y.toFixed(0) + 'px' : '';
   // @ts-ignore
-    (this.page || []).forEach((el) => { el.style.scale = sc; el.style.transformOrigin = to; });
+    // will-change while pushed: without it every frame of the zoom re-rastered the whole page (the home page is many screens tall).
+    (this.page || []).forEach((el) => { el.style.scale = sc; el.style.transformOrigin = to; el.style.willChange = sc ? 'transform' : ''; });
     const veil = this.$ && this.$('[data-rift-veil]'); if (veil) veil.style.opacity = String(z * .85);
   }
   // @ts-ignore
@@ -2038,13 +2052,14 @@ export class Innovision extends Component<Props, State> {
       return;
     }
     g.set(ins, { autoAlpha: 0, y: 26 }); g.set(planet, { autoAlpha: 0, scale: .7, yPercent: 16 }); g.set(ui, { scale: .94 });
+    this.authLayers(true);
     const r = this._rift = this.riftNew(0, 0, 1, 0);
     this.riftDraw();
     const k = this.speed();
     this.warp(2.4 / k);
   // @ts-ignore
     this.authTl = g.timeline({ onUpdate: () => this.riftDraw(), onComplete: () => {
-      this._rift = null; sec.style.clipPath = 'none';
+      this._rift = null; sec.style.clipPath = 'none'; this.authLayers(false);
       this.pagePush(0); this.authBusy = false; this.focusAuth();
     } })
       .fromTo(sec, { autoAlpha: fromDisc ? 0 : 1 }, { autoAlpha: 1, duration: fromDisc ? .35 : .01, ease: 'power1.out' }, 0)
@@ -2065,7 +2080,7 @@ export class Innovision extends Component<Props, State> {
     this.page = this.livePage();
   // @ts-ignore
     const done = () => {
-      this._rift = null;
+      this._rift = null; this.authLayers(false);
       g.set(root, { autoAlpha: 0, pointerEvents: 'none' }); g.set(sec, { autoAlpha: 1 }); sec.style.clipPath = 'none';
       this.pagePush(0);
       this.authSpin(false); this.authClosing = false; this.authBusy = false;
@@ -2073,6 +2088,7 @@ export class Innovision extends Component<Props, State> {
       if (after) after();
     };
     if (this.reduce) { g.to(sec, { autoAlpha: 0, duration: .3, onComplete: () => { g.set(sec, { autoAlpha: 1 }); done(); } }); return; }
+    this.authLayers(true);
     const r = this._rift = this.riftNew(1, 1, 0, 1);
     this.riftDraw();
   // @ts-ignore
@@ -2090,10 +2106,18 @@ export class Innovision extends Component<Props, State> {
     if (this.authTl) this.authTl.kill();
     clearTimeout(this._wait); this.warpStop(); this._rift = null;
     const sec = this.$('[data-auth]'); if (sec) { sec.style.clipPath = 'none'; gsap.set(sec, { autoAlpha: 1 }); }
+    this.authLayers(false);
     gsap.set(this.$('[data-auth-root]'), { autoAlpha: 0, pointerEvents: 'none' });
     this.pagePush(0);
     this.authSpin(false); this.authBusy = false; this.authClosing = false;
     this.setState({ auth: false, busyLbl: '', drag: '' });
+  }
+  /**
+   * Gives the form and its planet their own layers while the rift opens or closes: both scale, and the rift's clip
+   * changes every frame, which otherwise re-rastered them each frame. Dropped once still, so the form stays crisp.
+   */
+  authLayers(on: boolean) {
+    this.$$('[data-a-ui],[data-a-planet-wrap]').forEach((el) => { el.style.willChange = on ? 'transform' : ''; });
   }
   // @ts-ignore
   authSpin(on) {
