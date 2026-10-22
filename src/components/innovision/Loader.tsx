@@ -11,6 +11,8 @@ const ORBS: [string, string, number, number, number, string][] = [
   ['26%', '1px solid rgba(20,19,18,.3)', 0, 128, 16, 'planet-mars.webp'],
 ];
 const DISC = 'min(58vmin, 540px, 100vh - 330px)';
+/** The rings scale in and out; their own layer keeps the conic gradients and masks from re-rastering every frame. */
+const RING = { position: "absolute", borderRadius: "50%", willChange: "transform" } as const;
 
 /** Orbital preloader. */
 export default function Loader({ v }: { v: V }) {
@@ -29,13 +31,13 @@ export default function Loader({ v }: { v: V }) {
       <div data-l-fade="" data-l-corner="" style={{ position: "absolute", top: "clamp(16px,2.6vw,44px)", right: "clamp(16px,2.6vw,44px)", fontWeight: "500", fontSize: "13px", letterSpacing: ".3em" }}>MMXXVI</div>
       <CornerFrame data-l-fade="" data-l-corner="" color="rgba(20,19,18,.45)" style={{ top: "calc(clamp(16px,2.6vw,44px) + 34px)", bottom: "clamp(16px,2.6vw,44px)" }} />
       <div style={{ position: "absolute", left: `calc(50% - ${DISC} / 2)`, top: `calc(40% - ${DISC} / 2)`, width: DISC, height: DISC }}>
-        <div data-l-ring="" style={{ position: "absolute", inset: "-4%", borderRadius: "50%", background: "repeating-conic-gradient(from -.25deg,rgba(20,19,18,.5) 0deg .5deg,transparent .5deg 3.6deg)", WebkitMaskImage: "radial-gradient(circle closest-side,transparent 94%,#000 94.5%,#000 98.5%,transparent 99%)", maskImage: "radial-gradient(circle closest-side,transparent 94%,#000 94.5%,#000 98.5%,transparent 99%)" }}></div>
-        <div data-l-ring="" style={{ position: "absolute", inset: "-4%", borderRadius: "50%", background: "repeating-conic-gradient(from -.4deg,rgba(20,19,18,.8) 0deg .8deg,transparent .8deg 36deg)", WebkitMaskImage: "radial-gradient(circle closest-side,transparent 90%,#000 90.5%,#000 98.5%,transparent 99%)", maskImage: "radial-gradient(circle closest-side,transparent 90%,#000 90.5%,#000 98.5%,transparent 99%)" }}></div>
+        <div data-l-ring="" style={{ ...RING, inset: "-4%", background: "repeating-conic-gradient(from -.25deg,rgba(20,19,18,.5) 0deg .5deg,transparent .5deg 3.6deg)", WebkitMaskImage: "radial-gradient(circle closest-side,transparent 94%,#000 94.5%,#000 98.5%,transparent 99%)", maskImage: "radial-gradient(circle closest-side,transparent 94%,#000 94.5%,#000 98.5%,transparent 99%)" }}></div>
+        <div data-l-ring="" style={{ ...RING, inset: "-4%", background: "repeating-conic-gradient(from -.4deg,rgba(20,19,18,.8) 0deg .8deg,transparent .8deg 36deg)", WebkitMaskImage: "radial-gradient(circle closest-side,transparent 90%,#000 90.5%,#000 98.5%,transparent 99%)", maskImage: "radial-gradient(circle closest-side,transparent 90%,#000 90.5%,#000 98.5%,transparent 99%)" }}></div>
         <svg data-l-fade="" viewBox="0 0 100 100" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", overflow: "visible" }}>
           <polyline data-l-link="" points="50,50 50,26 50,14 50,0" fill="none" stroke="#8a6a2a" strokeWidth=".45" strokeLinecap="round" strokeDasharray="1.2 1.8"></polyline>
         </svg>
         {ORBS.map(([inset, border, i, a0, size, img]) => (
-          <div key={i} data-l-ring="" style={{ position: "absolute", inset, borderRadius: "50%", border }}>
+          <div key={i} data-l-ring="" style={{ ...RING, inset, border }}>
             <div data-l-orb="" data-i={i} data-a0={a0} style={{ position: "absolute", inset: "0" }}>
               <div style={{ position: "absolute", left: "50%", top: "0", width: size + "%", height: size + "%", margin: `-${size / 2}% 0 0 -${size / 2}%` }}>
                 <span data-l-lock="" style={{ position: "absolute", inset: "-30%", borderRadius: "50%", border: "1.5px solid #8a6a2a", opacity: "0" }}></span>
@@ -60,7 +62,10 @@ export default function Loader({ v }: { v: V }) {
       </div>
       <div style={{ position: "absolute", left: "0", right: "0", bottom: "clamp(30px,6.5vh,80px)", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center" }}>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
-          <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>NIT ROURKELA SAC PRESENTS</div>
+          <div data-l-line="" style={{ fontSize: "12px", fontWeight: "500", letterSpacing: ".34em" }}>
+            NIT ROURKELA
+            <span style={{ display: "block", marginTop: "6px", fontSize: "10px", letterSpacing: ".24em", opacity: ".75" }}>STUDENT ACTIVITY CENTRE PRESENTS</span>
+          </div>
         </div>
         <div data-l-fade="" style={{ overflow: "hidden" }}>
           <div data-l-line="" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.6vw,38px)", letterSpacing: ".12em" }}>INNOVISION 2026</div>

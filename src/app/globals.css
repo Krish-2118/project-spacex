@@ -192,7 +192,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 /* --d is the disc's diameter and --cy its centre. Rings, disc, orbiters, copy and astronaut all hang off the two,
    so the composition holds together at any screen shape. Wide screens keep the copy centred over the disc. */
 .hero{--d:min(84vh,72vw);--cy:53%}
-.hero-ring{position:absolute;left:calc(50% - var(--d) * var(--r));top:calc(var(--cy) - var(--d) * var(--r));width:calc(var(--d) * var(--r) * 2);height:calc(var(--d) * var(--r) * 2);border-radius:50%}
+/* will-change: the entrance and leave animations scale the rings; without it each frame re-rasters them at the new scale. */
+.hero-ring{position:absolute;left:calc(50% - var(--d) * var(--r));top:calc(var(--cy) - var(--d) * var(--r));width:calc(var(--d) * var(--r) * 2);height:calc(var(--d) * var(--r) * 2);border-radius:50%;will-change:transform}
 .hero-disc{position:absolute;left:calc(50% - var(--d) / 2);top:calc(var(--cy) - var(--d) / 2);width:var(--d);height:var(--d)}
 /* The radar sweep lives in .hero-copy (so it can sit between the title and the rest of the copy) but covers the disc exactly. */
 .hero-sweep{position:absolute;left:calc(50% - var(--d) / 2);top:calc(var(--cy) - var(--d) / 2);width:var(--d);height:var(--d)}
@@ -211,7 +212,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hero-copy-disc{display:contents}
 /* --ls is the tracking; the same amount of left padding balances the trailing letter-space so the text centres. */
 .hero-track{padding-left:var(--ls)}
-.hero-kicker{--ls:.42em;gap:14px;font-size:clamp(11px,1.05vw,16px);letter-spacing:var(--ls)}
+.hero-kicker{--ls:.42em;gap:.55em;font-size:clamp(11px,1.05vw,16px);letter-spacing:var(--ls)}
+/* Second kicker line: smaller and lighter, so NIT ROURKELA leads. --ls is in em, so the centring pad shrinks with it. */
+.hero-kicker-sub{font-size:.72em;font-weight:500;opacity:.78}
 .hero-title{margin:clamp(10px,2vh,22px) 0 clamp(8px,1.4vh,16px);font-size:clamp(36px,12.4vw,224px)}
 .hero-sub{--ls:.32em;gap:18px;font-size:clamp(12px,1.35vw,21px);letter-spacing:var(--ls)}
 .hero-sub-rule{width:clamp(24px,4vw,64px);flex:none}
@@ -232,7 +235,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hero-copy-disc{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;height:var(--d)}
   /* .hero-copy starts at the disc's top edge here. */
   .hero-sweep{top:0}
-  .hero-kicker{--ls:.26em;gap:8px;font-size:clamp(9.5px,calc(var(--d) * .033),15px)}
+  .hero-kicker{--ls:.26em;gap:.5em;font-size:clamp(9.5px,calc(var(--d) * .033),15px)}
   .hero-title{margin:calc(var(--d) * .03) 0 calc(var(--d) * .026);font-size:calc(var(--d) * .122)}
   .hero-sub{--ls:.18em;gap:10px;font-size:clamp(10px,calc(var(--d) * .034),17px)}
   .hero-sub-rule{width:calc(var(--d) * .05)}
@@ -273,6 +276,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 /* ---------- compact menu ---------- */
 .menu-panel{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#141312;color:#ECE8DF}
+/* The panel opens and closes by animating its clip-path circle. With its contents on their own layers only the mask
+   changes each frame; otherwise the full-screen starfield and list were re-rastered every frame of the reveal. */
+.menu-panel>*{will-change:transform}
 .menu-top{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;padding:clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px)}
 .menu-brand{display:inline-flex;align-items:center;gap:10px;color:#ECE8DF;text-decoration:none}
 .menu-brand:hover{color:oklch(0.84 0.09 85)}
@@ -496,6 +502,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   .hud-frost,.wn-pill{-webkit-backdrop-filter:none !important;backdrop-filter:none !important}
   .hud-frost{background:rgba(236,232,223,.97) !important}
   .wn-pill{background:rgba(236,232,223,.96) !important}
+  /* The bar keeps one height: easing its padding as it turns solid relaid and repainted it every frame, and the bar
+     visibly bounced mid-scroll. */
+  .hud-bar{padding:clamp(14px,1.8vw,26px) clamp(16px,2.6vw,44px) !important;transition:none !important}
 }
 
 /* ---------- schedule ---------- */
