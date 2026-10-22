@@ -1410,7 +1410,7 @@ REVOKE EXECUTE ON FUNCTION public.new_referral_code() FROM PUBLIC, anon, authent
 REVOKE EXECUTE ON FUNCTION public.assign_referral_code() FROM PUBLIC, anon, authenticated, service_role;
 
 
--- Durable one-time approval presentation
+-- 15. PASS EXPERIENCE (durable one-time approval presentation)
 -- Apply once before deploying the pass reveal. Also included in schema.sql for new installs.
 -- No payment or registration fields are written by these functions.
 CREATE TABLE IF NOT EXISTS public.pass_experiences (

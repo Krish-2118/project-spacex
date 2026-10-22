@@ -4,7 +4,7 @@ The live flow is Google login → participant details → payment QR → screens
 
 ## Reviewer preview and the single off switch
 
-`REGISTRATION_PREVIEW_ENABLED` in `src/config/launch.ts` is currently **true**. Set it to **false** and redeploy to remove all preview entry points, mock users, local uploads and simulated approval. There is no UI toggle. This is independent of `REGISTRATIONS_OPEN`, which controls whether live registration is open.
+`REGISTRATION_PREVIEW_ENABLED` in `src/config/launch.ts` is currently **false**: every preview entry point, mock user, local upload and simulated approval is off. Set it to **true** and redeploy only to bring the reviewer preview back for a review build. There is no UI toggle. This is independent of `REGISTRATIONS_OPEN`, which controls whether live registration is open.
 
 - `/?preview=register` starts all steps, with a blank college field.
 - Preview participants select a local screenshot and enter a 12-digit test UTR. No payment, registration, upload or acknowledgement is sent to the server.

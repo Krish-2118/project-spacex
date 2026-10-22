@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth-server';
 import { getSupabaseAsUser } from '@/lib/supabase';
-import { createRateLimiter } from '@/lib/security';
+import { createRateLimiter, readJsonObject } from '@/lib/security';
 import { entryRateLimited, entryRpcFailure } from '@/lib/entry-route';
 
 const limiter = createRateLimiter({ limit: 40, windowMs: 60_000 });
@@ -11,8 +11,10 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
   const limited = entryRateLimited(limiter, auth.user.id);
   if (limited) return limited;
-  const body = await req.json().catch(() => null);
-  if (!body || !['claim', 'acknowledge'].includes(body.action) ||
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  const body = parsed.value;
+  if (typeof body.action !== 'string' || !['claim', 'acknowledge'].includes(body.action) ||
     typeof body.claim !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.claim)) {
     return NextResponse.json({ error: 'Invalid experience request.' }, { status: 400 });
   }
