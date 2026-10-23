@@ -10,7 +10,7 @@ import ImageSlot from './ImageSlot';
 import { LiveFooter } from './SiteFooter';
 import type { V } from './types';
 
-/** Landing page: sticky hero, briefing, odyssey map, gallery tunnel, sponsors and closing call to action. */
+/** Landing page: sticky hero, briefing, odyssey map, gallery tunnel, sponsors, campus ambassadors and closing call to action. */
 export default function HomeView({ v }: { v: V }) {
   return (
     <main data-view="home" data-noscroll="" data-screen-label="Home" style={{ position: "absolute", inset: "0", overflowX: "hidden", overflowY: "auto", scrollbarWidth: "none", visibility: "hidden" }}>
@@ -237,6 +237,46 @@ export default function HomeView({ v }: { v: V }) {
               <span data-scr="">BECOME A SPONSOR</span>
             </a>
           </div>
+        </div>
+      </section>
+      {/* Campus Ambassador programme (src/config/ambassador.ts): APPLY opens the organisers' Google Form; GET MY CODE gives
+          any signed-in student their permanent code (a dialog outside this never re-rendering view). #/ambassador lands here. */}
+      <section data-sec="ambassador" aria-labelledby="ambassador-heading" style={{ position: "relative", padding: "clamp(96px,14vh,160px) clamp(20px,4vw,64px)", background: "#141312", color: "#ECE8DF", overflow: "hidden" }}>
+        <img decoding="async" src="/assets/starfield.svg" alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: ".6", pointerEvents: "none" }} />
+        <div style={{ position: "relative", maxWidth: "1240px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,420px),1fr))", gap: "clamp(48px,6vw,96px)", alignItems: "start" }}>
+          <header data-reveal="" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "20px" }}>
+            <p style={{ margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: ".3em", color: "oklch(0.8 0.12 85)" }}>CAMPUS AMBASSADOR PROGRAMME</p>
+            <h2 id="ambassador-heading" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,5vw,80px)", lineHeight: "1", textWrap: "balance" }}>Lead your campus into orbit.</h2>
+            <p style={{ maxWidth: "52ch", margin: "0", fontSize: "17px", lineHeight: "1.6", color: "rgba(236,232,223,.8)", textWrap: "pretty" }}>Represent Innovision 2026 at your college. You get a code of your own, and every student who registers with it counts for you, as many as you can bring along.</p>
+            <div className="cta-pair" style={{ display: "flex", gap: "14px", flexWrap: "wrap", marginTop: "8px" }}>
+              {v.ambassadorFormUrl ? (
+                <a href={v.ambassadorFormUrl} target="_blank" rel="noopener noreferrer" onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#141312", background: "#ECE8DF", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", transition: "background-color .4s cubic-bezier(.25,1,.1,1)" }} className="hv-gold-fill">
+                  <span data-scr="">APPLY VIA GOOGLE FORM ↗</span>
+                </a>
+              ) : (
+                <span aria-disabled="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "17px 30px", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "rgba(20,19,18,.7)", background: "rgba(236,232,223,.55)", clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)", cursor: "not-allowed" }}>APPLICATIONS OPEN SOON</span>
+              )}
+              <a href="#/ambassador" onClick={v.getAmbassadorCode} onMouseEnter={v.hover} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "168px", padding: "15.5px 28.5px", textDecoration: "none", fontWeight: "700", fontSize: "15px", letterSpacing: ".06em", color: "#ECE8DF", border: "1.5px solid rgba(236,232,223,.6)", transition: "color .3s" }} className="hv-gold">
+                <span data-scr="">GET MY CODE</span>
+              </a>
+            </div>
+            <p style={{ maxWidth: "52ch", margin: "0", fontSize: "14px", lineHeight: "1.55", color: "rgba(236,232,223,.62)", textWrap: "pretty" }}>Tap GET MY CODE and log in with Google: your code is ready straight away.</p>
+          </header>
+          <ol data-reveal="" style={{ listStyle: "none", margin: "0", padding: "0", display: "grid", gap: "0", borderTop: "1px solid rgba(236,232,223,.18)" }}>
+            {[
+              ['01', 'Apply', 'Fill in the ambassador Google Form, so the Innovision team knows who you are.'],
+              ['02', 'Get your code', 'Tap GET MY CODE and log in with Google. Your code is ready straight away, with no registration needed, and it stays yours.'],
+              ['03', 'Bring your campus', 'Share your code or link. Students enter it when they register, and there is no limit.'],
+            ].map(([no, step, text]) => (
+              <li key={no} style={{ display: "grid", gridTemplateColumns: "56px minmax(0,1fr)", gap: "16px", padding: "22px 0", borderBottom: "1px dashed rgba(236,232,223,.22)" }}>
+                <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "30px", lineHeight: "1", color: "transparent", WebkitTextStroke: "1px oklch(0.8 0.12 85)" }}>{no}</span>
+                <span style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em", textTransform: "uppercase" }}>{step}</span>
+                  <span style={{ fontSize: "15px", lineHeight: "1.55", color: "rgba(236,232,223,.75)", textWrap: "pretty" }}>{text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
       {/* The footer slides up over the closing section: the section is sticky (its top is set by Innovision#homeScroll so it

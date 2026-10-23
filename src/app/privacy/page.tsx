@@ -14,7 +14,7 @@ export const metadata = pageMetadata({
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" path="/privacy" updated="13 October 2026">
+    <LegalPage title="Privacy Policy" path="/privacy" updated="23 October 2026">
       <p>
         This policy explains what personal data the INNOVISION 2026 website collects, why, who can see it and what you can
         do about it. &ldquo;We&rdquo; means the INNOVISION 2026 organising team at the National Institute of Technology
@@ -27,6 +27,11 @@ export default function PrivacyPage() {
         <li><b>From Google sign-in:</b> your name, email address and profile photo. We never see your Google password.</li>
         <li><b>When you register:</b> your name, gender, college, enrolment or roll number and phone number.</li>
         <li><b>For the fee:</b> the UPI transaction ID (UTR) and the screenshot of your payment that you upload. We do not collect card, bank or UPI PIN details.</li>
+        <li><b>Referral codes:</b> if you enter a friend&apos;s or a campus ambassador&apos;s code when you register, we record whose code it was.</li>
+        <li>
+          <b>Campus ambassadors:</b> when you get an ambassador code, we store it with your name, college and Google
+          email. What you fill in on our ambassador application form is kept by the organisers in Google Forms.
+        </li>
         <li><b>At the venue:</b> when your entry pass is scanned, we record the time, the entry desk and which volunteer checked you in.</li>
         <li><b>Visit statistics:</b> anonymous page-view counts through Vercel Analytics, which uses no cookies and does not identify you.</li>
       </ul>
@@ -45,10 +50,12 @@ export default function PrivacyPage() {
       <ul>
         <li><b>You</b> can see your own profile, registration and entry pass after signing in.</li>
         <li><b>The registration team</b> sees registration details and payment screenshots to verify payments. Screenshots are kept in private storage and opened only through short-lived links.</li>
+        <li><b>Admins and the registration team</b> also see which code each registrant entered, and each campus ambassador&apos;s name, email, phone number, college and the registrations their code brought in, to run the programme and contact them. Ambassadors see only their own code, never who used it.</li>
         <li><b>Gate volunteers</b> see your registration details when they scan your pass, to match them with your college ID.</li>
         <li>
-          <b>Service providers</b> that run the site for us: Google (sign-in), Supabase (database and file storage) and
-          Vercel (hosting and visit statistics). They process data only to provide those services.
+          <b>Service providers</b> that run the site for us: Google (sign-in, and Google Forms for ambassador
+          applications), Supabase (database and file storage) and Vercel (hosting and visit statistics). They process data
+          only to provide those services.
         </li>
       </ul>
       <p>We share data with anyone else only if the law requires it.</p>
@@ -57,7 +64,8 @@ export default function PrivacyPage() {
       <p>
         We use two sign-in cookies, which last up to 7 and 30 days, so you stay logged in. The site also keeps small,
         temporary notes in your browser&apos;s session storage, for example to reopen the registration form after you sign
-        in. We use no advertising or tracking cookies.
+        in. If you open a share link that carries a referral code, the code is kept in your browser&apos;s local storage for
+        up to 30 days, only to fill it in when you register. We use no advertising or tracking cookies.
       </p>
 
       <h2>How long we keep it</h2>

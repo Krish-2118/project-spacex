@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyRegistrationStaff } from '@/lib/auth-server';
 import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
 
@@ -9,6 +10,47 @@ export const runtime = 'nodejs';
 // empty batch does. MAX_BATCHES bounds the work per request.
 const BATCH_SIZE = 1000;
 const MAX_BATCHES = 20;
+// Ids per `in.(...)` lookup, keeping the request URL short.
+const LOOKUP_CHUNK = 150;
+
+/** Who brought a registration in: the registrant's code they entered, or a campus ambassador's (never both). */
+type ReferredVia = { kind: 'registrant' | 'ambassador'; code: string; name: string } | null;
+
+/** Reads `columns` of the rows of `table` with these ids, in chunks. */
+async function rowsById(supabase: SupabaseClient, table: string, columns: string, ids: string[]) {
+  const rows: Record<string, string>[] = [];
+  for (let i = 0; i < ids.length; i += LOOKUP_CHUNK) {
+    const { data, error } = await supabase.from(table).select(columns).in('id', ids.slice(i, i + LOOKUP_CHUNK));
+    if (error) return { rows, error };
+    rows.push(...((data ?? []) as unknown as Record<string, string>[]));
+  }
+  return { rows, error: null };
+}
+
+/** referred_via for every row: the referrer's code and name, looked up whether or not the filters list the referrer. */
+async function withReferredVia(supabase: SupabaseClient, registrations: Record<string, unknown>[]) {
+  const ids = (key: string) => [...new Set(registrations.map((r) => r[key]).filter((v): v is string => typeof v === 'string'))];
+  const [friends, ambassadors] = await Promise.all([
+    rowsById(supabase, 'registrations', 'id, referral_code, name', ids('referred_by')),
+    rowsById(supabase, 'campus_ambassadors', 'id, code, name', ids('ambassador_id')),
+  ]);
+  if (friends.error || ambassadors.error) return { error: friends.error || ambassadors.error, registrations };
+  const friendById = new Map(friends.rows.map((f) => [f.id, f]));
+  const ambassadorById = new Map(ambassadors.rows.map((a) => [a.id, a]));
+  return {
+    error: null,
+    registrations: registrations.map((r) => {
+      const friend = friendById.get(r.referred_by as string);
+      const amb = ambassadorById.get(r.ambassador_id as string);
+      const referred_via: ReferredVia = amb
+        ? { kind: 'ambassador', code: amb.code, name: amb.name }
+        : friend
+        ? { kind: 'registrant', code: friend.referral_code, name: friend.name }
+        : null;
+      return { ...r, referred_via };
+    }),
+  };
+}
 
 // GET all registrations (with optional filtering)
 export async function GET(req: NextRequest) {
@@ -22,6 +64,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const studentType = searchParams.get('student_type');
+    // Only the registrations made with this campus ambassador's code (the AMBASSADORS tab's per-ambassador list).
+    const ambassador = searchParams.get('ambassador');
     // Stripped of PostgREST filter syntax so a search term can't inject extra `.or()` conditions.
     const query = sanitizeFilterValue(searchParams.get('q'));
 
@@ -30,6 +74,9 @@ export async function GET(req: NextRequest) {
     }
     if (studentType && studentType !== 'all' && !['internal', 'external'].includes(studentType)) {
       return NextResponse.json({ error: 'Invalid student_type filter' }, { status: 400 });
+    }
+    if (ambassador && !isUuid(ambassador)) {
+      return NextResponse.json({ error: 'Invalid ambassador filter' }, { status: 400 });
     }
 
     // Oldest first with a unique tie-breaker: a total order, and registrations created while we page land after
@@ -43,6 +90,7 @@ export async function GET(req: NextRequest) {
 
       if (status && status !== 'all') dbQuery = dbQuery.eq('status', status);
       if (studentType && studentType !== 'all') dbQuery = dbQuery.eq('student_type', studentType);
+      if (ambassador) dbQuery = dbQuery.eq('ambassador_id', ambassador);
       if (query) {
         dbQuery = dbQuery.or(
           `name.ilike.%${query}%,email.ilike.%${query}%,registration_id.ilike.%${query}%,college.ilike.%${query}%,utr.ilike.%${query}%,enrollment_no.ilike.%${query}%`
@@ -80,7 +128,12 @@ export async function GET(req: NextRequest) {
       from += data.length;
     }
 
-    return NextResponse.json({ success: true, registrations: registrations.reverse() });
+    const enriched = await withReferredVia(supabase, registrations.reverse());
+    if (enriched.error) {
+      console.error('/api/admin/registrations referrer lookup error:', enriched.error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, registrations: enriched.registrations });
   } catch (err: unknown) {
     console.error('/api/admin/registrations error:', err);
     const message = 'Failed to fetch registrations';

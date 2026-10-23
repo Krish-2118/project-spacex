@@ -24,6 +24,7 @@ import AboutPanel from './AboutPanel';
 import ProfileOverlay from './ProfileOverlay';
 import RegistrationStatusSync from './RegistrationStatusSync';
 import PhoneModal from './PhoneModal';
+import AmbassadorCodeDialog, { type AmbassadorDialogState } from './AmbassadorCodeDialog';
 import EventPopup from './EventPopup';
 import AdminDashboard from './AdminDashboard';
 import Toast from './Toast';
@@ -39,6 +40,8 @@ import {
   updateUserPhone,
   fetchUserRegistration,
   createRegistration,
+  checkReferralCode,
+  fetchAmbassadorCode,
   signInWithGoogle,
   signOutUser,
   cleanAuthUrl,
@@ -52,9 +55,10 @@ import {
   type GalleryPhoto,
 } from '@/lib/supabase';
 import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH, REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
+import { AMBASSADOR_FORM_URL, AMBASSADOR_SECTION } from '@/config/ambassador';
 import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
-import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, REFERRAL_CODE_PATTERN } from '@/lib/validation';
+import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR } from '@/lib/validation';
 import { httpErrorMessage, isTransientFailure } from '@/lib/api-errors';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
@@ -159,11 +163,16 @@ interface State {
   authReady: boolean; auth: boolean; authMode: string; step: number; err: any; busyLbl: string; files: any; drag: string; copied: boolean; schedFilter: string;
   /** The referral code on the pass was just copied (shows COPIED). */
   refCopied: boolean;
+  /** GET MY CODE (Campus Ambassador section): what the dialog shows; null while it is closed. */
+  ambDialog: AmbassadorDialogState | null;
   dbGallery: GalleryPhoto[];
   dbEvents: EventItem[];
 }
 
 const SAVED_KEY = 'iv26-schedule-saved';
+/** A share link's referral code (captureReferral) and how long it is kept for the registration form. */
+const SHARED_REF_KEY = 'inv_shared_ref';
+const SHARED_REF_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const HINT_KEY = 'iv26-hint-worlds';
 
 const parts = (s: Element): SlideParts => ({
@@ -179,7 +188,7 @@ const partList = (p: SlideParts) => [p.hero, p.rot, ...p.astro, p.outline, ...p.
 export class Innovision extends Component<Props, State> {
   rootRef = createRef<HTMLDivElement>();
   state: State = { view: 'loading', index: 0, dIndex: 0, about: false, compact: false, narrow: false, menu: false, toastOn: false, toastMsg: '', curtainLabel: 'INNOVISION', curtainKicker: 'NOW ENTERING',
-    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, refCopied: false, gIdx: 0, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, notice: false, coarse: false, lowPower: false, lazy: {},
+    auth: false, authMode: 'register', step: 0, err: {} as any, busyLbl: '', user: null, files: {} as any, drag: '', copied: false, refCopied: false, ambDialog: null, gIdx: 0, schedDay: 0, schedFilter: 'all', saved: [], hudSolid: false, gBusy: false, gErr: '', gUser: null, hint: false, notice: false, coarse: false, lowPower: false, lazy: {},
     adminOpen: false, profileOpen: false, phoneModalOpen: false, eventPop: null, registration: null, authReady: false, dbGallery: [], dbEvents: [] };
   busy = false; pending = false; slideDir = 0;
   authBusy = false; authClosing = false;
@@ -196,6 +205,8 @@ export class Innovision extends Component<Props, State> {
   hintSeen = false; _hintT?: ReturnType<typeof setTimeout>; _noticeT?: ReturnType<typeof setTimeout>;
   /** Home section to scroll to once the home view has been prepared. */
   pendingSec: string | null = null;
+  /** Referral code from a share link (/?ref=CODE, see captureReferral), pre-filled in the registration form. */
+  sharedRef = '';
   /**
    * Whether this load skips the loader: the skipLoader prop, or a visitor coming back from a teaser page
    * (SkipIntroOnReturn). Read once, so a dev strict-mode remount (same instance) doesn't replay the loader.
@@ -353,6 +364,9 @@ export class Innovision extends Component<Props, State> {
     // Auth Middleware Route Inspector: Check for middleware redirects (?auth=login, ?required=register, ?open=register, or #register)
     if (typeof window !== 'undefined') {
       const search = new URLSearchParams(window.location.search);
+      this.captureReferral(search);
+      // A link to the Campus Ambassador section: the loader always hands over at the top of the home page.
+      if (window.location.hash === '#/' + AMBASSADOR_SECTION) this.afterBoot(() => this.scrollHome(AMBASSADOR_SECTION, true));
       const isAuthRequired = search.get('required') === 'register' || search.get('auth') === 'login';
       const isOpenRegister = search.get('open') === 'register' || window.location.hash === '#register';
       const isOpenLogin = search.get('open') === 'login';
@@ -1392,6 +1406,7 @@ export class Innovision extends Component<Props, State> {
     if (v === 'merch') { this.leaveTo(MERCH_PATH, true); return { view: 'home', index: idx }; }
     if (v === 'gallery' || v === 'schedule') return { view: v, index: idx };
     if (v === 'sponsors') return { view: 'home', section: 'sponsors', index: idx };
+    if (v === AMBASSADOR_SECTION) return { view: 'home', section: AMBASSADOR_SECTION, index: idx };
     return { view: 'home', index: idx };
   }
   go(hash: string, replace?: boolean) {
@@ -1572,6 +1587,116 @@ export class Innovision extends Component<Props, State> {
     const disc = t && t.closest && t.closest('[data-hero]') ? this.$('[data-hero-disc]') : null;
     this.openAuth('register', disc || t, !!disc);
   };
+  /**
+   * GET MY CODE in the Campus Ambassador section: any signed-in student can get a code. Signed out: log in first
+   * (remembered across the Google round trip; handleUserSession comes back here). Signed in: the dialog shows their
+   * code, or, the first time, asks for their college and creates it (createAmbassadorCode).
+   */
+  // @ts-ignore
+  getAmbassadorCode = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!this._authReady.done) await this._authReady.p;
+    if (!this.alive) return;
+    if (!this.state.user) {
+      try { sessionStorage.setItem('inv_pending_action', 'ambassador'); } catch {}
+      this.openAuth('login');
+      this.toast('Log in with Google to get your ambassador code.');
+      return;
+    }
+    this.checkAmbassadorCode();
+  };
+  checkAmbassadorCode = async () => {
+    this.setState({ ambDialog: { kind: 'loading' } });
+    const res = await fetchAmbassadorCode();
+    // Closed while checking: stay closed.
+    if (!this.alive || !this.state.ambDialog) return;
+    if (!res.ok) {
+      if (res.status === 401) {
+        // The session ran out: log in again, then come straight back to the code.
+        this.setState({ ambDialog: null });
+        try { sessionStorage.setItem('inv_pending_action', 'ambassador'); } catch {}
+        this.openAuth('login');
+        this.toast('Please log in again to get your code.');
+        return;
+      }
+      this.setState({ ambDialog: { kind: 'error', message: res.error } });
+      return;
+    }
+    const a = res.ambassador;
+    this.setState({
+      ambDialog: !a ? { kind: 'join', email: res.email, name: res.name, college: res.college }
+        : a.status === 'revoked' ? { kind: 'revoked', email: res.email }
+        : { kind: 'code', code: a.code, name: a.name, email: res.email },
+    });
+  };
+  /** The first GET MY CODE: creates the student's code with the college they confirmed. */
+  createAmbassadorCode = async (college: string) => {
+    const join = this.state.ambDialog;
+    if (!join || join.kind !== 'join' || join.busy) return;
+    this.setState({ ambDialog: { ...join, college, busy: true, error: '' } });
+    const res = await fetchAmbassadorCode({ college });
+    if (!this.alive || this.state.ambDialog?.kind !== 'join') return;
+    if (!res.ok) {
+      if (res.status === 401) { this.setState({ ambDialog: null }); this.getAmbassadorCode(); return; }
+      this.setState({ ambDialog: { ...join, college, busy: false, error: res.error } });
+      return;
+    }
+    const a = res.ambassador;
+    this.setState({
+      ambDialog: a?.status === 'active' ? { kind: 'code', code: a.code, name: a.name, email: res.email }
+        : a?.status === 'revoked' ? { kind: 'revoked', email: res.email }
+        : { kind: 'error', message: 'Could not create your ambassador code. Please try again.' },
+    });
+  };
+  /** Runs fn once the loader has handed over to a view and no view transition is running. */
+  afterBoot(fn: () => void) {
+    const run = () => {
+      if (!this.alive) return;
+      if (this.state.view === 'loading' || this.busy) { setTimeout(run, 250); return; }
+      fn();
+    };
+    run();
+  }
+  /**
+   * A share link's referral code (/?ref=CAK7QM2X, from an ambassador's GET MY CODE): kept on this device for 30 days,
+   * across the Google sign-in round trip, and pre-filled in the registration form, where the student can still change
+   * it. Taken off the address bar. A malformed code is ignored.
+   */
+  captureReferral(search: URLSearchParams) {
+    const raw = search.get('ref');
+    if (raw !== null) {
+      const code = normalizeReferralCode(raw.slice(0, 64));
+      if (isReferralCode(code)) {
+        try { localStorage.setItem(SHARED_REF_KEY, JSON.stringify({ code, at: Date.now() })); } catch {}
+      }
+      try {
+        const rest = new URLSearchParams(window.location.search);
+        rest.delete('ref');
+        const q = rest.toString();
+        window.history.replaceState(null, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
+      } catch {}
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(SHARED_REF_KEY) || 'null');
+      if (saved && typeof saved.code === 'string' && isReferralCode(saved.code) && Date.now() - Number(saved.at) < SHARED_REF_TTL_MS) {
+        this.sharedRef = formatReferralCode(saved.code);
+      } else if (saved) localStorage.removeItem(SHARED_REF_KEY);
+    } catch {}
+  }
+  /** Forgets the share link's code once it has been used for a registration. */
+  clearSharedRef() {
+    this.sharedRef = '';
+    try { localStorage.removeItem(SHARED_REF_KEY); } catch {}
+  }
+  /**
+   * The code a registrant shares from their pass: an active campus ambassador's permanent CA code (still valid whatever
+   * happens to their own registration), otherwise their own referral code (not once the registration was rejected).
+   */
+  shareCode(): string {
+    const r = this.state.registration, P = this.pass || r || {};
+    if (r?.ambassador_code) return formatReferralCode(r.ambassador_code);
+    return String(P.status || '').toUpperCase() !== 'REJECTED' ? r?.referral_code || '' : '';
+  }
   /** Leaves for the "registrations opening soon" page (/register while REGISTRATIONS_OPEN is false). */
   showRegistrationsSoon(replace?: boolean) {
     if (typeof window === 'undefined') return;
@@ -1806,6 +1931,17 @@ export class Innovision extends Component<Props, State> {
       this.leaveTo('/admin/scan', true);
       return;
     }
+    if (pendingAction === 'ambassador') {
+      // GET MY CODE before signing in: back to the Campus Ambassador section (a jump, as for a link to it: a smooth
+      // scroll down the whole page would still be under way behind the dialog), with the code check running.
+      sessionStorage.removeItem('inv_pending_action');
+      const resume = () => this.afterBoot(() => {
+        if (this.state.view === 'home') this.scrollHome(AMBASSADOR_SECTION); else this.goSection(AMBASSADOR_SECTION);
+        this.checkAmbassadorCode();
+      });
+      if (this.state.auth) this.closeAuth(resume); else resume();
+      return;
+    }
     if (pendingAction === 'register') {
       if (typeof window !== 'undefined') sessionStorage.removeItem('inv_pending_action');
       if (registration) {
@@ -1903,6 +2039,7 @@ export class Innovision extends Component<Props, State> {
       adminOpen: false,
       profileOpen: false,
       phoneModalOpen: false,
+      ambDialog: null,
       authMode: 'register',
       step: 0,
       err: {},
@@ -2338,9 +2475,9 @@ export class Innovision extends Component<Props, State> {
     const no = () => this.toast('UPI ID: ' + t);
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, no); else no(); } catch (e) { no(); }
   };
-  /** Copies the registrant's own referral code from the pass. */
+  /** Copies the code shown on the pass (shareCode). */
   copyReferral = () => {
-    const code = this.state.registration?.referral_code;
+    const code = this.shareCode();
     if (!code) return;
     const ok = () => { this.setState({ refCopied: true }); clearTimeout(this._refCopy); this._refCopy = setTimeout(() => this.setState({ refCopied: false }), 1600); };
     const no = () => this.toast('Your referral code: ' + code);
@@ -2425,17 +2562,26 @@ export class Innovision extends Component<Props, State> {
       else if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
         err.enrollment_no = 'Use only letters, numbers, spaces and / _ - (up to 50 characters).';
       }
-      // Optional; whether the code belongs to someone is checked by the server on submit.
+      // Optional: a registrant's or a campus ambassador's code. Checked with the server before payment (and again on
+      // submit), so a wrong or deactivated code is fixed before anyone pays.
       const referred_by_code = normalizeReferralCode(v('referred_by_code'));
-      if (referred_by_code && !REFERRAL_CODE_PATTERN.test(referred_by_code)) {
-        err.referred_by_code = 'Referral codes are 6 letters and numbers. Check the code, or leave it empty.';
-      }
+      if (referred_by_code && !isReferralCode(referred_by_code)) err.referred_by_code = REFERRAL_CODE_FORMAT_ERROR;
 
       if (this.fail(err)) return;
       this.reg = { name, college, email, phone, enrollment_no, gender, referred_by_code };
 
       // Every student, NIT Rourkela included, continues to Step 1 (payment).
-      this.toStep(1);
+      if (!referred_by_code) { this.toStep(1); return; }
+      this.setState({ busyLbl: 'CHECKING CODE' });
+      checkReferralCode(referred_by_code).then((res) => {
+        if (!this.alive) return;
+        this.setState({ busyLbl: '' });
+        // Moved on meanwhile (closed the form, signed out).
+        if (!this.state.auth || this.state.authMode !== 'register' || this.state.step !== 0) return;
+        // A check that couldn't run (offline, busy) doesn't hold the student up: the submit checks the code again.
+        if ('valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
+        this.toStep(1);
+      });
     } else if (s.step === 1) {
       this.toStep(2);
     } else if (s.step === 2) {
@@ -2546,6 +2692,7 @@ export class Innovision extends Component<Props, State> {
           return;
         }
 
+        this.clearSharedRef();
         this.pass = {
           name: savedReg.name || r.name,
           college: savedReg.college || r.college,
@@ -2693,7 +2840,8 @@ export class Innovision extends Component<Props, State> {
       phone: user?.phone || R.phone || '',
       enrollment_no: user?.enrollment_no || s.registration?.enrollment_no || R.enrollment_no || '',
       gender: R.gender || s.registration?.gender || '',
-      referred_by_code: R.referred_by_code || '',
+      // What the student entered on the first step, else a share link's code.
+      referred_by_code: this.reg ? R.referred_by_code || '' : this.sharedRef,
     };
   // @ts-ignore
     const up = (kind, ek, prompt) => {
@@ -2753,8 +2901,8 @@ export class Innovision extends Component<Props, State> {
         : P.status === 'REJECTED'
         ? 'Your registration could not be approved. Please contact the helpdesk.'
         : 'Your payment is under review. Only the registration team can approve it. This page updates automatically while you are here.',
-      // The registrant's own referral code, shared from the pass (not once the registration was rejected).
-      refCode: String(P.status || '').toUpperCase() !== 'REJECTED' ? s.registration?.referral_code || '' : '',
+      // The code shared from the pass: an ambassador's CA code, else the registrant's own (shareCode).
+      refCode: this.shareCode(), refCodeLabel: s.registration?.ambassador_code ? 'Your Ambassador Code:' : 'Your Referral Code:',
       copyRefCode: this.copyReferral, refCodeLbl: s.refCopied ? 'COPIED' : 'COPY CODE',
       exploreFromPass: this.exploreFromPass,
       googleLogin: this.googleLogin, gBusy: s.gBusy, gErr: s.gErr, gLbl: s.gBusy ? 'Waiting for Google…' : 'Continue with Google',
@@ -2827,6 +2975,8 @@ export class Innovision extends Component<Props, State> {
       menuExpanded: s.menu,
       menuLogin: (e: MouseEvent<HTMLAnchorElement>) => { this.setState({ menu: false }); this.loginClick(e); },
       goHome: (e: MouseEvent) => { e.preventDefault(); this.goSection(null); },
+      // Campus Ambassador section (HomeView): the Google Form ('' while it is a placeholder) and GET MY CODE.
+      ambassadorFormUrl: AMBASSADOR_FORM_URL, getAmbassadorCode: this.getAmbassadorCode,
       topNav: navLinks.filter((_, i) => !NAVBAR_HIDDEN.includes(LINKS[i][1])).map((l) => ({ label: l.label, labelCap: l.name, href: l.href, menuColor: l.dc, cur: l.cur === 'true', onClick: l.onClick })),
       linkGo: this.linkGo,
       menuVis: (s.menu ? 'visible' : 'hidden') as 'visible' | 'hidden', menuDelay: s.menu ? '0s' : '.9s', menuClip: s.menu ? 'circle(150% at 100% 0%)' : 'circle(0% at 100% 0%)', menuHidden: !s.menu,
@@ -3046,6 +3196,14 @@ export class Innovision extends Component<Props, State> {
           onSave={this.handleUpdatePhone}
           onClose={() => this.setState({ phoneModalOpen: false })}
           userEmail={s.user?.email}
+        />
+        <AmbassadorCodeDialog
+          state={s.ambDialog}
+          formUrl={AMBASSADOR_FORM_URL}
+          onClose={() => this.setState({ ambDialog: null })}
+          onRetry={this.checkAmbassadorCode}
+          onCreate={this.createAmbassadorCode}
+          onLogout={() => { this.setState({ ambDialog: null }); this.logout(); }}
         />
         {s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team') && (
           <AdminDashboard

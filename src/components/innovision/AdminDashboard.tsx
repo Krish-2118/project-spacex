@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Registration } from '@/lib/supabase';
 import { getSupabase, fetchSessionFromDatabase, getCookie } from '@/lib/supabase';
-import { csvCell, GENDER_OPTIONS, safeHttpUrl } from '@/lib/validation';
+import { csvCell, formatReferralCode, GENDER_OPTIONS, safeHttpUrl } from '@/lib/validation';
 
 const genderLabel = (value: string) => GENDER_OPTIONS.find((g) => g.value === value)?.label ?? value;
 import EventsManager from './admin/EventsManager';
 import GalleryManager from './admin/GalleryManager';
 import EntryManager from './admin/EntryManager';
 import ReferralLeaderboard from './admin/ReferralLeaderboard';
+import AmbassadorsManager from './admin/AmbassadorsManager';
 import { httpErrorMessage } from '@/lib/api-errors';
 
 interface AdminDashboardProps {
@@ -32,7 +33,7 @@ export default function AdminDashboard({
   const canReviewRegistrations = isAdmin || isRegTeam;
 
   const defaultTab = canReviewRegistrations ? 'registrations' : 'events';
-  const [tab, setTab] = useState<'registrations' | 'referrals' | 'events' | 'gallery' | 'users' | 'entry'>(defaultTab);
+  const [tab, setTab] = useState<'registrations' | 'referrals' | 'ambassadors' | 'events' | 'gallery' | 'users' | 'entry'>(defaultTab);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(false);
@@ -205,7 +206,7 @@ export default function AdminDashboard({
   let activeTab = tab;
   if (tab === 'users' && !isAdmin) activeTab = defaultTab;
   if (tab === 'entry' && !isAdmin) activeTab = defaultTab;
-  if ((tab === 'registrations' || tab === 'referrals') && !canReviewRegistrations) activeTab = defaultTab;
+  if ((tab === 'registrations' || tab === 'referrals' || tab === 'ambassadors') && !canReviewRegistrations) activeTab = defaultTab;
   if ((tab === 'events' || tab === 'gallery') && !isAdmin && !isItTeam) activeTab = defaultTab;
 
   if (!isOpen || !isStaff) return null;
@@ -336,6 +337,9 @@ export default function AdminDashboard({
       'UPI UTR',
       'Payment Screenshot (private ref)',
       'Referral Code',
+      'Referred Via',
+      'Referred Via Code',
+      'Referred By',
       'Registered At',
     ];
 
@@ -353,6 +357,9 @@ export default function AdminDashboard({
       r.utr,
       r.payment_proof_path,
       r.referral_code,
+      r.referred_via ? (r.referred_via.kind === 'ambassador' ? 'Campus ambassador' : 'Registrant') : '',
+      r.referred_via ? formatReferralCode(r.referred_via.code) : '',
+      r.referred_via?.name ?? '',
       r.created_at,
     ].map(csvCell));
 
@@ -856,6 +863,27 @@ export default function AdminDashboard({
             </button>
             )}
 
+            {canReviewRegistrations && (
+            <button
+              id="tab-ambassadors"
+              type="button"
+              onClick={() => setTab('ambassadors')}
+              style={{
+                padding: '8px 18px',
+                border: 0,
+                borderBottom: activeTab === 'ambassadors' ? '2px solid oklch(0.8 0.12 85)' : '2px solid transparent',
+                background: activeTab === 'ambassadors' ? 'rgba(236,232,223,0.06)' : 'transparent',
+                color: activeTab === 'ambassadors' ? '#ECE8DF' : 'rgba(236,232,223,0.5)',
+                fontWeight: 700,
+                fontSize: '12px',
+                letterSpacing: '.14em',
+                cursor: 'pointer',
+              }}
+            >
+              AMBASSADORS
+            </button>
+            )}
+
             {(isAdmin || isItTeam) && (
             <button
               id="tab-events"
@@ -1343,6 +1371,20 @@ export default function AdminDashboard({
                                 UTR: {reg.utr}
                               </div>
                             )}
+                            {/* The code this registrant entered: a campus ambassador's, or another registrant's. */}
+                            {reg.referred_via && (
+                              <div
+                                style={{
+                                  marginTop: '4px',
+                                  fontSize: '11px',
+                                  letterSpacing: '.04em',
+                                  color: reg.referred_via.kind === 'ambassador' ? 'oklch(0.8 0.12 85)' : 'rgba(236,232,223,0.6)',
+                                }}
+                              >
+                                {reg.referred_via.kind === 'ambassador' ? 'Ambassador' : 'Referred by'}:{' '}
+                                {formatReferralCode(reg.referred_via.code)} · {reg.referred_via.name}
+                              </div>
+                            )}
                           </td>
 
                           {/* Status */}
@@ -1471,6 +1513,11 @@ export default function AdminDashboard({
         {/* REFERRAL LEADERBOARD (Admin + Registration-Team) */}
         {activeTab === 'referrals' && canReviewRegistrations && (
           <ReferralLeaderboard getAuthToken={getAuthToken} />
+        )}
+
+        {/* CAMPUS AMBASSADORS (Admin + Registration-Team): the programme's only portal */}
+        {activeTab === 'ambassadors' && canReviewRegistrations && (
+          <AmbassadorsManager getAuthToken={getAuthToken} />
         )}
 
         {/* TAB 5: VENUE ENTRY / CHECK-IN (Admin Only) */}

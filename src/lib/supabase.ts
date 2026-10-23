@@ -43,6 +43,15 @@ export interface Registration {
   referral_code?: string;
   /** The registration whose referral code this registrant entered, if any. */
   referred_by?: string | null;
+  /** The campus ambassador whose code this registrant entered, if any (never together with referred_by). */
+  ambassador_id?: string | null;
+  /**
+   * Not a column: added by /api/register when the registrant is an active campus ambassador. Their permanent CA code,
+   * shown on the pass instead of referral_code.
+   */
+  ambassador_code?: string | null;
+  /** Not a column: added by GET /api/admin/registrations, the code this registrant entered and whose it is. */
+  referred_via?: { kind: 'registrant' | 'ambassador'; code: string; name: string } | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -635,7 +644,10 @@ export async function fetchUserRegistrationServer(userId: string, email?: string
  * Passes through /api/register which is protected by server auth middleware
  */
 export async function createRegistration(
-  regData: Omit<Registration, 'id' | 'created_at' | 'updated_at' | 'referral_code' | 'referred_by'> & {
+  regData: Omit<
+    Registration,
+    'id' | 'created_at' | 'updated_at' | 'referral_code' | 'referred_by' | 'ambassador_id' | 'ambassador_code' | 'referred_via'
+  > & {
     /** Someone else's referral code entered in the form (optional). */
     referred_by_code?: string;
   }
@@ -696,6 +708,82 @@ export async function createRegistration(
   } catch {
     // No response (offline, connection dropped): nothing tells us whether it was saved, so no automatic retry.
     return { success: false, error: 'Network error. Please check your connection and try again.' };
+  }
+}
+
+/** POSTs JSON to one of the app's signed-in API routes, with the session's access token when the SDK has one. */
+async function postAsUser(path: string, body: unknown): Promise<{ res: Response; data: Record<string, unknown> }> {
+  const { data: { session } } = await getSupabase().auth.getSession();
+  const token = session?.access_token;
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  // A rate limit or crash at the platform edge may answer with HTML, not our JSON.
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+/**
+ * Checks the referral code typed in the registration form before payment (POST /api/register/check-code).
+ * `unchecked` when the check itself couldn't run (offline, rate limited, server error): the form then carries on, and
+ * POST /api/register checks the code again on submit.
+ */
+export async function checkReferralCode(
+  code: string
+): Promise<{ valid: true; kind: 'ambassador' | 'registrant' } | { valid: false; error: string } | { unchecked: true }> {
+  try {
+    const { res, data } = await postAsUser('/api/register/check-code', { code });
+    if (!res.ok) return { unchecked: true };
+    if (data.valid === true) return { valid: true, kind: data.kind === 'ambassador' ? 'ambassador' : 'registrant' };
+    return { valid: false, error: typeof data.error === 'string' ? data.error : 'This referral code is not valid.' };
+  } catch {
+    return { unchecked: true };
+  }
+}
+
+/**
+ * GET MY CODE (POST /api/ambassador/code): the caller's campus ambassador code. Without `create`, a student who has
+ * none yet gets `ambassador: null` with their name and a suggested college for the dialog; `create` makes their code.
+ */
+export async function fetchAmbassadorCode(create?: { college: string }): Promise<
+  | {
+      ok: true;
+      email: string;
+      ambassador: { status: 'active'; code: string; name: string } | { status: 'revoked' } | null;
+      /** For a student who has no code yet: shown in the dialog that creates it. */
+      name: string;
+      college: string;
+    }
+  | { ok: false; status?: number; error: string; field?: string }
+> {
+  try {
+    const { res, data } = await postAsUser('/api/ambassador/code', create ? { create: true, college: create.college } : {});
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: httpErrorMessage(res) || (typeof data.error === 'string' ? data.error : 'Could not get your ambassador code.'),
+        ...(typeof data.field === 'string' ? { field: data.field } : {}),
+      };
+    }
+    const amb = data.ambassador as { status?: string; code?: string; name?: string } | null | undefined;
+    return {
+      ok: true,
+      email: typeof data.email === 'string' ? data.email : '',
+      ambassador:
+        amb?.status === 'active' && typeof amb.code === 'string'
+          ? { status: 'active', code: amb.code, name: String(amb.name ?? '') }
+          : amb?.status === 'revoked'
+          ? { status: 'revoked' }
+          : null,
+      name: typeof data.name === 'string' ? data.name : '',
+      college: typeof data.college === 'string' ? data.college : '',
+    };
+  } catch {
+    return { ok: false, error: 'Network error. Please check your connection and try again.' };
   }
 }
 
