@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
 import { paymentProofExists } from '@/lib/payment-proofs';
+import { ambassadorGuardError, findOwnAmbassador, resolveReferralCode, type Registrant } from '@/lib/ambassadors';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
 import { isDuplicatePhoneError, PHONE_IN_USE_ERROR_MESSAGE } from '@/lib/validation';
 import {
@@ -18,6 +19,9 @@ import {
 
 const registerLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
 
+/** Added to a referral-code error at submit: the form goes back to the code with the payment details still filled in. */
+const PAYMENT_KEPT_NOTE = 'Nothing was submitted and your payment details are kept: fix or clear the code, then submit again.';
+
 /** Latest registration owned by this user (by id, or by their verified email for legacy rows). */
 async function findExistingRegistration(client: SupabaseClient, user: User, verifiedEmail: string) {
   const filter = isFilterSafeEmail(verifiedEmail)
@@ -30,6 +34,17 @@ async function findExistingRegistration(client: SupabaseClient, user: User, veri
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+}
+
+/**
+ * The registration as the registrant sees it: for an active campus ambassador, ambassador_code is their CA code, which
+ * the pass shows instead of the registration's own 6-character referral_code (it stays valid whatever happens to the
+ * registration). Not a column. A failed lookup only leaves it out.
+ */
+async function withAmbassadorCode<T extends object>(client: SupabaseClient, registration: T, registrant: Registrant) {
+  const { ambassador, error } = await findOwnAmbassador(client, registrant);
+  if (error) console.warn('Own ambassador lookup failed:', error);
+  return { ...registration, ambassador_code: ambassador?.status === 'active' ? ambassador.code : null };
 }
 
 /**
@@ -87,7 +102,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      registration: registration || null,
+      registration: registration
+        ? await withAmbassadorCode(adminClient, registration, { userId: user.id, email: verifiedEmail })
+        : null,
     });
   } catch (err: unknown) {
     console.error('API /api/register GET error:', err);
@@ -182,29 +199,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Optional referral: the code must belong to a registration that wasn't rejected. Checked last, after the UTR and
-    // proof, so probing codes costs a real payment proof and a slot of the per-user rate limit.
+    // Optional referral: a registrant's code (a registration that wasn't rejected) or an active campus ambassador's
+    // code that isn't the registrant's own (src/lib/ambassadors.ts). Checked last, after the UTR and proof. The form
+    // checks the code before payment (POST /api/register/check-code); a code that went bad since (an ambassador revoked
+    // in between) refuses the whole submit, so nothing is saved without the credit the registrant meant to give. The
+    // UTR is only claimed when the row is written, so the same payment details can be submitted again straight away.
+    const registrant: Registrant = { userId: user.id, email: verifiedEmail };
     let referredBy: string | null = null;
+    let ambassadorId: string | null = null;
     if (input.referred_by_code) {
-      const { data: referrer, error: referrerErr } = await adminClient
-        .from('registrations')
-        .select('id, status')
-        .eq('referral_code', input.referred_by_code)
-        .maybeSingle();
-      if (referrerErr) {
-        console.error('Referral code lookup failed:', referrerErr);
-        return NextResponse.json({ error: 'Failed to check the referral code. Please try again.' }, { status: 500 });
-      }
-      if (!referrer || referrer.status === 'rejected') {
+      const referral = await resolveReferralCode(adminClient, input.referred_by_code, registrant);
+      if (!referral.ok) {
         return NextResponse.json(
-          {
-            error: 'No registration has this referral code. Check it with the friend who shared it, or leave the field empty.',
-            field: 'referred_by_code',
-          },
-          { status: 400 }
+          referral.status === 400
+            ? { error: `${referral.error} ${PAYMENT_KEPT_NOTE}`, field: 'referred_by_code' }
+            : { error: referral.error },
+          { status: referral.status }
         );
       }
-      referredBy = referrer.id;
+      referredBy = referral.referredBy;
+      ambassadorId = referral.ambassadorId;
     }
 
     // 4. Status and fee are server constants, the same for every registrant (no free tier): any status, amount or
@@ -226,6 +240,9 @@ export async function POST(req: NextRequest) {
       status: NEW_REGISTRATION_STATUS,
       // The registrant's own referral_code is generated by the database (trg_assign_referral_code).
       referred_by: referredBy,
+      // Only sent when an ambassador's code was used, so registering without one keeps working on a database that
+      // hasn't had supabase/manual/add_campus_ambassadors.sql yet.
+      ...(ambassadorId ? { ambassador_id: ambassadorId } : {}),
     };
 
     let newReg = null;
@@ -239,6 +256,11 @@ export async function POST(req: NextRequest) {
       newReg = result.data;
       regError = result.error;
       if (!regError) break;
+      // The ambassador was revoked between the check above and this insert (trg_guard_registration_ambassador).
+      const guardError = ambassadorGuardError(regError);
+      if (guardError) {
+        return NextResponse.json({ error: `${guardError} ${PAYMENT_KEPT_NOTE}`, field: 'referred_by_code' }, { status: 400 });
+      }
       if (regError.code !== '23505') break;
       // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert (possibly
       // this user's own concurrent submit, when the UTR index is checked before the user_id index).
@@ -284,7 +306,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Registration submitted successfully. Pending verification.',
-      registration: newReg,
+      registration: await withAmbassadorCode(adminClient, newReg, registrant),
     });
   } catch (err: unknown) {
     console.error('Registration API error:', err);
