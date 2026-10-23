@@ -6,6 +6,7 @@ import { paymentProofExists } from '@/lib/payment-proofs';
 import { ambassadorGuardError, findOwnAmbassador, resolveReferralCode, type Registrant } from '@/lib/ambassadors';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
 import { isDuplicatePhoneError, PHONE_IN_USE_ERROR_MESSAGE } from '@/lib/validation';
+import { ATTEMPTS_USED_UP_ERROR, attemptsLeft, isAttemptsUsedUpError } from '@/lib/rejections';
 import {
   classifyStudentType,
   createRateLimiter,
@@ -22,18 +23,32 @@ const registerLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 
 /** Added to a referral-code error at submit: the form goes back to the code with the payment details still filled in. */
 const PAYMENT_KEPT_NOTE = 'Nothing was submitted and your payment details are kept: fix or clear the code, then submit again.';
 
-/** Latest registration owned by this user (by id, or by their verified email for legacy rows). */
-async function findExistingRegistration(client: SupabaseClient, user: User, verifiedEmail: string) {
+/**
+ * Latest registration owned by this user (by id, or by their verified email for legacy rows). `activeOnly` leaves out
+ * rejected ones: a rejected registration doesn't stop the user from registering again.
+ */
+async function findExistingRegistration(
+  client: SupabaseClient,
+  user: User,
+  verifiedEmail: string,
+  { activeOnly = false } = {}
+) {
   const filter = isFilterSafeEmail(verifiedEmail)
     ? `user_id.eq.${user.id},email.eq.${verifiedEmail}`
     : `user_id.eq.${user.id}`;
-  return client
+  let query = client.from('registrations').select('*').or(filter);
+  if (activeOnly) query = query.neq('status', 'rejected');
+  return query.order('created_at', { ascending: false }).limit(1).maybeSingle();
+}
+
+/** How many of this user's registrations staff rejected (each one uses up an attempt). */
+async function countRejected(client: SupabaseClient, userId: string) {
+  const { count, error } = await client
     .from('registrations')
-    .select('*')
-    .or(filter)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'rejected');
+  return { count: count ?? 0, error };
 }
 
 /**
@@ -57,6 +72,7 @@ async function utrConflictResponse(client: SupabaseClient, userId: string) {
     .from('registrations')
     .select('*')
     .eq('user_id', userId)
+    .neq('status', 'rejected')
     .limit(1)
     .maybeSingle();
   if (error) console.warn('Registration lookup after a UTR conflict failed:', error);
@@ -99,12 +115,26 @@ export async function GET(req: NextRequest) {
       console.warn('Error fetching registration in /api/register GET:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch registration.' }, { status: 500 });
     }
+    if (!registration) return NextResponse.json({ success: true, registration: null });
+
+    // A rejected registration also says whether the user may register again (the pass shows REGISTER AGAIN).
+    let extra = {};
+    if (registration.status === 'rejected') {
+      const rejected = await countRejected(adminClient, user.id);
+      if (rejected.error) {
+        console.warn('Rejected registrations count failed in /api/register GET:', rejected.error);
+        return NextResponse.json({ success: false, error: 'Failed to fetch registration.' }, { status: 500 });
+      }
+      extra = { attempts_left: attemptsLeft(rejected.count) };
+    }
 
     return NextResponse.json({
       success: true,
-      registration: registration
-        ? await withAmbassadorCode(adminClient, registration, { userId: user.id, email: verifiedEmail })
-        : null,
+      registration: await withAmbassadorCode(
+        adminClient,
+        { ...registration, ...extra },
+        { userId: user.id, email: verifiedEmail }
+      ),
     });
   } catch (err: unknown) {
     console.error('API /api/register GET error:', err);
@@ -165,8 +195,9 @@ export async function POST(req: NextRequest) {
 
     const adminClient = getSupabaseAdmin(token);
 
-    // 3. Prevent duplicate registrations for the same authenticated user
-    const { data: existingReg } = await findExistingRegistration(adminClient, user, verifiedEmail);
+    // 3. Prevent duplicate registrations for the same authenticated user. A rejected one doesn't count: the user may
+    // register again, up to MAX_REGISTRATION_ATTEMPTS registrations in all (also enforced by the database).
+    const { data: existingReg } = await findExistingRegistration(adminClient, user, verifiedEmail, { activeOnly: true });
 
     if (existingReg) {
       return NextResponse.json(
@@ -178,6 +209,15 @@ export async function POST(req: NextRequest) {
         },
         { status: 200 }
       );
+    }
+
+    const rejected = await countRejected(adminClient, user.id);
+    if (rejected.error) {
+      console.error('Rejected registrations count failed in /api/register POST:', rejected.error);
+      return NextResponse.json({ error: 'Failed to record registration. Please try again.' }, { status: 500 });
+    }
+    if (attemptsLeft(rejected.count) === 0) {
+      return NextResponse.json({ error: ATTEMPTS_USED_UP_ERROR }, { status: 403 });
     }
 
     // A UPI transaction can only pay for one registration.
@@ -261,6 +301,10 @@ export async function POST(req: NextRequest) {
       if (guardError) {
         return NextResponse.json({ error: `${guardError} ${PAYMENT_KEPT_NOTE}`, field: 'referred_by_code' }, { status: 400 });
       }
+      // Rejected for the last time between the check above and this insert (trg_guard_registration_attempts).
+      if (isAttemptsUsedUpError(regError)) {
+        return NextResponse.json({ error: ATTEMPTS_USED_UP_ERROR }, { status: 403 });
+      }
       if (regError.code !== '23505') break;
       // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert (possibly
       // this user's own concurrent submit, when the UTR index is checked before the user_id index).
@@ -272,7 +316,7 @@ export async function POST(req: NextRequest) {
       }
       // Unique violation on user_id (concurrent double submit): return the registration that won.
       if (!/registration_id|referral_code/i.test(`${regError.message} ${regError.details ?? ''}`)) {
-        const { data: winner } = await findExistingRegistration(adminClient, user, verifiedEmail);
+        const { data: winner } = await findExistingRegistration(adminClient, user, verifiedEmail, { activeOnly: true });
         if (winner) {
           return NextResponse.json({
             success: true,

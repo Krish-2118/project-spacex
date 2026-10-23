@@ -68,9 +68,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // API responses carry personal data and tokens: never let a browser or CDN cache them. The two public,
-        // anonymous endpoints (events, gallery) are excluded and set their own cache headers.
-        source: "/api/:path((?!events$|gallery$).*)",
+        // API responses carry personal data and tokens: never let a browser or CDN cache them. The three public,
+        // anonymous endpoints (events, gallery, seats) are excluded and set their own cache headers.
+        source: "/api/:path((?!events$|gallery$|seats$).*)",
         headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }],
       },
       {

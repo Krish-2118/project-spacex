@@ -7,6 +7,7 @@ import { useDialogFocus } from './useDialogFocus';
 import type { V } from './types';
 import { Logo } from './icons';
 import EntryPassCard from './EntryPassCard';
+import SeatCounter from './SeatCounter';
 import styles from './AuthOverlay.module.css';
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
@@ -54,6 +55,7 @@ export default function AuthOverlay({ v }: { v: V }) {
               <div data-a-in="">
                 <h2 data-m-in="" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "var(--auth-title-size)", lineHeight: ".98", letterSpacing: ".01em", textWrap: "balance" }}>{v.authTitle}</h2>
                 <p data-m-in="" style={{ margin: "18px 0 0", maxWidth: "34ch", fontSize: "clamp(15px,1.2vw,18px)", lineHeight: "1.55", color: "rgba(236,232,223,.78)", textWrap: "pretty" }}>{v.authSub}</p>
+                {v.showSeats ? <SeatCounter /> : null}
               </div>
               <ol data-a-in="" aria-label="Registration progress" style={{ display: "none", flexDirection: "column", margin: "0", padding: "0", listStyle: "none" }}>
                 {v.prog.map((p, pI) => (
@@ -315,7 +317,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                     </div>
 
                     <div style={{ display: v.d.pass, flexDirection: "column", gap: "16px", width: "100%", alignItems: "center" }}>
-                      {(v.passQr || v.isDev) ? <EntryPassCard key={v.passUserId || 'dev'} previewPass={v.previewPass} onContinue={v.exploreFromPass} /> : null}
+                      {(v.passQr || v.isDev) ? <EntryPassCard key={v.passUserId || 'dev'} previewPass={v.previewPass} onContinue={v.exploreFromPass} onRegisterAgain={v.registerAgain} /> : null}
                       {v.previewPending && <button type="button" className={styles.previewApprove} onClick={v.devApproveRegistration}>Simulate team approval</button>}
 
                       {/* Clean minimal footer underneath the ticket */}

@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/auth-server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { uploadPaymentProof } from '@/lib/payment-proofs';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
+import { ATTEMPTS_USED_UP_ERROR, attemptsLeft } from '@/lib/rejections';
 import {
   buildPaymentProofPath,
   createRateLimiter,
@@ -80,21 +81,25 @@ export async function POST(req: NextRequest) {
     }
 
     // No new proofs once registered (a submitted proof can't be swapped). Formerly part of the Storage INSERT policy.
-    const { data: registration, error: regErr } = await getSupabaseAdmin(auth.token)
-      .from('registrations')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .limit(1)
-      .maybeSingle();
-    if (regErr) {
-      console.error('Payment proof upload: registration lookup failed:', regErr);
+    // A rejected registration doesn't count: its owner may register again with a new screenshot, while they have
+    // attempts left.
+    const client = getSupabaseAdmin(auth.token);
+    const [active, rejected] = await Promise.all([
+      client.from('registrations').select('id').eq('user_id', auth.user.id).neq('status', 'rejected').limit(1).maybeSingle(),
+      client.from('registrations').select('id', { count: 'exact', head: true }).eq('user_id', auth.user.id).eq('status', 'rejected'),
+    ]);
+    if (active.error || rejected.error) {
+      console.error('Payment proof upload: registration lookup failed:', active.error || rejected.error);
       return NextResponse.json({ error: 'Failed to upload file. Please try again.' }, { status: 500 });
     }
-    if (registration) {
+    if (active.data) {
       return NextResponse.json(
         { error: 'You have already registered. Your payment screenshot can no longer be changed.' },
         { status: 409 }
       );
+    }
+    if (attemptsLeft(rejected.count ?? 0) === 0) {
+      return NextResponse.json({ error: ATTEMPTS_USED_UP_ERROR }, { status: 409 });
     }
 
     // Server-chosen path `<verified user id>/<random uuid>.<ext>`: the client's filename never reaches storage.

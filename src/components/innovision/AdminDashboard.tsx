@@ -11,7 +11,9 @@ import GalleryManager from './admin/GalleryManager';
 import EntryManager from './admin/EntryManager';
 import ReferralLeaderboard from './admin/ReferralLeaderboard';
 import AmbassadorsManager from './admin/AmbassadorsManager';
+import SeatCounterCard from './admin/SeatCounterCard';
 import { httpErrorMessage } from '@/lib/api-errors';
+import { MAX_REGISTRATION_ATTEMPTS, ordinal, REJECTION_REASONS, rejectionLabel, type RejectionReason } from '@/lib/rejections';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -48,8 +50,12 @@ export default function AdminDashboard({
     message: string;
     actionText: string;
     actionType: 'approve' | 'reject' | 'role' | 'default';
-    onConfirm: () => void;
+    /** A rejection: the confirm button stays disabled until a reason is picked, and gets it. */
+    onConfirm: (reason?: RejectionReason) => void;
   } | null>(null);
+  const [rejectReason, setRejectReason] = useState<RejectionReason | ''>('');
+  // Bumped whenever the seat count may have moved (list reloaded, registration reviewed): the SEAT COUNTER card reloads.
+  const [seatsKey, setSeatsKey] = useState(0);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -157,6 +163,7 @@ export default function AdminDashboard({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(httpErrorMessage(res) || data.error || 'Failed to fetch registrations');
       setRegistrations(data.registrations || []);
+      setSeatsKey((k) => k + 1);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error loading registrations';
       setErrorMsg(message);
@@ -219,19 +226,27 @@ export default function AdminDashboard({
     }
 
     const isApprove = newStatus === 'confirmed';
+    // What a rejection means for the student: they see the reason and may register again, unless this was their last
+    // attempt.
+    const attempt = reg.attempt ?? 1;
+    const afterReject =
+      attempt >= MAX_REGISTRATION_ATTEMPTS
+        ? `This is their ${ordinal(attempt)} and last attempt: after this rejection they can't register again.`
+        : `They will see the reason on their pass and can register again (${MAX_REGISTRATION_ATTEMPTS - attempt} more ${MAX_REGISTRATION_ATTEMPTS - attempt === 1 ? 'attempt' : 'attempts'}).`;
+    setRejectReason('');
     setConfirmModal({
       isOpen: true,
       title: isApprove ? 'Approve Registration' : 'Reject Registration',
       message: isApprove
         ? `Are you sure you want to APPROVE registration for ${reg.name} (${reg.registration_id})? This will generate their confirmed boarding pass.`
-        : `Are you sure you want to REJECT registration for ${reg.name} (${reg.registration_id})? This action cannot be altered once confirmed.`,
+        : `REJECT registration for ${reg.name} (${reg.registration_id})? It cannot be altered once done. ${afterReject} Their seat goes back to the counter.`,
       actionText: isApprove ? 'APPROVE REGISTRATION' : 'REJECT REGISTRATION',
       actionType: isApprove ? 'approve' : 'reject',
-      onConfirm: () => executeUpdateStatus(reg, newStatus),
+      onConfirm: (reason) => executeUpdateStatus(reg, newStatus, reason),
     });
   };
 
-  const executeUpdateStatus = async (reg: Registration, newStatus: 'confirmed' | 'rejected') => {
+  const executeUpdateStatus = async (reg: Registration, newStatus: 'confirmed' | 'rejected', reason?: RejectionReason) => {
     if (!canReviewRegistrations) return;
     try {
       setActionBusyId(reg.id || reg.registration_id);
@@ -251,6 +266,7 @@ export default function AdminDashboard({
         body: JSON.stringify({
           registrationId: reg.id,
           status: newStatus,
+          ...(newStatus === 'rejected' ? { reason } : {}),
         }),
       });
 
@@ -260,8 +276,11 @@ export default function AdminDashboard({
       showToast(`Registration ${reg.registration_id} marked as ${newStatus.toUpperCase()}`, 'success');
       // Update local state
       setRegistrations((prev) =>
-        prev.map((r) => (r.id === reg.id ? { ...r, status: newStatus } : r))
+        prev.map((r) =>
+          r.id === reg.id ? { ...r, status: newStatus, rejection_reason: newStatus === 'rejected' ? reason ?? null : null } : r
+        )
       );
+      setSeatsKey((k) => k + 1);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to update status';
       showToast(message, 'error');
@@ -333,6 +352,8 @@ export default function AdminDashboard({
       'Enrollment No',
       'Student Type',
       'Status',
+      'Rejection Reason',
+      'Attempt',
       'Amount (INR)',
       'UPI UTR',
       'Payment Screenshot (private ref)',
@@ -353,6 +374,8 @@ export default function AdminDashboard({
       r.enrollment_no,
       r.student_type,
       r.status,
+      rejectionLabel(r.rejection_reason),
+      r.attempt ?? 1,
       r.amount,
       r.utr,
       r.payment_proof_path,
@@ -720,6 +743,40 @@ export default function AdminDashboard({
             <p style={{ margin: '0 0 24px', fontSize: '14px', lineHeight: 1.6, color: 'rgba(236,232,223,0.85)' }}>
               {confirmModal.message}
             </p>
+            {confirmModal.actionType === 'reject' && (
+              <fieldset style={{ margin: '-8px 0 24px', padding: 0, border: 0, minWidth: 0 }}>
+                <legend style={{ marginBottom: '10px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.7)' }}>
+                  WHY? (THE STUDENT SEES THIS)
+                </legend>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {REJECTION_REASONS.map((r) => (
+                    <label
+                      key={r.value}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 12px',
+                        border: `1px solid ${rejectReason === r.value ? '#ef4444' : 'rgba(236,232,223,0.18)'}`,
+                        background: rejectReason === r.value ? 'rgba(239,68,68,0.08)' : 'transparent',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="reject-reason"
+                        value={r.value}
+                        checked={rejectReason === r.value}
+                        onChange={() => setRejectReason(r.value)}
+                        style={{ accentColor: '#ef4444', margin: 0 }}
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button
                 type="button"
@@ -740,10 +797,11 @@ export default function AdminDashboard({
               </button>
               <button
                 type="button"
+                disabled={confirmModal.actionType === 'reject' && !rejectReason}
                 onClick={() => {
                   const onConfirm = confirmModal.onConfirm;
                   setConfirmModal(null);
-                  onConfirm();
+                  onConfirm(rejectReason || undefined);
                 }}
                 style={{
                   padding: '10px 22px',
@@ -753,7 +811,8 @@ export default function AdminDashboard({
                   fontSize: '13px',
                   fontWeight: 800,
                   letterSpacing: '.08em',
-                  cursor: 'pointer',
+                  cursor: confirmModal.actionType === 'reject' && !rejectReason ? 'not-allowed' : 'pointer',
+                  opacity: confirmModal.actionType === 'reject' && !rejectReason ? 0.5 : 1,
                   clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
                 }}
               >
@@ -1041,6 +1100,8 @@ export default function AdminDashboard({
         {/* TAB 1: REGISTRATIONS */}
         {activeTab === 'registrations' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <SeatCounterCard getAuthToken={getAuthToken} canEdit={isAdmin} refreshKey={seatsKey} />
+
             {/* Stat Cards */}
             <div
               style={{
@@ -1292,6 +1353,30 @@ export default function AdminDashboard({
                             <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '15px', color: 'oklch(0.8 0.12 85)' }}>
                               {reg.registration_id}
                             </span>
+                            {/* Registered again after a rejection: look closer, and see why the last one failed. */}
+                            {(reg.attempt ?? 1) > 1 && (
+                              <div style={{ marginTop: '6px' }}>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '2px 7px',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    letterSpacing: '.1em',
+                                    color: 'oklch(0.8 0.15 80)',
+                                    border: '1px solid rgba(250,204,21,0.4)',
+                                    background: 'rgba(250,204,21,0.08)',
+                                  }}
+                                >
+                                  {ordinal(reg.attempt ?? 1).toUpperCase()} ATTEMPT
+                                </span>
+                                {reg.previous_rejection_reason && (
+                                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'rgba(236,232,223,0.55)' }}>
+                                    Last rejected: {rejectionLabel(reg.previous_rejection_reason)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* Participant */}
@@ -1414,6 +1499,11 @@ export default function AdminDashboard({
                             >
                               {reg.status}
                             </span>
+                            {reg.status === 'rejected' && reg.rejection_reason && (
+                              <div style={{ marginTop: '4px', fontSize: '11px', color: 'rgba(236,232,223,0.6)' }}>
+                                {rejectionLabel(reg.rejection_reason)}
+                              </div>
+                            )}
                           </td>
 
                           {/* Action (Approve / Reject) */}

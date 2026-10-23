@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient, Session, User } from '@supabase/supabase-js';
 import { httpErrorMessage } from './api-errors';
+import type { RejectionReason } from './rejections';
 import { SITE_URL } from '@/config/site';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -52,6 +53,14 @@ export interface Registration {
   ambassador_code?: string | null;
   /** Not a column: added by GET /api/admin/registrations, the code this registrant entered and whose it is. */
   referred_via?: { kind: 'registrant' | 'ambassador'; code: string; name: string } | null;
+  /** Why staff rejected it (src/lib/rejections.ts); null for other statuses and for rejections made before reasons. */
+  rejection_reason?: RejectionReason | null;
+  /** Not a column: added by GET /api/register to a rejected registration, the registrations the user may still make. */
+  attempts_left?: number;
+  /** Not a column: added by GET /api/admin/registrations, 1 for a first registration, 2 after one rejection, ... */
+  attempt?: number;
+  /** Not a column: added by GET /api/admin/registrations, why the user's previous registration was rejected. */
+  previous_rejection_reason?: RejectionReason | null;
   created_at?: string;
   updated_at?: string;
 }

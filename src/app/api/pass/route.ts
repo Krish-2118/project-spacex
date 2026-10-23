@@ -4,6 +4,7 @@ import { getSupabaseAsUser } from '@/lib/supabase';
 import { createRateLimiter } from '@/lib/security';
 import { decryptEntryToken, encryptEntryToken, entryPassKey, mintEntryToken } from '@/lib/entry-pass';
 import type { ParticipantPass } from '@/lib/pass-experience';
+import { attemptsLeft } from '@/lib/rejections';
 
 export const runtime = 'nodejs';
 
@@ -46,7 +47,8 @@ export async function POST(req: NextRequest) {
     }
     const mine = data as MyEntryPass;
 
-    const details = await db.from('registrations').select('college')
+    // '*' rather than naming rejection_reason, so the pass keeps loading on a database without section 17 yet.
+    const details = await db.from('registrations').select('*')
       .eq('user_id', auth.user.id).eq('registration_id', mine.registration_id ?? '').maybeSingle();
     if (details.error) return NextResponse.json({ error: 'Could not load your registration.' }, { status: 500 });
     const pass: ParticipantPass = {
@@ -58,6 +60,14 @@ export async function POST(req: NextRequest) {
       checkedIn: !!mine.checked_in,
       token: null as string | null,
     };
+    if (mine.registration_status === 'rejected') {
+      // The reason staff gave, and whether the student may register again (REGISTER AGAIN on the pass).
+      const rejected = await db.from('registrations').select('id', { count: 'exact', head: true })
+        .eq('user_id', auth.user.id).eq('status', 'rejected');
+      if (rejected.error) return NextResponse.json({ error: 'Could not load your registration.' }, { status: 500 });
+      pass.rejectionReason = details.data?.rejection_reason ?? null;
+      pass.attemptsLeft = attemptsLeft(rejected.count ?? 0);
+    }
     if (mine.registration_status !== 'confirmed' || mine.pass_status !== 'active' || !mine.pass) {
       return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
     }
