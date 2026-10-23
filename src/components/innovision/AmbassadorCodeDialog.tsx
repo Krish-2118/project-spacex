@@ -55,9 +55,9 @@ async function copyText(text: string, fallback: HTMLElement | null): Promise<boo
 
 /**
  * GET MY CODE, opened from the home page's Campus Ambassador section. Any signed-in student can get a code: the first
- * time, they confirm their college and the code is created. Then it shows their permanent CA code with a share link
- * (/?ref=CODE pre-fills the registration form) and a WhatsApp share. Ambassadors see only their code: counts live in
- * the admin dashboard's AMBASSADORS tab.
+ * time, they confirm their college and the code is created. Then it shows their permanent CA code and a share link
+ * (/?ref=CODE pre-fills the registration form), each with a copy button. Ambassadors see only their code: counts live
+ * in the admin dashboard's AMBASSADORS tab.
  */
 export default function AmbassadorCodeDialog({ state, formUrl, onClose, onRetry, onCreate, onLogout }: AmbassadorCodeDialogProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -77,7 +77,6 @@ export default function AmbassadorCodeDialog({ state, formUrl, onClose, onRetry,
 
   const shown = state.kind === 'code' ? formatReferralCode(state.code) : '';
   const link = state.kind === 'code' ? `${SITE_URL}/?ref=${encodeURIComponent(state.code)}` : '';
-  const shareText = `Register for INNOVISION 2026 at NIT Rourkela with my campus ambassador code ${shown}: ${link}`;
   const copy = async (what: 'code' | 'link') => {
     const ok = await copyText(what === 'code' ? shown : link, (what === 'code' ? codeRef : linkRef).current);
     setCopied(ok ? what : 'manual');
@@ -157,14 +156,9 @@ export default function AmbassadorCodeDialog({ state, formUrl, onClose, onRetry,
                 <span style={{ fontSize: '12px', color: 'rgba(236,232,223,0.55)' }}>Opening it fills your code in for them when they register.</span>
               </div>
               {copied === 'manual' && <p role="status" style={{ ...muted, color: GOLD }}>Copying isn&apos;t allowed here: it&apos;s selected, so copy it by hand.</p>}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, flex: '1 1 180px' }}>
-                  SHARE ON WHATSAPP
-                </a>
-                <button type="button" onClick={() => void copy('link')} style={{ ...ghostBtn, flex: '1 1 140px' }}>
-                  {copied === 'link' ? 'LINK COPIED' : 'COPY LINK'}
-                </button>
-              </div>
+              <button type="button" onClick={() => void copy('link')} style={primaryBtn}>
+                {copied === 'link' ? 'LINK COPIED' : 'COPY LINK'}
+              </button>
               <p style={{ ...muted, fontSize: '12px', overflowWrap: 'anywhere' }}>Signed in as {state.email}.</p>
             </>
           )}
