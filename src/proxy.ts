@@ -34,9 +34,9 @@ const tooMany = () =>
  * 1. CSRF: rejects cross-site POST/PATCH/PUT/DELETE requests to any /api route. Auth cookies are SameSite=Lax,
  *    and this same-origin check closes the remaining gaps (sibling subdomains, `text/plain` JSON bodies).
  * 2. Abuse limits on /api: request body size cap and per-IP rate limits for writes and auth endpoints.
- * 3. Optimistic auth gate for /register, /registration, /admin, /api/register and /api/admin: requests that carry
- *    no session at all are bounced early. This is NOT the authorization boundary; every route handler validates
- *    the token with Supabase and checks roles itself.
+ * 3. Optimistic auth gate for /register, /registration, /admin, /api/register, /api/ambassador and /api/admin:
+ *    requests that carry no session at all are bounced early. This is NOT the authorization boundary; every route
+ *    handler validates the token with Supabase and checks roles itself.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -78,11 +78,13 @@ export function proxy(request: NextRequest) {
 
   const isRegisterApi =
     pathname === '/api/register' || pathname.startsWith('/api/register/');
+  // GET MY CODE (campus ambassadors): signed-in callers only.
+  const isAmbassadorApi = pathname === '/api/ambassador' || pathname.startsWith('/api/ambassador/');
 
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const isAdminApi = pathname === '/api/admin' || pathname.startsWith('/api/admin/');
 
-  if (isRegisterPage || isRegisterApi || isAdminPage || isAdminApi) {
+  if (isRegisterPage || isRegisterApi || isAmbassadorApi || isAdminPage || isAdminApi) {
     // 1. Check cookies for access_token or refresh_token
     const hasInnAccessToken = !!request.cookies.get('inn_access_token')?.value;
     const hasInnRefreshToken = !!request.cookies.get('inn_refresh_token')?.value;
@@ -104,7 +106,7 @@ export function proxy(request: NextRequest) {
       hasInnAccessToken || hasInnRefreshToken || hasSupabaseCookie || hasAuthHeader;
 
     if (!isAuthenticated) {
-      if (isRegisterApi || isAdminApi) {
+      if (isRegisterApi || isAmbassadorApi || isAdminApi) {
         return NextResponse.json(
           {
             error: 'Authentication Required',

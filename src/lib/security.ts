@@ -247,6 +247,30 @@ export type RegistrationGender = (typeof REGISTRATION_GENDERS)[number];
 
 /** Must match REFERRAL_CODE_PATTERN in validation.ts and registrations_referral_code_check in supabase/schema.sql. */
 export const REFERRAL_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
+/** Must match AMBASSADOR_CODE_PATTERN in validation.ts and campus_ambassadors_code_check in supabase/schema.sql. */
+export const AMBASSADOR_CODE_PATTERN = /^CA[A-HJ-NP-Z2-9]{6}$/;
+
+/** Spaces and dashes of any kind, ignored in a typed code. Must match REFERRAL_CODE_NOISE in validation.ts. */
+const REFERRAL_CODE_NOISE = /[\s­​-‍⁠‐-―−﹘﹣－-]+/g;
+
+/**
+ * A typed referral code, upper-cased without spaces or dashes ('' when empty). Same as normalizeReferralCode in
+ * validation.ts (kept here so this file stays free of `@/` imports): CA-K7QM2X, ca k7qm2x and CA–K7QM2X are CAK7QM2X.
+ */
+export function normalizeReferralCode(value: string): string {
+  return value.replace(REFERRAL_CODE_NOISE, '').toUpperCase();
+}
+
+/** Which kind of code a normalized code is, by its shape; null for neither. */
+export function referralCodeKind(code: string): 'ambassador' | 'registrant' | null {
+  if (AMBASSADOR_CODE_PATTERN.test(code)) return 'ambassador';
+  if (REFERRAL_CODE_PATTERN.test(code)) return 'registrant';
+  return null;
+}
+
+/** Shown when a typed code has neither shape. Must match REFERRAL_CODE_FORMAT_ERROR in validation.ts. */
+export const REFERRAL_CODE_FORMAT_ERROR =
+  'Referral codes are 6 letters and numbers, or CA- and 6 more for a campus ambassador. Check the code, or leave it empty.';
 
 /** Form field a validation error belongs to, so the registration form can show it on the right step. */
 export type RegistrationField =
@@ -333,14 +357,11 @@ export function validateRegistrationInput(
     return { ok: false, error: 'Enrollment number contains invalid characters.', field: 'enrollment_no' };
   }
 
-  // Optional. Same normalization as the form (normalizeReferralCode in validation.ts): case, spaces and dashes ignored.
-  const referred_by_code = (rawReferral || '').replace(/[\s-]+/g, '').toUpperCase();
-  if (referred_by_code && !REFERRAL_CODE_PATTERN.test(referred_by_code)) {
-    return {
-      ok: false,
-      error: 'Referral codes are 6 letters and numbers. Check the code, or leave the field empty.',
-      field: 'referred_by_code',
-    };
+  // Optional: a registrant's or a campus ambassador's code. Same normalization as the form: case, spaces and dashes
+  // ignored.
+  const referred_by_code = normalizeReferralCode(rawReferral || '');
+  if (referred_by_code && !referralCodeKind(referred_by_code)) {
+    return { ok: false, error: REFERRAL_CODE_FORMAT_ERROR, field: 'referred_by_code' };
   }
 
   if (!proofPath) {

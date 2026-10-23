@@ -31,9 +31,36 @@ export function isGender(value: unknown): value is Gender {
  */
 export const REFERRAL_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
 
+/**
+ * Campus ambassador codes: 'CA' + 6 characters from the same alphabet (public.new_ambassador_code, section 16), shown
+ * as CA-K7QM2X. The length tells them apart from a registrant's code, so the one referral field takes either.
+ */
+export const AMBASSADOR_CODE_PATTERN = /^CA[A-HJ-NP-Z2-9]{6}$/;
+
+/** Shown when a typed code has neither shape. */
+export const REFERRAL_CODE_FORMAT_ERROR =
+  'Referral codes are 6 letters and numbers, or CA- and 6 more for a campus ambassador. Check the code, or leave it empty.';
+
+/**
+ * Spaces (including non-breaking and zero-width ones) and dashes of any kind (a hyphen, an en/em dash, a minus sign,
+ * a soft hyphen), as copying a code out of a chat app or a PDF tends to add them.
+ * Must match REFERRAL_CODE_NOISE in security.ts.
+ */
+const REFERRAL_CODE_NOISE = /[\s­​-‍⁠‐-―−﹘﹣－-]+/g;
+
 /** What a registrant typed as someone's referral code, upper-cased without spaces or dashes ('' when left empty). */
 export function normalizeReferralCode(value: string): string {
-  return value.replace(/[\s-]+/g, '').toUpperCase();
+  return value.replace(REFERRAL_CODE_NOISE, '').toUpperCase();
+}
+
+/** A normalized code of either shape: a registrant's or a campus ambassador's. */
+export function isReferralCode(code: string): boolean {
+  return REFERRAL_CODE_PATTERN.test(code) || AMBASSADOR_CODE_PATTERN.test(code);
+}
+
+/** How a stored code is shown and shared: CAK7QM2X as CA-K7QM2X; a registrant's code as it is. */
+export function formatReferralCode(code: string): string {
+  return AMBASSADOR_CODE_PATTERN.test(code) ? `CA-${code.slice(2)}` : code;
 }
 
 /**

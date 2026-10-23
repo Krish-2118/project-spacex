@@ -163,8 +163,8 @@ export default function AuthOverlay({ v }: { v: V }) {
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>REFERRAL CODE <span style={{ fontWeight: "500", color: "rgba(236,232,223,.55)" }}>(OPTIONAL)</span></span>
-                        <input name="referred_by_code" defaultValue={v.regVals.referred_by_code} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength="12" placeholder="e.g. K7QM2X" aria-invalid={v.inv.referred_by_code} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.referred_by_code}`, letterSpacing: ".12em", textTransform: "uppercase" }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
-                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>Got a code from a friend who registered? Enter it here.</span>
+                        <input name="referred_by_code" defaultValue={v.regVals.referred_by_code} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength="20" placeholder="e.g. K7QM2X or CA-K7QM2X" aria-invalid={v.inv.referred_by_code} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.referred_by_code}`, letterSpacing: ".12em", textTransform: "uppercase" }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
+                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>Got a code from a friend who registered, or from your campus ambassador? Enter it here.</span>
                         {v.err.referred_by_code ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.referred_by_code}</span>) : null}
                       </label>
                     </div>
@@ -322,7 +322,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       <div data-s-in="" className="no-print flex flex-col items-center justify-center gap-2 mt-2">
                         {v.refCode ? (
                           <div className="flex items-center gap-3 text-xs font-mono text-[#ECE8DF]/70">
-                            <span className="text-[#ECE8DF]/40 uppercase tracking-widest text-[10px]">Your Referral Code:</span>
+                            <span className="text-[#ECE8DF]/40 uppercase tracking-widest text-[10px]">{v.refCodeLabel}</span>
                             <span className="font-bold text-[#c8b17a] tracking-wider text-sm">{v.refCode}</span>
                             <button type="button" onClick={v.copyRefCode} className="underline hover:text-[#c8b17a] text-[11px] uppercase tracking-wider">
                               {v.refCodeLbl}
