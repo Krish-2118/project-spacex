@@ -55,6 +55,7 @@ import {
   type GalleryPhoto,
 } from '@/lib/supabase';
 import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH, REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
+import { fetchSeatCount, SEATS_FULL_MESSAGE } from '@/lib/seats';
 import { AMBASSADOR_FORM_URL, AMBASSADOR_SECTION } from '@/config/ambassador';
 import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
@@ -1697,6 +1698,37 @@ export class Innovision extends Component<Props, State> {
     if (r?.ambassador_code) return formatReferralCode(r.ambassador_code);
     return String(P.status || '').toUpperCase() !== 'REJECTED' ? r?.referral_code || '' : '';
   }
+  /**
+   * A rejected registration with attempts left (attempts_left, from GET /api/register) doesn't keep its owner out of
+   * the form: REGISTER AGAIN on the pass opens it. Never while registrations are closed.
+   */
+  canRegisterAgain(): boolean {
+    const r = this.state.registration;
+    return REGISTRATIONS_OPEN && r?.status === 'rejected' && (r.attempts_left ?? 0) > 0;
+  }
+  /**
+   * REGISTER AGAIN on a rejected pass (the registration overlay's or the profile's): a fresh form (new screenshot and
+   * UTR) with the details pre-filled from the rejected registration. Checks the server first: the pass and this
+   * component poll separately, so one may be ahead.
+   */
+  registerAgain = async () => {
+    const user = this.state.user;
+    if (!user || this.state.busyLbl) return;
+    if (!this.canRegisterAgain()) {
+      const fresh = await fetchUserRegistration(user.id, user.email);
+      if (!this.alive || this.state.user?.id !== user.id) return;
+      this.syncRegistration(fresh);
+      if (!this.canRegisterAgain()) {
+        this.toast('You can’t register again right now. Please contact the registration helpdesk.');
+        return;
+      }
+    }
+    this.dropFiles();
+    this.reg = null;
+    this.setState({ files: {}, step: 0, err: {} }, () => {
+      if (this.state.auth) this.switchMode('register'); else this.openAuth('register');
+    });
+  };
   /** Leaves for the "registrations opening soon" page (/register while REGISTRATIONS_OPEN is false). */
   showRegistrationsSoon(replace?: boolean) {
     if (typeof window === 'undefined') return;
@@ -2157,8 +2189,9 @@ export class Innovision extends Component<Props, State> {
       this.toast('Please log in to register.');
     }
 
-    // If user is already registered, always show their pass - never show registration
-    if (mode === 'register' && (this.state.registration || this.pass)) {
+    // If user is already registered, always show their pass - never show registration (unless they were rejected
+    // and may register again)
+    if (mode === 'register' && (this.state.registration || this.pass) && !this.canRegisterAgain()) {
       mode = 'pass';
     }
 
@@ -2287,8 +2320,9 @@ export class Innovision extends Component<Props, State> {
     const s = this.state;
     let m = typeof mode === 'string' ? mode : (s.authMode === 'login' ? 'register' : 'login');
 
-    // Never switch to register if user is already registered - show their pass
-    if (m === 'register' && (s.registration || this.pass)) {
+    // Never switch to register if user is already registered - show their pass (unless they were rejected and may
+    // register again)
+    if (m === 'register' && (s.registration || this.pass) && !this.canRegisterAgain()) {
       m = 'pass';
     }
 
@@ -2570,16 +2604,17 @@ export class Innovision extends Component<Props, State> {
       if (this.fail(err)) return;
       this.reg = { name, college, email, phone, enrollment_no, gender, referred_by_code };
 
-      // Every student, NIT Rourkela included, continues to Step 1 (payment).
-      if (!referred_by_code) { this.toStep(1); return; }
-      this.setState({ busyLbl: 'CHECKING CODE' });
-      checkReferralCode(referred_by_code).then((res) => {
+      // Every student, NIT Rourkela included, continues to Step 1 (payment), unless every seat is taken: nobody should
+      // pay for a seat that isn't there. A count that can't be read doesn't hold the student up.
+      this.setState({ busyLbl: referred_by_code ? 'CHECKING CODE' : 'CHECKING SEATS' });
+      Promise.all([fetchSeatCount(), referred_by_code ? checkReferralCode(referred_by_code) : null]).then(([seats, res]) => {
         if (!this.alive) return;
         this.setState({ busyLbl: '' });
         // Moved on meanwhile (closed the form, signed out).
         if (!this.state.auth || this.state.authMode !== 'register' || this.state.step !== 0) return;
+        if (seats && seats.left === 0) { this.fail({ form: SEATS_FULL_MESSAGE }); return; }
         // A check that couldn't run (offline, busy) doesn't hold the student up: the submit checks the code again.
-        if ('valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
+        if (res && 'valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
         this.toStep(1);
       });
     } else if (s.step === 1) {
@@ -2867,7 +2902,11 @@ export class Innovision extends Component<Props, State> {
       authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : P.status === 'CONFIRMED' ? 'Your place in the odyssey' : P.status === 'REJECTED' ? 'Payment not approved' : 'Registration received',
       authSub: reg
         ? 'Three short stops to register for Innovision 2026 at NIT Rourkela.'
-        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? 'Please contact the registration helpdesk for assistance.' : 'Your payment is under review by the registration team. Your pass appears here after approval.',
+        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact the registration helpdesk for assistance.') : 'Your payment is under review by the registration team. Your pass appears here after approval.',
+      // The seat counter (GET /api/seats) beside the registration form.
+      showSeats: reg,
+      // REGISTER AGAIN on a rejected pass; the pass itself decides whether to show it (attempts left).
+      registerAgain: REGISTRATIONS_OPEN ? this.registerAgain : undefined,
       railD: show(showRail && !s.narrow), hprogD: showRail && s.narrow ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
@@ -3186,6 +3225,7 @@ export class Innovision extends Component<Props, State> {
           registration={s.registration}
           onOpenPass={() => this.openAuth('pass')}
           onOpenRegister={() => this.openAuth('register')}
+          onRegisterAgain={REGISTRATIONS_OPEN ? this.registerAgain : undefined}
           onOpenAdmin={() => this.setState({ adminOpen: true, profileOpen: false })}
           onLogout={this.logout}
           onUpdatePhone={this.handleUpdatePhone}

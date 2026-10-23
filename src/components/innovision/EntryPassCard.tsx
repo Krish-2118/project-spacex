@@ -6,20 +6,23 @@ import { passRequest } from './pass-client';
 import PassIssued from './PassIssued';
 import styles from './PassIssued.module.css';
 import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
+import { rejectionMessage } from '@/lib/rejections';
 
 interface EntryPassCardProps {
   onContinue?: () => void;
   previewPass?: ParticipantPass;
+  /** REGISTER AGAIN on a rejected pass with attempts left; left out while registrations are closed. */
+  onRegisterAgain?: () => void | Promise<void>;
 }
 
-export default function EntryPassCard({ onContinue, previewPass }: EntryPassCardProps) {
+export default function EntryPassCard({ onContinue, previewPass, onRegisterAgain }: EntryPassCardProps) {
   if (REGISTRATION_PREVIEW_ENABLED && previewPass) {
     return <PassState pass={previewPass} onContinue={onContinue} preview />;
   }
-  return <AuthenticatedEntryPassCard onContinue={onContinue} />;
+  return <AuthenticatedEntryPassCard onContinue={onContinue} onRegisterAgain={onRegisterAgain} />;
 }
 
-function AuthenticatedEntryPassCard({ onContinue }: EntryPassCardProps) {
+function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain }: EntryPassCardProps) {
   const [pass, setPass] = useState<ParticipantPass | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -100,14 +103,29 @@ function AuthenticatedEntryPassCard({ onContinue }: EntryPassCardProps) {
   }
 
   if (!pass) return null;
-  return <PassState pass={pass} onContinue={onContinue} />;
+  return <PassState pass={pass} onContinue={onContinue} onRegisterAgain={onRegisterAgain} />;
 }
 
-function PassState({ pass, onContinue, preview = false }: { pass: ParticipantPass; onContinue?: () => void; preview?: boolean }) {
+function PassState({
+  pass,
+  onContinue,
+  onRegisterAgain,
+  preview = false,
+}: {
+  pass: ParticipantPass;
+  onContinue?: () => void;
+  onRegisterAgain?: () => void | Promise<void>;
+  preview?: boolean;
+}) {
+  const [opening, setOpening] = useState(false);
+
   // Unapproved states: Pending review or Rejected
   if (!isApprovedPass(pass)) {
     const isPending = pass.registrationStatus === 'pending';
     const isRejected = pass.registrationStatus === 'rejected';
+    const reason = isRejected ? rejectionMessage(pass.rejectionReason) : '';
+    const left = isRejected ? pass.attemptsLeft ?? 0 : 0;
+    const canRetry = left > 0 && !!onRegisterAgain;
 
     return (
       <div className={styles.statusBox} role="status" aria-live="polite">
@@ -131,8 +149,37 @@ function PassState({ pass, onContinue, preview = false }: { pass: ParticipantPas
         </p>
 
         <p className={styles.statusDesc}>
-          {passStatusMessage(pass)}
+          {isRejected && canRetry
+            ? 'Your payment was not approved, but you can register again with the right details.'
+            : passStatusMessage(pass)}
         </p>
+
+        {reason ? (
+          <p className={styles.statusReason}>
+            <span className={styles.statusReasonLabel}>WHY</span>
+            {reason}
+          </p>
+        ) : null}
+
+        {canRetry ? (
+          <>
+            <button
+              type="button"
+              className={styles.statusAction}
+              disabled={opening}
+              onClick={async () => {
+                setOpening(true);
+                try { await onRegisterAgain?.(); } finally { setOpening(false); }
+              }}
+            >
+              {opening ? 'OPENING…' : 'REGISTER AGAIN'}
+            </button>
+            <span className={styles.statusHint}>
+              {left === 1 ? 'This is your last attempt.' : `${left} attempts left.`} A new payment screenshot and UTR are
+              needed; the same UTR is fine if that payment was real.
+            </span>
+          </>
+        ) : null}
 
         {isPending && (
           <div style={{ marginTop: '14px', padding: '10px 14px', borderRadius: '4px', background: 'rgba(236,232,223,0.04)', border: '1px solid rgba(236,232,223,0.1)' }}>

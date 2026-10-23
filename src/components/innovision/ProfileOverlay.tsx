@@ -13,6 +13,8 @@ interface ProfileOverlayProps {
   registration: Registration | null;
   onOpenPass: () => void;
   onOpenRegister: () => void;
+  /** REGISTER AGAIN on a rejected pass with attempts left; left out while registrations are closed. */
+  onRegisterAgain?: () => void | Promise<void>;
   onOpenAdmin: () => void;
   onLogout: () => void;
   onUpdatePhone: (newPhone: string) => Promise<void>;
@@ -25,6 +27,7 @@ export default function ProfileOverlay({
   registration,
   onOpenPass,
   onOpenRegister,
+  onRegisterAgain,
   onOpenAdmin,
   onLogout,
   onUpdatePhone,
@@ -412,6 +415,8 @@ export default function ProfileOverlay({
                     ? 'Your registration is confirmed. Download your entry pass below and show the QR with your college ID at the registration desk.'
                     : registration.status === 'pending'
                     ? 'Your payment is being verified and your registration will be approved soon. Keep checking MY PASS: your entry QR will appear there once approved.'
+                    : onRegisterAgain && (registration.attempts_left ?? 0) > 0
+                    ? 'Your registration could not be verified. See why below, then register again with the right details.'
                     : 'Your registration could not be verified. Please visit the helpdesk or contact the event administrators.'}
                 </p>
 
@@ -436,7 +441,7 @@ export default function ProfileOverlay({
                   passStatus: registration.status === 'confirmed' ? 'active' : 'none',
                   registrationId: registration.registration_id, name: registration.name,
                   college: registration.college, checkedIn: false, token: null,
-                } : undefined} />
+                } : undefined} onRegisterAgain={onRegisterAgain ? async () => { onClose(); await onRegisterAgain(); } : undefined} />
 
                 <button
                   id="view-pass-btn"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyRegistrationStaff } from '@/lib/auth-server';
 import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
+import { isRejectionReason } from '@/lib/rejections';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,42 @@ async function rowsById(supabase: SupabaseClient, table: string, columns: string
     rows.push(...((data ?? []) as unknown as Record<string, string>[]));
   }
   return { rows, error: null };
+}
+
+/**
+ * attempt for every row (1 = the user's first registration, 2 = made again after one rejection, ...) and
+ * previous_rejection_reason, why the user's registration before it was rejected. Every earlier registration of a user
+ * is a rejected one (only one may be pending or confirmed), so the user's rejected rows are enough, whatever the
+ * filters list.
+ */
+async function withAttempts(supabase: SupabaseClient, registrations: Record<string, unknown>[]) {
+  const userIds = [...new Set(registrations.map((r) => r.user_id).filter((v): v is string => typeof v === 'string'))];
+  const rejected: Record<string, string>[] = [];
+  for (let i = 0; i < userIds.length; i += LOOKUP_CHUNK) {
+    // '*' rather than naming rejection_reason, so the list keeps loading on a database without section 17 yet.
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('*')
+      .eq('status', 'rejected')
+      .in('user_id', userIds.slice(i, i + LOOKUP_CHUNK));
+    if (error) return { error, registrations };
+    rejected.push(...((data ?? []) as Record<string, string>[]));
+  }
+  const byUser = new Map<string, Record<string, string>[]>();
+  for (const r of rejected) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r]);
+  return {
+    error: null,
+    registrations: registrations.map((r) => {
+      const earlier = (byUser.get(r.user_id as string) ?? [])
+        .filter((x) => x.id !== r.id && x.created_at < (r.created_at as string))
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      return {
+        ...r,
+        attempt: earlier.length + 1,
+        previous_rejection_reason: earlier.at(-1)?.rejection_reason ?? null,
+      };
+    }),
+  };
 }
 
 /** referred_via for every row: the referrer's code and name, looked up whether or not the filters list the referrer. */
@@ -133,7 +170,12 @@ export async function GET(req: NextRequest) {
       console.error('/api/admin/registrations referrer lookup error:', enriched.error);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
-    return NextResponse.json({ success: true, registrations: enriched.registrations });
+    const counted = await withAttempts(supabase, enriched.registrations);
+    if (counted.error) {
+      console.error('/api/admin/registrations attempts lookup error:', counted.error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, registrations: counted.registrations });
   } catch (err: unknown) {
     console.error('/api/admin/registrations error:', err);
     const message = 'Failed to fetch registrations';
@@ -156,7 +198,7 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
-    const { registrationId, status } = parsed.value;
+    const { registrationId, status, reason } = parsed.value;
 
     if (!registrationId || !status) {
       return NextResponse.json(
@@ -174,6 +216,11 @@ export async function PATCH(req: NextRequest) {
         { error: "Invalid status. Must be 'confirmed' or 'rejected'" },
         { status: 400 }
       );
+    }
+
+    // Every rejection says why: the student sees it on their pass before registering again.
+    if (status === 'rejected' && !isRejectionReason(reason)) {
+      return NextResponse.json({ error: 'Choose why this registration is rejected.' }, { status: 400 });
     }
 
     const { supabase, user } = auth;
@@ -214,6 +261,7 @@ export async function PATCH(req: NextRequest) {
       .from('registrations')
       .update({
         status,
+        ...(status === 'rejected' ? { rejection_reason: reason } : {}),
         reviewed_by: user.id,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

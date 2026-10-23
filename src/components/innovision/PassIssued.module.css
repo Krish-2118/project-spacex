@@ -614,6 +614,24 @@
   padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(239,68,68,0.25);
 }
 
+/* Why a registration was rejected, and REGISTER AGAIN (status boxes sit outside .experience: no variables here). */
+.statusReason {
+  margin: 14px 0 0; padding: 10px 14px;
+  border-left: 2px solid #f87171; background: rgba(239,68,68,0.06);
+  font-size: 13.5px; line-height: 1.5; color: #ECE8DF;
+}
+.statusReasonLabel { display: block; margin-bottom: 2px; font: 700 10.5px monospace; letter-spacing: .12em; color: #f87171; }
+.statusAction {
+  width: 100%; min-height: 48px; margin-top: 16px; padding: 12px 20px;
+  border: 1px solid #c8b17a; border-radius: 3px; background: rgba(200,177,122,0.12);
+  color: #e4d3a4; font-size: 13px; font-weight: 700; letter-spacing: .1em; cursor: pointer;
+  transition: background-color 0.2s;
+}
+.statusAction:hover { background: rgba(200,177,122,0.22); }
+.statusAction:focus-visible { outline: 2px solid #c8b17a; outline-offset: 3px; }
+.statusAction:disabled { opacity: 0.6; cursor: progress; }
+.statusHint { display: block; margin-top: 8px; font-size: 12.5px; text-align: center; color: rgba(236,232,223,0.6); }
+
 .experience button:focus-visible,
 .experience a:focus-visible {
   outline: 2px solid var(--gold);
