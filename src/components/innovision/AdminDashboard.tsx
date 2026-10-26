@@ -277,7 +277,15 @@ export default function AdminDashboard({
       // Update local state
       setRegistrations((prev) =>
         prev.map((r) =>
-          r.id === reg.id ? { ...r, status: newStatus, rejection_reason: newStatus === 'rejected' ? reason ?? null : null } : r
+          r.id === reg.id
+            ? {
+                ...r,
+                status: newStatus,
+                rejection_reason: newStatus === 'rejected' ? reason ?? null : null,
+                reviewed_at: new Date().toISOString(),
+                ...(isAdmin ? { reviewed_by_name: currentUser.full_name?.trim() || currentUser.email } : {}),
+              }
+            : r
         )
       );
       setSeatsKey((k) => k + 1);
@@ -362,6 +370,8 @@ export default function AdminDashboard({
       'Referred Via Code',
       'Referred By',
       'Registered At',
+      // Who reviewed a registration is for admins only.
+      ...(isAdmin ? ['Reviewed By', 'Reviewed At'] : []),
     ];
 
     const rows = registrations.map((r) => [
@@ -384,6 +394,7 @@ export default function AdminDashboard({
       r.referred_via ? formatReferralCode(r.referred_via.code) : '',
       r.referred_via?.name ?? '',
       r.created_at,
+      ...(isAdmin ? [r.reviewed_by_name ?? '', r.status === 'pending' ? '' : r.reviewed_at ?? ''] : []),
     ].map(csvCell));
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -1286,7 +1297,7 @@ export default function AdminDashboard({
                 background: 'rgba(16,15,14,0.6)',
               }}
             >
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '980px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: isAdmin ? '1120px' : '980px' }}>
                 <thead>
                   <tr style={{ background: 'rgba(236,232,223,0.06)', borderBottom: '1px solid rgba(236,232,223,0.12)' }}>
                     <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>REG ID</th>
@@ -1296,19 +1307,22 @@ export default function AdminDashboard({
                     <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>PROOFS</th>
                     <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>FEE / UTR</th>
                     <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>STATUS</th>
+                    {isAdmin && (
+                      <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>REVIEWED BY</th>
+                    )}
                     <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.6)' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingRegs ? (
                     <tr>
-                      <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'rgba(236,232,223,0.6)' }}>
+                      <td colSpan={isAdmin ? 9 : 8} style={{ padding: '40px', textAlign: 'center', color: 'rgba(236,232,223,0.6)' }}>
                         Loading registrations from database...
                       </td>
                     </tr>
                   ) : registrations.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ padding: '48px 24px', textAlign: 'center' }}>
+                      <td colSpan={isAdmin ? 9 : 8} style={{ padding: '48px 24px', textAlign: 'center' }}>
                         <div style={{ color: '#ECE8DF', fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>
                           No event registrations submitted yet.
                         </div>
@@ -1505,6 +1519,24 @@ export default function AdminDashboard({
                               </div>
                             )}
                           </td>
+
+                          {/* Reviewed By (admins only) */}
+                          {isAdmin && (
+                            <td style={{ padding: '14px 18px' }}>
+                              {!isPending && reg.reviewed_by_name ? (
+                                <>
+                                  <div style={{ fontSize: '13px', color: '#ECE8DF' }}>{reg.reviewed_by_name}</div>
+                                  {reg.reviewed_at && (
+                                    <div style={{ marginTop: '4px', fontSize: '11px', color: 'rgba(236,232,223,0.5)' }}>
+                                      {new Date(reg.reviewed_at).toLocaleString()}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <span style={{ color: 'rgba(236,232,223,0.4)' }}>—</span>
+                              )}
+                            </td>
+                          )}
 
                           {/* Action (Approve / Reject) */}
                           <td style={{ padding: '14px 18px' }}>
