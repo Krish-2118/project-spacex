@@ -89,6 +89,24 @@ async function withReferredVia(supabase: SupabaseClient, registrations: Record<s
   };
 }
 
+/**
+ * reviewed_by_name for every row: the name (or email) of the staff member who approved or rejected it, null while
+ * pending. Admins only: the Registration-Team list does not say who reviewed what.
+ */
+async function withReviewer(supabase: SupabaseClient, registrations: Record<string, unknown>[]) {
+  const ids = [...new Set(registrations.map((r) => r.reviewed_by).filter((v): v is string => typeof v === 'string'))];
+  const reviewers = await rowsById(supabase, 'profiles', 'id, full_name, email', ids);
+  if (reviewers.error) return { error: reviewers.error, registrations };
+  const reviewerById = new Map(reviewers.rows.map((p) => [p.id, p]));
+  return {
+    error: null,
+    registrations: registrations.map((r) => {
+      const reviewer = reviewerById.get(r.reviewed_by as string);
+      return { ...r, reviewed_by_name: reviewer ? reviewer.full_name?.trim() || reviewer.email || null : null };
+    }),
+  };
+}
+
 // GET all registrations (with optional filtering)
 export async function GET(req: NextRequest) {
   try {
@@ -97,7 +115,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const { supabase } = auth;
+    const { supabase, role } = auth;
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const studentType = searchParams.get('student_type');
@@ -175,7 +193,17 @@ export async function GET(req: NextRequest) {
       console.error('/api/admin/registrations attempts lookup error:', counted.error);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
-    return NextResponse.json({ success: true, registrations: counted.registrations });
+    if (role !== 'admin') {
+      // Who reviewed a registration is for admins only.
+      const anonymous = counted.registrations.map((r) => ({ ...r, reviewed_by: null }));
+      return NextResponse.json({ success: true, registrations: anonymous });
+    }
+    const reviewed = await withReviewer(supabase, counted.registrations);
+    if (reviewed.error) {
+      console.error('/api/admin/registrations reviewer lookup error:', reviewed.error);
+      return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, registrations: reviewed.registrations });
   } catch (err: unknown) {
     console.error('/api/admin/registrations error:', err);
     const message = 'Failed to fetch registrations';

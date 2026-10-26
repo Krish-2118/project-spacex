@@ -61,6 +61,8 @@ export interface Registration {
   attempt?: number;
   /** Not a column: added by GET /api/admin/registrations, why the user's previous registration was rejected. */
   previous_rejection_reason?: RejectionReason | null;
+  /** Not a column: added by GET /api/admin/registrations for admins only, who approved or rejected it. */
+  reviewed_by_name?: string | null;
   created_at?: string;
   updated_at?: string;
 }
