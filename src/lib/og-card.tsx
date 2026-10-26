@@ -15,11 +15,12 @@ export const OG_SIZE = { width: OG_IMAGE.width, height: OG_IMAGE.height };
 
 /**
  * @param kicker small caps line above the title, e.g. 'NIT ROURKELA'.
- * @param kickerSub optional smaller second kicker line, e.g. 'STUDENT ACTIVITY CENTRE PRESENTS'.
+ * @param kickerSub optional smaller second kicker line, e.g. 'STUDENT ACTIVITY CENTRE'.
+ * @param kickerTail optional smallest third kicker line, e.g. 'PRESENTS'.
  * @param title the big serif line; anything longer than INNOVISION is set smaller and may wrap onto two lines.
  * @param subtitle the gold line under the title.
  */
-export async function ogCard({ kicker, kickerSub, title, subtitle }: { kicker: string; kickerSub?: string; title: string; subtitle: string }) {
+export async function ogCard({ kicker, kickerSub, kickerTail, title, subtitle }: { kicker: string; kickerSub?: string; kickerTail?: string; title: string; subtitle: string }) {
   const [serif, starfield, logo] = await Promise.all([
     readFile(join(process.cwd(), 'src/assets/fonts/DMSerifDisplay-Regular.ttf')),
     readFile(join(process.cwd(), 'public/assets/starfield.svg')),
@@ -44,6 +45,7 @@ export async function ogCard({ kicker, kickerSub, title, subtitle }: { kicker: s
           <img src={`data:image/png;base64,${logo.toString('base64')}`} alt="" width={84} height={84} style={{ marginBottom: 18 }} />
           <div style={{ color: BONE, fontSize: 20, letterSpacing: 6, fontWeight: 700 }}>{kicker}</div>
           {kickerSub && <div style={{ color: BONE, opacity: 0.78, fontSize: 17, letterSpacing: 4, fontWeight: 700, marginTop: 8 }}>{kickerSub}</div>}
+          {kickerTail && <div style={{ color: BONE, opacity: 0.66, fontSize: 14, letterSpacing: 4, fontWeight: 500, marginTop: 7 }}>{kickerTail}</div>}
           <div
             style={{
               display: 'flex', justifyContent: 'center', maxWidth: 470, textAlign: 'center', color: '#fff', fontFamily: 'DM Serif Display',

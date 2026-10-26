@@ -215,6 +215,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .hero-kicker{--ls:.42em;gap:.55em;font-size:clamp(11px,1.05vw,16px);letter-spacing:var(--ls)}
 /* Second kicker line: a little smaller and lighter, so NIT ROURKELA leads. --ls is in em, so the centring pad shrinks with it. */
 .hero-kicker-sub{font-size:.88em;font-weight:700;opacity:.78}
+/* Third kicker line: PRESENTS, smaller and quieter again, a hand-off from the kicker to the title. */
+.hero-kicker-presents{font-size:max(.78em,8px);font-weight:500;opacity:.66}
 .hero-title{margin:clamp(10px,2vh,22px) 0 clamp(8px,1.4vh,16px);font-size:clamp(36px,12.4vw,224px)}
 .hero-sub{--ls:.32em;gap:18px;font-size:clamp(12px,1.35vw,21px);letter-spacing:var(--ls)}
 .hero-sub-rule{width:clamp(24px,4vw,64px);flex:none}
