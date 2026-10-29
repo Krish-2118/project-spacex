@@ -9,6 +9,7 @@ import { Logo } from './icons';
 import EntryPassCard from './EntryPassCard';
 import SeatCounter from './SeatCounter';
 import styles from './AuthOverlay.module.css';
+import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
 
@@ -17,6 +18,7 @@ export default function AuthOverlay({ v }: { v: V }) {
   useDialogFocus(v.authHidden === 'false', dialog, v.closeAuthH);
   const [userCollege, setUserCollege] = useState<string | null>(null);
   const collegeValue = userCollege !== null ? userCollege : (v.regVals?.college || '');
+  const isIterSoa = isIterSoaCollege(collegeValue) || isIterSoaEmail(v.regVals?.email);
   const [payQrOpen, setPayQrOpen] = useState(false);
   return (
     <>
@@ -91,6 +93,10 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.s0, flexDirection: "column", gap: "20px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Your details</h3>
+                      <p data-s-in="" role="note" style={{ display: "flex", alignItems: "flex-start", gap: "10px", margin: "-4px 0 0", padding: "12px 14px", border: "1px solid rgba(239,68,68,.55)", background: "rgba(239,68,68,.1)", fontSize: "14px", lineHeight: "1.45", color: "#fca5a5", overflowWrap: "anywhere" }}>
+                        <svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", marginTop: "1px" }}><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.5"></circle><path d="M3.5 12.5l9-9" stroke="currentColor" strokeWidth="1.5"></path></svg>
+                        <span>Students of ITER / SOA (Siksha &lsquo;O&rsquo; Anusandhan) are not allowed to register.</span>
+                      </p>
                       {v.gNote ? (
                         <p data-s-in="" role="status" style={{ display: "flex", alignItems: "flex-start", gap: "10px", margin: "-4px 0 0", padding: "12px 14px", border: "1px solid rgba(236,232,223,.18)", background: "rgba(236,232,223,.04)", fontSize: "14px", lineHeight: "1.45", color: "rgba(236,232,223,.86)", overflowWrap: "anywhere" }}>
                           <svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", marginTop: "1px", color: "oklch(0.78 0.075 85)" }}><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2"></path></svg>
@@ -143,7 +149,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                           }}
                           style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)"
                         />
-                        {v.err.college ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.college}</span>) : null}
+                        {v.err.college || isIterSoa ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{isIterSoa ? ITER_SOA_ERROR_MESSAGE : v.err.college}</span>) : null}
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>EMAIL</span>

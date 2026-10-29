@@ -2,6 +2,46 @@
  * Client & Server safe validation utilities for Innovision 2026.
  */
 
+export const ITER_SOA_ERROR_MESSAGE =
+  "Students of ITER / SOA (Siksha 'O' Anusandhan) are not allowed to register for Innovision 2026.";
+
+/** Whole words: ITER, SOA, SOAU, and the same spelt out with dots or spaces (I.T.E.R., S O A). */
+const ITER_SOA_WORD = /(^| )(iter|soa|soau|i t e r|s o a|s o a u)( |$)/;
+
+/**
+ * With spaces and punctuation gone: ITER-SOA / SOA ITER, Institute of Technical Education (and/&) Research, and
+ * Siksha 'O' Anusandhan however it is spelt (Shiksha, Sikha, O or no O, Anushandhan, Anusandhaan).
+ */
+const ITER_SOA_COMPACT = /itersoa|soaiter|technicaleducationa?n?d?research|sh?ik?s?h?a+o?a*nush?andh?a+n/;
+
+/**
+ * True when a college name is ITER (Institute of Technical Education and Research) or SOA (Siksha 'O' Anusandhan),
+ * whatever the case, spelling, punctuation, accents or full-width letters. Must match public.is_iter_soa_college in
+ * supabase/schema.sql (section 18).
+ */
+export function isIterSoaCollege(college: string | null | undefined): boolean {
+  if (typeof college !== 'string') return false;
+  // "I.T.E.R., S.O.A" -> "i t e r s o a"
+  const spaced = college
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  return ITER_SOA_WORD.test(spaced) || ITER_SOA_COMPACT.test(spaced.replace(/ /g, ''));
+}
+
+/** True for an ITER / SOA email address (@soa.ac.in, @iter.ac.in and their subdomains). */
+export function isIterSoaEmail(email: string | null | undefined): boolean {
+  if (typeof email !== 'string') return false;
+  return /@([a-z0-9-]+\.)*(soa|iter)\./.test(email.trim().toLowerCase());
+}
+
+/** The database refused a registration as ITER / SOA (trg_refuse_iter_soa_registration in supabase/schema.sql). */
+export function isIterSoaRefusal(err: { message?: string } | null | undefined): boolean {
+  return /ITER \/ SOA registrations are not allowed/i.test(err?.message ?? '');
+}
+
 export const PHONE_IN_USE_ERROR_MESSAGE =
   'This phone number is already linked to another account. Please use a different number.';
 
