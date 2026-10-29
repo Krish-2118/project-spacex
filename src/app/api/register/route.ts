@@ -5,7 +5,14 @@ import { getAuthenticatedUser } from '@/lib/auth-server';
 import { paymentProofExists } from '@/lib/payment-proofs';
 import { ambassadorGuardError, findOwnAmbassador, resolveReferralCode, type Registrant } from '@/lib/ambassadors';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
-import { isDuplicatePhoneError, PHONE_IN_USE_ERROR_MESSAGE } from '@/lib/validation';
+import {
+  isDuplicatePhoneError,
+  isIterSoaCollege,
+  isIterSoaEmail,
+  isIterSoaRefusal,
+  ITER_SOA_ERROR_MESSAGE,
+  PHONE_IN_USE_ERROR_MESSAGE,
+} from '@/lib/validation';
 import { ATTEMPTS_USED_UP_ERROR, attemptsLeft, isAttemptsUsedUpError } from '@/lib/rejections';
 import {
   classifyStudentType,
@@ -193,6 +200,12 @@ export async function POST(req: NextRequest) {
     const input = parsed.data;
     const college = input.college;
 
+    // ITER - SOA students may not register: by the college they type or by an ITER / SOA email. The database refuses
+    // them too (trg_refuse_iter_soa_registration, supabase/schema.sql section 18).
+    if (isIterSoaCollege(college) || isIterSoaEmail(verifiedEmail)) {
+      return NextResponse.json({ error: ITER_SOA_ERROR_MESSAGE, field: 'college' }, { status: 403 });
+    }
+
     const adminClient = getSupabaseAdmin(token);
 
     // 3. Prevent duplicate registrations for the same authenticated user. A rejected one doesn't count: the user may
@@ -304,6 +317,9 @@ export async function POST(req: NextRequest) {
       // Rejected for the last time between the check above and this insert (trg_guard_registration_attempts).
       if (isAttemptsUsedUpError(regError)) {
         return NextResponse.json({ error: ATTEMPTS_USED_UP_ERROR }, { status: 403 });
+      }
+      if (isIterSoaRefusal(regError)) {
+        return NextResponse.json({ error: ITER_SOA_ERROR_MESSAGE, field: 'college' }, { status: 403 });
       }
       if (regError.code !== '23505') break;
       // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert (possibly

@@ -59,7 +59,7 @@ import { fetchSeatCount, SEATS_FULL_MESSAGE } from '@/lib/seats';
 import { AMBASSADOR_FORM_URL, AMBASSADOR_SECTION } from '@/config/ambassador';
 import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
-import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR } from '@/lib/validation';
+import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR, isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 import { httpErrorMessage, isTransientFailure } from '@/lib/api-errors';
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
@@ -2590,6 +2590,8 @@ export class Innovision extends Component<Props, State> {
         err.college = 'Which college are you from?';
       } else if (college.length > 200) {
         err.college = 'Keep the college name under 200 characters.';
+      } else if (isIterSoaCollege(college) || isIterSoaEmail(email)) {
+        err.college = ITER_SOA_ERROR_MESSAGE;
       }
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
       if (!enrollment_no) err.enrollment_no = 'Enter your college roll / enrollment number.';
