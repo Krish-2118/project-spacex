@@ -61,6 +61,14 @@ import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/pay
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
 import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR, isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 import { httpErrorMessage, isTransientFailure } from '@/lib/api-errors';
+import { ID_CARD_UPLOAD_TARGET_BYTES } from '@/lib/id-cards';
+import { shrinkImage } from '@/lib/compress-image';
+
+/** The registration form's two uploads: error key (and file input name), the route that takes the file, its limits. */
+const UPLOADS = {
+  pay: { ek: 'payfile', url: '/api/upload', what: 'screenshot', maxMb: 1, typeError: 'Upload the screenshot as an image (JPG, PNG or WebP).' },
+  id: { ek: 'idfile', url: '/api/id-card', what: 'ID card photo', maxMb: 2, typeError: 'Upload a photo of your ID card (JPG, PNG or WebP).' },
+} as const;
 
 gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
 // A phone's address bar sliding in or out resizes the window; re-measuring every trigger then makes scrolling hitch.
@@ -1729,6 +1737,14 @@ export class Innovision extends Component<Props, State> {
       if (this.state.auth) this.switchMode('register'); else this.openAuth('register');
     });
   };
+  /** MY PASS uploaded the college ID card: reload the registration so the pending marks go away everywhere. */
+  idCardUploaded = async () => {
+    const user = this.state.user;
+    if (!user) return;
+    const fresh = await fetchUserRegistration(user.id, user.email);
+    if (!this.alive || this.state.user?.id !== user.id) return;
+    this.syncRegistration(fresh);
+  };
   /** Leaves for the "registrations opening soon" page (/register while REGISTRATIONS_OPEN is false). */
   showRegistrationsSoon(replace?: boolean) {
     if (typeof window === 'undefined') return;
@@ -2378,7 +2394,7 @@ export class Innovision extends Component<Props, State> {
     this.setState({ err });
     const k = Object.keys(err)[0];
     if (!k) return false;
-    if (k !== 'payfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
+    if (k !== 'payfile' && k !== 'idfile') { const el = this.$('[data-auth] [name="' + k + '"]'); if (el && el.offsetParent) el.focus(); }
     const row = this.$('[data-auth-act]');
     if (row && !this.reduce) gsap.fromTo(row, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1,.3)' });
     return true;
@@ -2391,18 +2407,22 @@ export class Innovision extends Component<Props, State> {
   dropFile(kind) { return (e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.setState({ drag: '' }); if (f) this.takeFile(kind, f); }; }
   // @ts-ignore
   takeFile = async (kind, f) => {
-    const ek = 'payfile';
+    const slot = UPLOADS[kind] || UPLOADS.pay;
+    const ek = slot.ek;
     const isImg = /^image\//.test(f.type);
 
     if (!isImg) {
-      this.fail({ [ek]: 'Upload the screenshot as an image (JPG, PNG or WebP).' });
+      this.fail({ [ek]: slot.typeError });
       return;
     }
 
-    // 1MB max size limit requirement (same as /api/upload)
-    const MAX_SIZE = 1024 * 1024;
+    // A phone camera photo of an ID card is often several MB: shrink it in the browser first.
+    if (kind === 'id') f = await shrinkImage(f, ID_CARD_UPLOAD_TARGET_BYTES);
+
+    // Same size limit as the route that takes the file (/api/upload: 1 MB, /api/id-card: 2 MB)
+    const MAX_SIZE = slot.maxMb * 1024 * 1024;
     if (f.size > MAX_SIZE) {
-      this.fail({ [ek]: 'That file exceeds 1 MB. Please select a smaller image (max 1MB).' });
+      this.fail({ [ek]: `That file exceeds ${slot.maxMb} MB. Please select a smaller image (max ${slot.maxMb}MB).` });
       return;
     }
 
@@ -2425,13 +2445,13 @@ export class Innovision extends Component<Props, State> {
       () => this.runUpload(kind)
     );
 
-    // Upload to the private payment-proofs bucket via /api/upload (the server picks the storage path)
+    // Upload to its private bucket via /api/upload or /api/id-card (the server picks the storage path)
     try {
       const formData = new FormData();
       formData.append('file', f);
 
       const { data: { session } } = await getSupabase().auth.getSession();
-      const res = await fetch('/api/upload', {
+      const res = await fetch(slot.url, {
         method: 'POST',
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         body: formData,
@@ -2440,7 +2460,7 @@ export class Innovision extends Component<Props, State> {
       // A rate limit or crash at the platform edge may answer with HTML, not our JSON.
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        throw Object.assign(new Error(httpErrorMessage(res) || data.error || 'Failed to upload the screenshot'), { status: res.status });
+        throw Object.assign(new Error(httpErrorMessage(res) || data.error || 'Failed to upload the ' + slot.what), { status: res.status });
       }
 
       this.setState((st) => ({
@@ -2498,7 +2518,8 @@ export class Innovision extends Component<Props, State> {
     if (this._up && this._up[kind]) this._up[kind].kill();
     this.setState((st) => ({ files: { ...st.files, [kind]: null } }));
   }
-  replaceFile() { const i = this.$('[data-auth] [name="payfile"]'); if (i) i.click(); }
+  // @ts-ignore
+  replaceFile(kind) { const i = this.$('[data-auth] [name="' + (UPLOADS[kind] || UPLOADS.pay).ek + '"]'); if (i) i.click(); }
   dropFiles() { Object.values(this.state.files || {}).forEach((f: any) => { if (f && f.url && f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); }); }
   // @ts-ignore
   copyUpi = () => {
@@ -2598,6 +2619,10 @@ export class Innovision extends Component<Props, State> {
       else if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
         err.enrollment_no = 'Use only letters, numbers, spaces and / _ - (up to 50 characters).';
       }
+      const idf = files.id;
+      if (!idf) err.idfile = 'Upload a photo of the front of your college ID card.';
+      else if (idf.status === 'failed') err.idfile = 'Your ID card photo did not upload. Use RETRY UPLOAD to send it again.';
+      else if (idf.status !== 'done' || !idf.remotePath) err.idfile = 'Hold on, your ID card photo is still uploading.';
       // Optional: a registrant's or a campus ambassador's code. Checked with the server before payment (and again on
       // submit), so a wrong or deactivated code is fixed before anyone pays.
       const referred_by_code = normalizeReferralCode(v('referred_by_code'));
@@ -2650,6 +2675,7 @@ export class Innovision extends Component<Props, State> {
             gender: r.gender,
             student_type: 'external' as const,
             payment_proof_path: 'mock/proof.png',
+            id_card_path: 'mock/id-card.png',
             utr,
             amount: 999,
             status: 'pending' as const,
@@ -2669,7 +2695,13 @@ export class Innovision extends Component<Props, State> {
         });
         return;
       }
-      const fp = files.pay, utr = v('utr').replace(/\s+/g, '');
+      const fp = files.pay, idf = files.id, utr = v('utr').replace(/\s+/g, '');
+      if (!idf || idf.status !== 'done' || !idf.remotePath) {
+        // Only on the details step: back there to upload it.
+        this.toStep(0);
+        this.setState({ err: { idfile: 'Upload a photo of the front of your college ID card.' } });
+        return;
+      }
       if (!fp) err.payfile = 'Upload the screenshot of your payment.';
       else if (fp.status === 'failed') err.payfile = 'Your screenshot did not upload. Use RETRY UPLOAD to send it again.';
       else if (fp.status !== 'done' || !fp.remotePath) err.payfile = 'Hold on, your screenshot is still uploading.';
@@ -2691,6 +2723,7 @@ export class Innovision extends Component<Props, State> {
           // student_type, amount and status are decided by the server (the body's values are ignored).
           student_type: (isInternal ? 'internal' : 'external') as Registration['student_type'],
           payment_proof_path: fp.remotePath,
+          id_card_path: idf.remotePath,
           utr,
           amount: this.fee(),
           status: 'pending' as const,
@@ -2704,10 +2737,18 @@ export class Innovision extends Component<Props, State> {
           this.toast(msg);
           const field = saveRes.field || '';
           const detailsField = ['name', 'college', 'phone', 'gender', 'enrollment_no', 'referred_by_code'].includes(field);
-          if (isTransientFailure(saveRes.status) || !(detailsField || field === 'payfile' || field === 'utr')) {
+          if (isTransientFailure(saveRes.status) || !(detailsField || field === 'idfile' || field === 'payfile' || field === 'utr')) {
             // Rate limited, server error, offline, closed or signed out: stay on this step with the UTR and screenshot
             // intact, so the student can submit again by hand. Nothing is resubmitted automatically.
             this.setState({ busyLbl: '', err: { form: msg } });
+            return;
+          }
+          if (field === 'idfile') {
+            // The stored ID card photo can't be used: back to the details step to pick it again.
+            this.removeFile('id');
+            this.setState({ busyLbl: '' });
+            this.toStep(0);
+            this.setState({ err: { idfile: msg } });
             return;
           }
           if (field === 'payfile') {
@@ -2782,6 +2823,7 @@ export class Innovision extends Component<Props, State> {
       gender: 'Male',
       student_type: 'internal',
       payment_proof_path: 'mock/payment.png',
+      id_card_path: 'mock/id-card.png',
       utr: '987654321098',
       amount: 999,
       status: 'confirmed',
@@ -2863,7 +2905,7 @@ export class Innovision extends Component<Props, State> {
   authVals(s) {
   // @ts-ignore
     const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.78 0.075 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
-    const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', referred_by_code: '', payfile: '', utr: '', lemail: '', lid: '', form: '' }, s.err);
+    const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', referred_by_code: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '', form: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
     Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });
@@ -2894,7 +2936,7 @@ export class Innovision extends Component<Props, State> {
     const notes = [regVals.name, 'by UPI', 'Submitted'];
 
     // Same three steps for every student: there is no free tier.
-    const railSteps = [['DETAILS', 'Name, gender, college, phone', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['SUBMIT', 'Screenshot and transaction ID, then team review', 'SUBMIT']];
+    const railSteps = [['DETAILS', 'Name, gender, college, phone, ID card', 'DETAILS'], ['PAYMENT', 'by UPI', 'PAY'], ['SUBMIT', 'Screenshot and transaction ID, then team review', 'SUBMIT']];
 
     return {
       noUser: !s.user, hasUser: !!s.user, showLogin: !s.narrow, loginClick: this.loginClick, noDrop: (e) => e.preventDefault(),
@@ -2909,6 +2951,7 @@ export class Innovision extends Component<Props, State> {
       showSeats: reg,
       // REGISTER AGAIN on a rejected pass; the pass itself decides whether to show it (attempts left).
       registerAgain: REGISTRATIONS_OPEN ? this.registerAgain : undefined,
+      idCardUploaded: this.idCardUploaded,
       railD: show(showRail && !s.narrow), hprogD: showRail && s.narrow ? 'grid' : 'none',
       prog: railSteps.map(([label, hint, short], k) => {
         const done = k < st, cur = k === st && reg, back = done && reg;
@@ -2922,6 +2965,7 @@ export class Innovision extends Component<Props, State> {
       d: { s0: show(reg && st === 0 && !!s.user), s2: show(reg && st === 1 && !!s.user), s3: show(reg && st === 2 && !!s.user), login: show(am === 'login' || (reg && !s.user)), pass: show(am === 'pass'), act: show(reg && !!s.user) },
       err: E, bc, inv, genderOptions: GENDERS,
       upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 1MB)'),
+      upId: up('id', 'idfile', 'Drop a photo of your ID card here or browse'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
       upiLink: UPI_PAY_LINK, upiQr: UPI_QR_SRC,
       upiAppD: s.narrow ? 'inline-flex' : 'none',
@@ -2962,6 +3006,7 @@ export class Innovision extends Component<Props, State> {
         college: s.registration.college,
         checkedIn: false,
         token: null,
+        idCard: s.registration.status === 'rejected' ? undefined : s.registration.id_card_path ? 'uploaded' : 'pending',
       } : undefined,
       devApproveRegistration: this.devApproveRegistration,
       devOpenPass: this.devOpenPass,
@@ -3162,6 +3207,8 @@ export class Innovision extends Component<Props, State> {
       },
       isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team')),
       hasRegistered: !!(s.registration || this.pass),
+      // A pending or confirmed registration without its college ID card: MY PASS asks for it (a dot on the button).
+      idCardPending: !!s.registration && s.registration.status !== 'rejected' && 'id_card_path' in s.registration && !s.registration.id_card_path,
       openPass: () => this.openAuth('pass'),
       // @ts-ignore
       ...this.authVals(s),

@@ -14,6 +14,10 @@ import AmbassadorsManager from './admin/AmbassadorsManager';
 import SeatCounterCard from './admin/SeatCounterCard';
 import { httpErrorMessage } from '@/lib/api-errors';
 import { MAX_REGISTRATION_ATTEMPTS, ordinal, REJECTION_REASONS, rejectionLabel, type RejectionReason } from '@/lib/rejections';
+import { ID_CARD_REUPLOAD_REASONS, idCardReuploadLabel, type IdCardReuploadReason } from '@/lib/id-cards';
+
+/** A registration that still needs its college ID card (supabase/schema.sql section 19); rejected ones never do. */
+const idCardMissing = (r: Registration) => r.status !== 'rejected' && !r.id_card_path;
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -49,11 +53,17 @@ export default function AdminDashboard({
     title: string;
     message: string;
     actionText: string;
-    actionType: 'approve' | 'reject' | 'role' | 'default';
-    /** A rejection: the confirm button stays disabled until a reason is picked, and gets it. */
-    onConfirm: (reason?: RejectionReason) => void;
+    actionType: 'approve' | 'reject' | 'idcard' | 'role' | 'default';
+    /**
+     * A rejection, or asking for a new ID card: the confirm button stays disabled until a reason is picked, and gets
+     * it.
+     */
+    onConfirm: (reason?: string) => void;
   } | null>(null);
   const [rejectReason, setRejectReason] = useState<RejectionReason | ''>('');
+  const [idCardReason, setIdCardReason] = useState<IdCardReuploadReason | ''>('');
+  // Client-side over the loaded list: registrations with or without their college ID card.
+  const [idCardFilter, setIdCardFilter] = useState<'all' | 'missing' | 'uploaded'>('all');
   // Bumped whenever the seat count may have moved (list reloaded, registration reviewed): the SEAT COUNTER card reloads.
   const [seatsKey, setSeatsKey] = useState(0);
 
@@ -117,22 +127,23 @@ export default function AdminDashboard({
     return null;
   };
 
-  // Payment screenshots live in a private bucket: ask the server for a short-lived signed URL (staff only).
+  // Payment screenshots and ID cards live in private buckets: ask the server for a short-lived signed URL (staff only).
   const [proofBusyId, setProofBusyId] = useState<string | null>(null);
-  const viewPaymentProof = async (reg: Registration) => {
+  const viewUpload = async (reg: Registration, kind: 'payment-proof' | 'id-card') => {
     if (!reg.id || !canReviewRegistrations) return;
+    const what = kind === 'id-card' ? 'ID card' : 'payment screenshot';
     try {
-      setProofBusyId(reg.id);
+      setProofBusyId(`${reg.id}:${kind}`);
       const token = await getAuthToken();
-      const res = await fetch(`/api/admin/registrations/payment-proof?id=${encodeURIComponent(reg.id)}`, {
+      const res = await fetch(`/api/admin/registrations/${kind}?id=${encodeURIComponent(reg.id)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) throw new Error(httpErrorMessage(res) || data.error || 'Failed to load payment screenshot');
-      setPreviewImage({ url: data.url, title: `Payment Screenshot · ${reg.name}` });
+      if (!res.ok || !data.url) throw new Error(httpErrorMessage(res) || data.error || `Failed to load the ${what}`);
+      setPreviewImage({ url: data.url, title: `${kind === 'id-card' ? 'College ID Card' : 'Payment Screenshot'} · ${reg.name}` });
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to load payment screenshot', 'error');
+      showToast(err instanceof Error ? err.message : `Failed to load the ${what}`, 'error');
     } finally {
       setProofBusyId(null);
     }
@@ -242,8 +253,47 @@ export default function AdminDashboard({
         : `REJECT registration for ${reg.name} (${reg.registration_id})? It cannot be altered once done. ${afterReject} Their seat goes back to the counter.`,
       actionText: isApprove ? 'APPROVE REGISTRATION' : 'REJECT REGISTRATION',
       actionType: isApprove ? 'approve' : 'reject',
-      onConfirm: (reason) => executeUpdateStatus(reg, newStatus, reason),
+      onConfirm: (reason) => executeUpdateStatus(reg, newStatus, reason as RejectionReason | undefined),
     });
+  };
+
+  // Ask the student for a new college ID card photo: it is cleared and MY PASS shows "ID card pending" with the reason.
+  const handleRequestIdCard = (reg: Registration) => {
+    setIdCardReason('');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Ask for a new ID card',
+      message: `Ask ${reg.name} (${reg.registration_id}) to upload their college ID card again? The current photo is set aside and MY PASS shows "ID card pending" with the reason below.${reg.status === 'pending' ? ' The registration cannot be approved until they upload a new one.' : ''}`,
+      actionText: 'ASK FOR A NEW ID CARD',
+      actionType: 'idcard',
+      onConfirm: (reason) => executeRequestIdCard(reg, reason as IdCardReuploadReason),
+    });
+  };
+
+  const executeRequestIdCard = async (reg: Registration, reason: IdCardReuploadReason) => {
+    if (!canReviewRegistrations || !reg.id) return;
+    try {
+      setActionBusyId(reg.id);
+      const token = await getAuthToken();
+      const res = await fetch('/api/admin/registrations/id-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ registrationId: reg.id, reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(httpErrorMessage(res) || data.error || 'Failed to ask for a new ID card');
+      showToast(`${reg.registration_id}: the student will be asked for a new ID card`, 'success');
+      setRegistrations((prev) =>
+        prev.map((r) =>
+          r.id === reg.id ? { ...r, id_card_path: null, id_card_uploaded_at: null, id_card_reupload_reason: reason } : r
+        )
+      );
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to ask for a new ID card', 'error');
+    } finally {
+      setActionBusyId(null);
+    }
   };
 
   const executeUpdateStatus = async (reg: Registration, newStatus: 'confirmed' | 'rejected', reason?: RejectionReason) => {
@@ -343,9 +393,15 @@ export default function AdminDashboard({
     }
   };
 
+  // The loaded list narrowed by the ID card filter (the table, its pages and the CSV export all use it).
+  const visibleRegistrations =
+    idCardFilter === 'all'
+      ? registrations
+      : registrations.filter((r) => r.status !== 'rejected' && (idCardFilter === 'missing') === !r.id_card_path);
+
   // Export Registrations CSV
   const exportRegistrationsCSV = () => {
-    if (!registrations.length) {
+    if (!visibleRegistrations.length) {
       showToast('No registrations available to export.', 'info');
       return;
     }
@@ -365,6 +421,8 @@ export default function AdminDashboard({
       'Amount (INR)',
       'UPI UTR',
       'Payment Screenshot (private ref)',
+      'ID Card',
+      'ID Card (private ref)',
       'Referral Code',
       'Referred Via',
       'Referred Via Code',
@@ -374,7 +432,7 @@ export default function AdminDashboard({
       ...(isAdmin ? ['Reviewed By', 'Reviewed At'] : []),
     ];
 
-    const rows = registrations.map((r) => [
+    const rows = visibleRegistrations.map((r) => [
       r.registration_id,
       r.name,
       r.gender ? genderLabel(r.gender) : '',
@@ -389,6 +447,14 @@ export default function AdminDashboard({
       r.amount,
       r.utr,
       r.payment_proof_path,
+      r.status === 'rejected'
+        ? ''
+        : r.id_card_path
+        ? 'Uploaded'
+        : r.id_card_reupload_reason
+        ? `Pending (new one asked: ${idCardReuploadLabel(r.id_card_reupload_reason)})`
+        : 'Pending',
+      r.id_card_path ?? '',
       r.referral_code,
       r.referred_via ? (r.referred_via.kind === 'ambassador' ? 'Campus ambassador' : 'Registrant') : '',
       r.referred_via ? formatReferralCode(r.referred_via.code) : '',
@@ -454,14 +520,14 @@ export default function AdminDashboard({
   const ITEMS_PER_PAGE = 30;
 
   // Registrations pagination (strictly UI-only; CSV exports all filtered registrations)
-  const totalRegPages = Math.max(1, Math.ceil(registrations.length / ITEMS_PER_PAGE));
+  const totalRegPages = Math.max(1, Math.ceil(visibleRegistrations.length / ITEMS_PER_PAGE));
   const currentRegPage = Math.min(regPage, totalRegPages);
-  const paginatedRegistrations = registrations.slice(
+  const paginatedRegistrations = visibleRegistrations.slice(
     (currentRegPage - 1) * ITEMS_PER_PAGE,
     currentRegPage * ITEMS_PER_PAGE
   );
-  const regStart = registrations.length === 0 ? 0 : (currentRegPage - 1) * ITEMS_PER_PAGE + 1;
-  const regEnd = Math.min(currentRegPage * ITEMS_PER_PAGE, registrations.length);
+  const regStart = visibleRegistrations.length === 0 ? 0 : (currentRegPage - 1) * ITEMS_PER_PAGE + 1;
+  const regEnd = Math.min(currentRegPage * ITEMS_PER_PAGE, visibleRegistrations.length);
 
   // Users pagination (strictly UI-only; CSV exports all filtered users)
   const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
@@ -637,6 +703,17 @@ export default function AdminDashboard({
   const confirmedRegs = registrations.filter((r) => r.status === 'confirmed').length;
   const rejectedRegs = registrations.filter((r) => r.status === 'rejected').length;
   const internalRegs = registrations.filter((r) => r.student_type === 'internal').length;
+  const idCardPendingRegs = registrations.filter(idCardMissing).length;
+  // Under the total: how many of those registrations are male, female and others (same list, same filters).
+  const genderCounts = GENDER_OPTIONS.map((g) => ({
+    label: g.label,
+    value: registrations.filter((r) => r.gender === g.value).length,
+  }));
+  // Legacy rows from before gender was asked have none.
+  const genderUnknown = totalRegs - genderCounts.reduce((sum, g) => sum + g.value, 0);
+  // The confirm dialog's button waits for a reason: a rejection's, or why a new ID card is needed.
+  const modalReasonMissing =
+    (confirmModal?.actionType === 'reject' && !rejectReason) || (confirmModal?.actionType === 'idcard' && !idCardReason);
 
   return (
     <div
@@ -754,37 +831,45 @@ export default function AdminDashboard({
             <p style={{ margin: '0 0 24px', fontSize: '14px', lineHeight: 1.6, color: 'rgba(236,232,223,0.85)' }}>
               {confirmModal.message}
             </p>
-            {confirmModal.actionType === 'reject' && (
+            {(confirmModal.actionType === 'reject' || confirmModal.actionType === 'idcard') && (
               <fieldset style={{ margin: '-8px 0 24px', padding: 0, border: 0, minWidth: 0 }}>
                 <legend style={{ marginBottom: '10px', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.7)' }}>
                   WHY? (THE STUDENT SEES THIS)
                 </legend>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {REJECTION_REASONS.map((r) => (
-                    <label
-                      key={r.value}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '10px 12px',
-                        border: `1px solid ${rejectReason === r.value ? '#ef4444' : 'rgba(236,232,223,0.18)'}`,
-                        background: rejectReason === r.value ? 'rgba(239,68,68,0.08)' : 'transparent',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="reject-reason"
-                        value={r.value}
-                        checked={rejectReason === r.value}
-                        onChange={() => setRejectReason(r.value)}
-                        style={{ accentColor: '#ef4444', margin: 0 }}
-                      />
-                      {r.label}
-                    </label>
-                  ))}
+                  {(confirmModal.actionType === 'reject' ? REJECTION_REASONS : ID_CARD_REUPLOAD_REASONS).map((r) => {
+                    const picked = (confirmModal.actionType === 'reject' ? rejectReason : idCardReason) === r.value;
+                    const accent = confirmModal.actionType === 'reject' ? '#ef4444' : 'oklch(0.8 0.12 85)';
+                    return (
+                      <label
+                        key={r.value}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          border: `1px solid ${picked ? accent : 'rgba(236,232,223,0.18)'}`,
+                          background: picked ? (confirmModal.actionType === 'reject' ? 'rgba(239,68,68,0.08)' : 'rgba(220,183,106,0.08)') : 'transparent',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="modal-reason"
+                          value={r.value}
+                          checked={picked}
+                          onChange={() =>
+                            confirmModal.actionType === 'reject'
+                              ? setRejectReason(r.value as RejectionReason)
+                              : setIdCardReason(r.value as IdCardReuploadReason)
+                          }
+                          style={{ accentColor: accent, margin: 0 }}
+                        />
+                        {r.label}
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
             )}
@@ -808,11 +893,11 @@ export default function AdminDashboard({
               </button>
               <button
                 type="button"
-                disabled={confirmModal.actionType === 'reject' && !rejectReason}
+                disabled={modalReasonMissing}
                 onClick={() => {
                   const onConfirm = confirmModal.onConfirm;
                   setConfirmModal(null);
-                  onConfirm(rejectReason || undefined);
+                  onConfirm((confirmModal.actionType === 'idcard' ? idCardReason : rejectReason) || undefined);
                 }}
                 style={{
                   padding: '10px 22px',
@@ -822,8 +907,8 @@ export default function AdminDashboard({
                   fontSize: '13px',
                   fontWeight: 800,
                   letterSpacing: '.08em',
-                  cursor: confirmModal.actionType === 'reject' && !rejectReason ? 'not-allowed' : 'pointer',
-                  opacity: confirmModal.actionType === 'reject' && !rejectReason ? 0.5 : 1,
+                  cursor: modalReasonMissing ? 'not-allowed' : 'pointer',
+                  opacity: modalReasonMissing ? 0.5 : 1,
                   clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
                 }}
               >
@@ -1127,6 +1212,7 @@ export default function AdminDashboard({
                 { label: 'CONFIRMED PASSES', value: confirmedRegs, color: 'oklch(0.75 0.16 145)' },
                 { label: 'REJECTED', value: rejectedRegs, color: 'oklch(0.74 0.15 35)' },
                 { label: 'NIT RKL (INTERNAL)', value: internalRegs, color: 'oklch(0.8 0.12 85)' },
+                { label: 'ID CARD PENDING', value: idCardPendingRegs, color: 'oklch(0.8 0.15 80)' },
               ].map((stat, i) => (
                 <div
                   key={i}
@@ -1152,6 +1238,18 @@ export default function AdminDashboard({
                   >
                     {stat.value}
                   </div>
+                  {i === 0 && (
+                    <div
+                      aria-label="Registrations by gender"
+                      style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: '12px', fontSize: '12px', color: 'rgba(236,232,223,0.6)' }}
+                    >
+                      {[...genderCounts, ...(genderUnknown > 0 ? [{ label: 'Not given', value: genderUnknown }] : [])].map((g) => (
+                        <span key={g.label}>
+                          {g.label} <b style={{ color: '#ECE8DF', fontWeight: 700 }}>{g.value}</b>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1240,6 +1338,30 @@ export default function AdminDashboard({
                   <option value="external">External Students</option>
                 </select>
 
+                {/* College ID card filter (over the loaded list) */}
+                <select
+                  id="filter-reg-id-card"
+                  aria-label="College ID card"
+                  value={idCardFilter}
+                  onChange={(e) => {
+                    setIdCardFilter(e.target.value as 'all' | 'missing' | 'uploaded');
+                    setRegPage(1);
+                  }}
+                  style={{
+                    height: '40px',
+                    padding: '0 14px',
+                    background: '#141312',
+                    border: '1px solid rgba(236,232,223,0.2)',
+                    color: '#ECE8DF',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="all">Any ID Card</option>
+                  <option value="missing">ID Card Pending</option>
+                  <option value="uploaded">ID Card Uploaded</option>
+                </select>
+
                 <button
                   type="button"
                   onClick={fetchRegistrations}
@@ -1318,6 +1440,12 @@ export default function AdminDashboard({
                     <tr>
                       <td colSpan={isAdmin ? 9 : 8} style={{ padding: '40px', textAlign: 'center', color: 'rgba(236,232,223,0.6)' }}>
                         Loading registrations from database...
+                      </td>
+                    </tr>
+                  ) : registrations.length > 0 && visibleRegistrations.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 9 : 8} style={{ padding: '40px', textAlign: 'center', color: 'rgba(236,232,223,0.6)' }}>
+                        No registrations match the ID card filter.
                       </td>
                     </tr>
                   ) : registrations.length === 0 ? (
@@ -1436,8 +1564,8 @@ export default function AdminDashboard({
                               {reg.payment_proof_path && (
                                 <button
                                   type="button"
-                                  onClick={() => viewPaymentProof(reg)}
-                                  disabled={proofBusyId === reg.id}
+                                  onClick={() => viewUpload(reg, 'payment-proof')}
+                                  disabled={proofBusyId === `${reg.id}:payment-proof`}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -1451,12 +1579,78 @@ export default function AdminDashboard({
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  <span>{proofBusyId === reg.id ? 'Loading…' : 'View Payment'}</span>
+                                  <span>{proofBusyId === `${reg.id}:payment-proof` ? 'Loading…' : 'View Payment'}</span>
                                 </button>
                               )}
                               {!reg.payment_proof_path && (
                                 <span style={{ fontSize: '12px', color: 'rgba(236,232,223,0.4)' }}>—</span>
                               )}
+                              {/* College ID card (section 19): view it, ask for a new one, or wait for the student. */}
+                              {reg.id_card_path ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => viewUpload(reg, 'id-card')}
+                                    disabled={proofBusyId === `${reg.id}:id-card`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      background: 'transparent',
+                                      border: '1px solid rgba(236,232,223,0.2)',
+                                      color: 'oklch(0.8 0.12 85)',
+                                      padding: '3px 8px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <span>{proofBusyId === `${reg.id}:id-card` ? 'Loading…' : 'View ID Card'}</span>
+                                  </button>
+                                  {reg.status !== 'rejected' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRequestIdCard(reg)}
+                                      disabled={actionBusyId === reg.id}
+                                      title="Clear this ID card and ask the student to upload a new one"
+                                      style={{
+                                        alignSelf: 'flex-start',
+                                        padding: '0',
+                                        background: 'transparent',
+                                        border: 0,
+                                        color: 'rgba(236,232,223,0.55)',
+                                        fontSize: '10.5px',
+                                        textDecoration: 'underline',
+                                        textUnderlineOffset: '3px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Ask for new ID
+                                    </button>
+                                  )}
+                                </>
+                              ) : idCardMissing(reg) ? (
+                                <span
+                                  title={reg.id_card_reupload_reason ? `New ID card asked: ${idCardReuploadLabel(reg.id_card_reupload_reason)}` : 'The student has not uploaded their college ID card yet'}
+                                  style={{
+                                    alignSelf: 'flex-start',
+                                    padding: '3px 8px',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    letterSpacing: '.1em',
+                                    color: 'oklch(0.8 0.15 80)',
+                                    border: '1px solid rgba(220,183,106,0.35)',
+                                    background: 'rgba(220,183,106,0.08)',
+                                  }}
+                                >
+                                  ID PENDING
+                                  {reg.id_card_reupload_reason && (
+                                    <span style={{ display: 'block', marginTop: '2px', fontWeight: 500, letterSpacing: 0, color: 'rgba(236,232,223,0.6)' }}>
+                                      New one asked: {idCardReuploadLabel(reg.id_card_reupload_reason)}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : null}
                             </div>
                           </td>
 
@@ -1544,9 +1738,9 @@ export default function AdminDashboard({
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                   type="button"
-                                  disabled={isBusy}
+                                  disabled={isBusy || idCardMissing(reg)}
                                   onClick={() => handleUpdateStatus(reg, 'confirmed')}
-                                  title="Approve pass"
+                                  title={idCardMissing(reg) ? 'Waiting for the student to upload their college ID card' : 'Approve pass'}
                                   style={{
                                     padding: '6px 12px',
                                     background: 'oklch(0.75 0.16 145)',
@@ -1555,7 +1749,8 @@ export default function AdminDashboard({
                                     fontSize: '11px',
                                     fontWeight: 700,
                                     letterSpacing: '.08em',
-                                    cursor: isBusy ? 'wait' : 'pointer',
+                                    cursor: isBusy ? 'wait' : idCardMissing(reg) ? 'not-allowed' : 'pointer',
+                                    opacity: idCardMissing(reg) ? 0.4 : 1,
                                   }}
                                 >
                                   APPROVE
@@ -1603,7 +1798,7 @@ export default function AdminDashboard({
               totalRegPages,
               regStart,
               regEnd,
-              registrations.length,
+              visibleRegistrations.length,
               'registrations',
               setRegPage
             )}

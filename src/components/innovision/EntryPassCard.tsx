@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { isApprovedPass, passStatusMessage, type ParticipantPass } from '@/lib/pass-experience';
 import { passRequest } from './pass-client';
 import PassIssued from './PassIssued';
+import IdCardUpload from './IdCardUpload';
 import styles from './PassIssued.module.css';
 import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 import { rejectionMessage } from '@/lib/rejections';
@@ -13,16 +14,20 @@ interface EntryPassCardProps {
   previewPass?: ParticipantPass;
   /** REGISTER AGAIN on a rejected pass with attempts left; left out while registrations are closed. */
   onRegisterAgain?: () => void | Promise<void>;
+  /** The college ID card was just uploaded from the pass (the rest of the site refreshes its registration). */
+  onIdCardUploaded?: () => void | Promise<void>;
 }
 
-export default function EntryPassCard({ onContinue, previewPass, onRegisterAgain }: EntryPassCardProps) {
+export default function EntryPassCard({ onContinue, previewPass, onRegisterAgain, onIdCardUploaded }: EntryPassCardProps) {
   if (REGISTRATION_PREVIEW_ENABLED && previewPass) {
     return <PassState pass={previewPass} onContinue={onContinue} preview />;
   }
-  return <AuthenticatedEntryPassCard onContinue={onContinue} onRegisterAgain={onRegisterAgain} />;
+  return (
+    <AuthenticatedEntryPassCard onContinue={onContinue} onRegisterAgain={onRegisterAgain} onIdCardUploaded={onIdCardUploaded} />
+  );
 }
 
-function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain }: EntryPassCardProps) {
+function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain, onIdCardUploaded }: EntryPassCardProps) {
   const [pass, setPass] = useState<ParticipantPass | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -103,21 +108,45 @@ function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain }: EntryPassCa
   }
 
   if (!pass) return null;
-  return <PassState pass={pass} onContinue={onContinue} onRegisterAgain={onRegisterAgain} />;
+  return (
+    <PassState
+      pass={pass}
+      onContinue={onContinue}
+      onRegisterAgain={onRegisterAgain}
+      onIdCardUploaded={async () => {
+        // Reload the pass (the effect above runs again), and let the rest of the site know.
+        setAttempt((n) => n + 1);
+        await onIdCardUploaded?.();
+      }}
+    />
+  );
 }
 
 function PassState({
   pass,
   onContinue,
   onRegisterAgain,
+  onIdCardUploaded,
   preview = false,
 }: {
   pass: ParticipantPass;
   onContinue?: () => void;
   onRegisterAgain?: () => void | Promise<void>;
+  onIdCardUploaded?: () => void | Promise<void>;
   preview?: boolean;
 }) {
   const [opening, setOpening] = useState(false);
+  // In the preview there is no server to reload from: the banner just goes away.
+  const [previewUploaded, setPreviewUploaded] = useState(false);
+  const idCardPending = pass.idCard === 'pending' && !(preview && previewUploaded);
+  const idCard = idCardPending ? (
+    <IdCardUpload
+      confirmed={pass.registrationStatus === 'confirmed'}
+      reuploadReason={pass.idCardReuploadReason}
+      preview={preview}
+      onUploaded={preview ? () => setPreviewUploaded(true) : onIdCardUploaded ?? (() => {})}
+    />
+  ) : null;
 
   // Unapproved states: Pending review or Rejected
   if (!isApprovedPass(pass)) {
@@ -127,7 +156,7 @@ function PassState({
     const left = isRejected ? pass.attemptsLeft ?? 0 : 0;
     const canRetry = left > 0 && !!onRegisterAgain;
 
-    return (
+    const statusBox = (
       <div className={styles.statusBox} role="status" aria-live="polite">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
           <span className={isPending ? styles.statusBadgePending : styles.statusBadgeDeclined}>
@@ -151,8 +180,14 @@ function PassState({
         <p className={styles.statusDesc}>
           {isRejected && canRetry
             ? 'Your payment was not approved, but you can register again with the right details.'
+            : isPending && idCardPending
+            ? 'Your payment is under review. The registration team can approve it only after your college ID card is uploaded (above).'
             : passStatusMessage(pass)}
         </p>
+
+        {isPending && pass.idCard === 'uploaded' ? (
+          <p className={styles.statusDesc} style={{ color: '#c8b17a' }}>✓ College ID card uploaded</p>
+        ) : null}
 
         {reason ? (
           <p className={styles.statusReason}>
@@ -193,10 +228,16 @@ function PassState({
         )}
       </div>
     );
+    return idCard ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+        {idCard}
+        {statusBox}
+      </div>
+    ) : statusBox;
   }
 
-  // Approved state
-  return (
+  // Approved state: the QR stays usable while the ID card is pending.
+  const issued = (
     <PassIssued
       key={pass.registrationId}
       pass={pass}
@@ -205,4 +246,10 @@ function PassState({
       preview={preview}
     />
   );
+  return idCard ? (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%' }}>
+      {idCard}
+      {issued}
+    </div>
+  ) : issued;
 }

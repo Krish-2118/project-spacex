@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth-server';
 import { paymentProofExists } from '@/lib/payment-proofs';
+import { idCardExists } from '@/lib/id-card-storage';
 import { ambassadorGuardError, findOwnAmbassador, resolveReferralCode, type Registrant } from '@/lib/ambassadors';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
 import {
@@ -243,9 +244,19 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (utrOwner) return utrConflictResponse(adminClient, user.id);
 
-    // The proof (required for everyone) must be an object this user actually uploaded (checked with their own token,
-    // so Storage RLS only lets them see their own folder).
-    if (!(await paymentProofExists(token, input.payment_proof_path))) {
+    // The proof and the ID card (both required for everyone) must be objects this user actually uploaded (checked with
+    // their own token, so Storage RLS only lets them see their own folder).
+    const [proofFound, idCardFound] = await Promise.all([
+      paymentProofExists(token, input.payment_proof_path),
+      idCardExists(token, input.id_card_path),
+    ]);
+    if (!idCardFound) {
+      return NextResponse.json(
+        { error: 'ID card photo not found. Please upload your college ID card again.', field: 'idfile' },
+        { status: 400 }
+      );
+    }
+    if (!proofFound) {
       return NextResponse.json(
         { error: 'Payment screenshot not found. Please re-upload your screenshot.', field: 'payfile' },
         { status: 400 }
@@ -288,6 +299,9 @@ export async function POST(req: NextRequest) {
       student_type: studentType,
       // Only the private storage object path is stored, never a URL or the image itself.
       payment_proof_path: input.payment_proof_path,
+      // Photo of the college ID card, in the private id-cards bucket (section 19 of supabase/schema.sql).
+      id_card_path: input.id_card_path,
+      id_card_uploaded_at: new Date().toISOString(),
       utr: input.utr,
       amount: REGISTRATION_FEE_INR,
       status: NEW_REGISTRATION_STATUS,

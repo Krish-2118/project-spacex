@@ -420,6 +420,29 @@ export default function ProfileOverlay({
                     : 'Your registration could not be verified. Please visit the helpdesk or contact the event administrators.'}
                 </p>
 
+                {/* The college ID card (supabase/schema.sql section 19): uploaded from MY PASS. */}
+                {registration.status !== 'rejected' && 'id_card_path' in registration && !registration.id_card_path ? (
+                  <p
+                    role="status"
+                    style={{
+                      margin: '0 0 16px',
+                      padding: '10px 14px',
+                      borderLeft: '2px solid #c8b17a',
+                      background: 'rgba(200,177,122,0.08)',
+                      fontSize: '13.5px',
+                      lineHeight: 1.5,
+                      color: '#ECE8DF',
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: '11px', letterSpacing: '.12em', color: '#c8b17a' }}>
+                      ID CARD PENDING
+                    </strong>
+                    {registration.status === 'pending'
+                      ? 'Upload a photo of your college ID card from MY PASS. Your payment can be approved only after that.'
+                      : 'Upload a photo of your college ID card from MY PASS.'}
+                  </p>
+                ) : null}
+
                 <div
                   style={{
                     display: 'flex',

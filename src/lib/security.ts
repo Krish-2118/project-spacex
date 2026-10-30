@@ -71,23 +71,66 @@ export function isPaymentProofFileType(type: unknown): type is PaymentProofFileT
 }
 
 const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-// `<owner uuid>/<random uuid>.<ext>`: the same shape the Storage INSERT policy and the registrations CHECK enforce.
-const PAYMENT_PROOF_PATH_RE = new RegExp(`^(${UUID_PATTERN})/${UUID_PATTERN}\\.(jpg|png|webp|gif|heic)$`);
 
 /**
- * Object path for a new payment screenshot. The folder is the uploader's verified user id (from the session, never
- * from the request) and the file name is random, so a path can't be guessed or chosen by the client.
+ * Object path for a new private upload (payment screenshot, ID card). The folder is the uploader's verified user id
+ * (from the session, never from the request) and the file name is random, so a path can't be guessed or chosen by the
+ * client.
  */
-export function buildPaymentProofPath(ownerId: string, type: PaymentProofFileType): string {
-  if (!isUuid(ownerId)) throw new Error('buildPaymentProofPath: owner id must be a UUID');
+export function buildOwnedUploadPath(ownerId: string, type: DetectedFileType): string {
+  if (!isUuid(ownerId)) throw new Error('buildOwnedUploadPath: owner id must be a UUID');
   return `${ownerId.toLowerCase()}/${globalThis.crypto.randomUUID()}.${FILE_EXTENSIONS[type]}`;
+}
+
+/**
+ * True when `path` is `<owner uuid>/<random uuid>.<ext>` inside `ownerId`'s own folder (no traversal, no other user)
+ * with one of `extensions`: the same shape the registrations CHECKs enforce.
+ */
+export function isOwnedUploadPath(path: unknown, ownerId: unknown, extensions: readonly string[]): path is string {
+  if (typeof path !== 'string' || !isUuid(ownerId)) return false;
+  const m = new RegExp(`^(${UUID_PATTERN})/${UUID_PATTERN}\\.([a-z]+)$`).exec(path);
+  return !!m && m[1] === ownerId.toLowerCase() && extensions.includes(m[2]);
+}
+
+const PAYMENT_PROOF_EXTENSIONS = ['jpg', 'png', 'webp', 'gif', 'heic'];
+
+/** Object path for a new payment screenshot (buildOwnedUploadPath). */
+export function buildPaymentProofPath(ownerId: string, type: PaymentProofFileType): string {
+  return buildOwnedUploadPath(ownerId, type);
 }
 
 /** True when `path` is a payment-proof object path inside `ownerId`'s own folder (no traversal, no other user). */
 export function isPaymentProofPath(path: unknown, ownerId: unknown): path is string {
-  if (typeof path !== 'string' || !isUuid(ownerId)) return false;
-  const m = PAYMENT_PROOF_PATH_RE.exec(path);
-  return !!m && m[1] === ownerId.toLowerCase();
+  return isOwnedUploadPath(path, ownerId, PAYMENT_PROOF_EXTENSIONS);
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * College ID cards (private Supabase Storage bucket, supabase/schema.sql section 19)
+ * ------------------------------------------------------------------------------------------------------------- */
+
+/** Private bucket holding photos of registrants' college ID cards. Created, and kept private, by supabase/schema.sql. */
+export const ID_CARDS_BUCKET = 'id-cards';
+
+/** Largest ID card photo accepted; must match the id-cards bucket file_size_limit in supabase/schema.sql. */
+export const ID_CARD_MAX_BYTES = 2 * 1024 * 1024;
+
+/** Image types accepted as an ID card photo; must match the bucket's allowed_mime_types. */
+export const ID_CARD_MIME_TYPES = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+} as const satisfies Partial<Record<DetectedFileType, string>>;
+
+export type IdCardFileType = keyof typeof ID_CARD_MIME_TYPES;
+
+export function isIdCardFileType(type: unknown): type is IdCardFileType {
+  return typeof type === 'string' && Object.prototype.hasOwnProperty.call(ID_CARD_MIME_TYPES, type);
+}
+
+/** True when `path` is an ID card object path inside `ownerId`'s own folder (registrations_id_card_path_check). */
+export function isIdCardPath(path: unknown, ownerId: unknown): path is string {
+  return isOwnedUploadPath(path, ownerId, ['jpg', 'png', 'webp', 'heic']);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -235,6 +278,8 @@ export interface RegistrationInput {
   gender: RegistrationGender;
   /** Storage object path in the private payment-proofs bucket (never a URL). Always required. */
   payment_proof_path: string;
+  /** Storage object path of the college ID card photo in the private id-cards bucket. Always required. */
+  id_card_path: string;
   /** 12-digit UPI transaction id. Always required. */
   utr: string;
   /** Someone else's referral code, normalized; null when left empty (optional). /api/register checks it exists. */
@@ -274,7 +319,7 @@ export const REFERRAL_CODE_FORMAT_ERROR =
 
 /** Form field a validation error belongs to, so the registration form can show it on the right step. */
 export type RegistrationField =
-  | 'name' | 'college' | 'phone' | 'gender' | 'enrollment_no' | 'referred_by_code' | 'payfile' | 'utr' | 'form';
+  | 'name' | 'college' | 'phone' | 'gender' | 'enrollment_no' | 'referred_by_code' | 'idfile' | 'payfile' | 'utr' | 'form';
 
 export type RegistrationValidation =
   | { ok: true; data: RegistrationInput }
@@ -321,6 +366,7 @@ export function validateRegistrationInput(
   const enrollment = optionalString(b.enrollment_no);
   const gender = typeof b.gender === 'string' ? b.gender.trim().toLowerCase() : '';
   const proofPath = optionalString(b.payment_proof_path);
+  const idCardPath = optionalString(b.id_card_path);
   const rawUtr = optionalString(b.utr);
   const rawReferral = optionalString(b.referred_by_code);
 
@@ -331,7 +377,10 @@ export function validateRegistrationInput(
       field: !name ? 'name' : !college ? 'college' : 'phone',
     };
   }
-  if (enrollment === undefined || proofPath === undefined || rawUtr === undefined || rawReferral === undefined) {
+  if (
+    enrollment === undefined || proofPath === undefined || idCardPath === undefined || rawUtr === undefined ||
+    rawReferral === undefined
+  ) {
     return { ok: false, error: 'Invalid field types in registration payload.', field: 'form' };
   }
   if (name.length < 2 || name.length > 100) {
@@ -364,6 +413,14 @@ export function validateRegistrationInput(
     return { ok: false, error: REFERRAL_CODE_FORMAT_ERROR, field: 'referred_by_code' };
   }
 
+  // Uploaded on the details step, so its errors send the form back there. Same own-folder rule as the proof below.
+  if (!idCardPath) {
+    return { ok: false, error: 'Upload a photo of the front of your college ID card.', field: 'idfile' };
+  }
+  if (!isIdCardPath(idCardPath, opts.ownerId)) {
+    return { ok: false, error: 'Invalid ID card upload. Please upload your college ID card again.', field: 'idfile' };
+  }
+
   if (!proofPath) {
     return { ok: false, error: 'Payment screenshot is required.', field: 'payfile' };
   }
@@ -386,6 +443,7 @@ export function validateRegistrationInput(
       enrollment_no: enrollment_no || null,
       gender: gender as RegistrationGender,
       payment_proof_path: proofPath,
+      id_card_path: idCardPath,
       utr,
       referred_by_code: referred_by_code || null,
     },

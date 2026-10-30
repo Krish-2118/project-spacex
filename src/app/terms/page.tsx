@@ -22,7 +22,7 @@ export default function TermsPage() {
       <h2>Accounts and registration</h2>
       <ul>
         <li>You sign in with your own Google account. One account can hold one registration.</li>
-        <li>Your details must be true and must match your college ID card, which you will be asked to show at the gate.</li>
+        <li>Your details must be true and must match your college ID card. You upload a photo of its front when you register, and show the card itself at the gate.</li>
         <li>You are responsible for keeping your account secure and for activity under it.</li>
       </ul>
 

@@ -92,6 +92,7 @@ export default function Hud({ v }: { v: V }) {
             href={v.noUser || !v.hasRegistered ? "#register" : "#pass"}
             onClick={v.register}
             onMouseEnter={v.hover}
+            aria-label={!v.noUser && v.hasRegistered && v.idCardPending ? "MY PASS (ID card pending)" : undefined}
             className="hud-register hud-cta"
             style={{
               display: "inline-flex",
@@ -108,6 +109,10 @@ export default function Hud({ v }: { v: V }) {
             }}
           >
             <span key={v.noUser || !v.hasRegistered ? "register" : "pass"} data-scr="">{v.noUser || !v.hasRegistered ? "REGISTER" : "MY PASS"}</span>
+            {/* The college ID card still has to be uploaded from MY PASS. */}
+            {!v.noUser && v.hasRegistered && v.idCardPending ? (
+              <span aria-hidden="true" style={{ width: "7px", height: "7px", marginLeft: "8px", borderRadius: "50%", background: solid ? "oklch(0.78 0.075 85)" : "#a87a1f" }} />
+            ) : null}
           </a>
 
           {/* Account slot. Signed out: LOG IN. Signed in: the visitor's profile (initials badge + first name; the badge

@@ -35,6 +35,8 @@
 .details dt{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.8;align-self:center}
 .details dd{margin:0;font-weight:700;overflow-wrap:anywhere}
 .big{font-size:clamp(24px,7vw,34px)}
+.idCard{display:block;width:100%;max-width:420px;max-height:34vh;object-fit:contain;border-radius:6px;background:rgba(0,0,0,.25)}
+.idCardNote{margin:0;padding:10px 14px;border-radius:6px;background:rgba(0,0,0,.2);font-size:15px;font-weight:700;line-height:1.4}
 
 .actions{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .btn{appearance:none;border:0;cursor:pointer;min-height:64px;padding:0 24px;font:inherit;font-size:20px;font-weight:800;letter-spacing:.06em;border-radius:6px;touch-action:manipulation}

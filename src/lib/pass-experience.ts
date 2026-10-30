@@ -12,6 +12,13 @@ export interface ParticipantPass {
   rejectionReason?: string | null;
   /** Rejected registrations only: how many more times the student may register. */
   attemptsLeft?: number;
+  /**
+   * Pending and confirmed registrations only: whether the college ID card is uploaded. 'pending' shows the upload
+   * banner on MY PASS (and holds up approval of a pending registration).
+   */
+  idCard?: 'uploaded' | 'pending';
+  /** With idCard 'pending': why staff asked for a new ID card (src/lib/id-cards.ts), if they did. */
+  idCardReuploadReason?: string | null;
 }
 
 export function isApprovedPass(pass: ParticipantPass): boolean {

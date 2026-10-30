@@ -35,6 +35,11 @@ export interface Registration {
   gender: 'male' | 'female' | 'others';
   /** Object path in the private `payment-proofs` bucket. Not a URL: staff view it via a short-lived signed URL. */
   payment_proof_path?: string | null;
+  /** College ID card photo, an object path in the private `id-cards` bucket; null until the student uploads it. */
+  id_card_path?: string | null;
+  id_card_uploaded_at?: string | null;
+  /** Why staff asked for a new ID card (src/lib/id-cards.ts); only while id_card_path is null. */
+  id_card_reupload_reason?: string | null;
   utr?: string | null;
   amount: number;
   status: 'pending' | 'confirmed' | 'rejected';

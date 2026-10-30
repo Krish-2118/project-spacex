@@ -1,6 +1,6 @@
 # Registration, payment approval and INNO pass
 
-The live flow is Google login → participant details → payment QR → screenshot and 12-digit UTR → pending team review → approved pass. College and roll number are entered by the participant. College is never inferred from their email. Financial approval always comes from the authenticated backend.
+The live flow is Google login → participant details and college ID card photo → payment QR → screenshot and 12-digit UTR → pending team review → approved pass. College and roll number are entered by the participant. College is never inferred from their email. Financial approval always comes from the authenticated backend.
 
 ## Reviewer preview and the single off switch
 
@@ -15,13 +15,14 @@ The live flow is Google login → participant details → payment QR → screens
 
 ## Deployment prerequisites
 
-Apply `supabase/manual/pass_experience.sql` to the existing Supabase database. New installations can use the updated `supabase/schema.sql`. The idempotent migration creates an owner-authorized acknowledgement table and functions; it does not update financial status. Hosted database migration has not been performed by this code change.
+Apply `supabase/manual/pass_experience.sql` and `supabase/manual/id_card_upload.sql` (college ID cards, section 19 of `supabase/schema.sql`) to the existing Supabase database. New installations can use the updated `supabase/schema.sql`. The idempotent migration creates an owner-authorized acknowledgement table and functions; it does not update financial status. Hosted database migration has not been performed by this code change.
 
 The existing entry-pass tables/functions and a valid `ENTRY_PASS_ENCRYPTION_KEY` are required for QR check-in. The pass itself and PDF remain available without a QR. The scanner continues to use the existing staff-authorized opaque-token lookup and atomic check-in functions, including duplicate-check-in protection. No default signing secret or simulated server approval is used.
 
 ## Pass behavior
 
 - `/api/pass` intentionally uses POST: first access can mint an owner's opaque QR token. It returns real name, college, registration ID and backend status. Tokens are only available for confirmed registrations with active passes.
+- College ID card: `/api/pass` also says whether a pending or confirmed registration has its ID card (`idCard: 'uploaded' | 'pending'`, and the reason when staff asked for a new one). While it is pending, MY PASS shows an **ID card pending** box with an upload button above the status (pending) or above the ticket (confirmed; the QR stays usable), and the MY PASS button carries a gold dot. The upload goes to `POST /api/id-card`, which attaches it to the registration even after registrations close. Staff can't approve a pending registration without one (API and `trg_require_id_card_for_approval`), can view it from the admin list and the gate scanner, and can ask for a new one (`POST /api/admin/registrations/id-card`). The student can't replace an uploaded card themselves.
 - Visible registration/pass screens refresh on focus, visibility and a 15-second interval. Hidden tabs avoid polling. Preview records do not poll the live registration API.
 - Database claims elect one tab to show the celebration. A 30-second lease recovers abandoned claims. In-flight claims are shared across React remounts.
 - Acknowledgement happens after the pass has painted, or an explicit skip. Navigation cleanup acknowledges only a presented pass. Failed acknowledgements retain the claim and retry on focus/connection recovery. No local-storage value is the source of truth.

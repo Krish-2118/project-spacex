@@ -13,6 +13,51 @@ import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
 
+/** A drag-and-drop image upload (payment screenshot, ID card) driven by Innovision's upload view-model (`up()`). */
+function UploadZone({ u, kind, name, ariaLabel, alt, typesHint, err }: { u: V['upPay']; kind: string; name: string; ariaLabel: string; alt: string; typesHint: string; err: string }) {
+  return (
+    <>
+<label data-s-in="" onDragEnter={u.over} onDragOver={u.over} onDragLeave={u.leave} onDrop={u.drop} style={{ position: "relative", display: "block", aspectRatio: "16 / 9", border: `1.5px dashed ${u.bc}`, background: u.bg, overflow: "hidden", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.78 0.075 85)">
+<span style={{ display: u.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
+<span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.78 0.075 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
+<span style={{ fontSize: "16px", fontWeight: "500" }}>{u.prompt}</span>
+<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>{typesHint}</span>
+</span>
+<span style={{ display: u.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
+{u.hasImg ? (<img decoding="async" src={u.url} alt={alt} style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
+<span style={{ display: u.pdfD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", background: "rgba(236,232,223,.05)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "40px", height: "40px", color: "oklch(0.78 0.075 85)" }}><path d="M6 2h9l5 5v15H6zM15 2v5h5" fill="none" stroke="currentColor" strokeWidth="1.4"></path></svg><span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>PDF</span></span>
+<span style={{ position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" }}><span data-scan={kind} style={{ position: "absolute", inset: "0", opacity: "0" }}><span style={{ position: "absolute", left: "0", right: "0", top: "-64px", height: "64px", background: "linear-gradient(rgba(220,183,106,0),rgba(220,183,106,.3))" }}></span><span style={{ position: "absolute", left: "0", right: "0", top: "0", height: "2px", background: "#F3DFA8" }}></span></span></span>
+<span style={{ display: u.busyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "rgba(12,11,10,.66)" }}>
+<span data-up-pct={kind} style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "34px", lineHeight: "1" }}>0%</span>
+<span style={{ position: "relative", width: "56%", height: "2px", background: "rgba(236,232,223,.2)" }}><span data-up-bar={kind} style={{ position: "absolute", inset: "0", background: "oklch(0.78 0.075 85)", transform: "scaleX(0)", transformOrigin: "left" }}></span></span>
+<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".22em" }}>UPLOADING</span>
+</span>
+</span>
+<input type="file" name={name} accept="image/*" aria-label={ariaLabel} onChange={u.pick} style={{ position: "absolute", inset: "0", zIndex: "2", width: "100%", height: "100%", opacity: "0", cursor: "pointer" }} />
+</label>
+<div data-s-in="" style={{ display: u.rowD, alignItems: "center", justifyContent: "space-between", gap: "10px 16px", flexWrap: "wrap" }}>
+<span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: "0", flex: "1" }}>
+<svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", color: "oklch(0.78 0.075 85)" }}><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2"></path></svg>
+<span style={{ minWidth: "0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "15px" }}>{u.name}</span>
+<span style={{ flex: "none", fontSize: "13px", color: "rgba(236,232,223,.62)" }}>{u.size}</span>
+</span>
+<span style={{ display: "flex", gap: "18px" }}>
+<button type="button" onClick={u.replace} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REPLACE</button>
+<button type="button" onClick={u.remove} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REMOVE</button>
+</span>
+</div>
+<div data-s-in="" style={{ display: u.failD, alignItems: "center", justifyContent: "space-between", gap: "10px 16px", flexWrap: "wrap" }}>
+<span style={{ minWidth: "0", flex: "1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "15px" }}>{u.name}</span>
+<span style={{ display: "flex", gap: "18px" }}>
+<button type="button" onClick={u.retry} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">RETRY UPLOAD</button>
+<button type="button" onClick={u.remove} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REMOVE</button>
+</span>
+</div>
+{err ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{err}</span>) : null}
+    </>
+  );
+}
+
 export default function AuthOverlay({ v }: { v: V }) {
   const dialog = useRef<HTMLElement>(null);
   useDialogFocus(v.authHidden === 'false', dialog, v.closeAuthH);
@@ -164,6 +209,11 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" required placeholder="Your college roll / enrollment number" aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
                         {v.err.enrollment_no ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.enrollment_no}</span>) : null}
                       </label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span data-s-in="" style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE ID CARD (FRONT)</span>
+                        <UploadZone u={v.upId} kind="id" name="idfile" ariaLabel="Upload a photo of your college ID card" alt="Your college ID card" typesHint="A clear photo, JPG or PNG. Large photos are shrunk for you." err={v.err.idfile} />
+                        <span data-s-in="" style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>The front of your college ID card, with your name and college readable. Bring the same card to the gate.</span>
+                      </div>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>PHONE</span>
                         <span style={{ display: "flex", gap: "8px" }}><span style={{ display: "flex", alignItems: "center", padding: "0 14px", border: "1.5px solid rgba(236,232,223,.28)", fontSize: "16px", fontWeight: "500" }}>+91</span><input name="phone" defaultValue={v.regVals.phone} type="tel" autoComplete="tel-national" inputMode="numeric" placeholder="98765 43210" aria-invalid={v.inv.phone} style={{ flex: "1", minWidth: "0", height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.phone}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" /></span>
@@ -231,43 +281,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         <span data-s-in="" style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>PAYMENT SCREENSHOT</span>
                         
-<label data-s-in="" onDragEnter={v.upPay.over} onDragOver={v.upPay.over} onDragLeave={v.upPay.leave} onDrop={v.upPay.drop} style={{ position: "relative", display: "block", aspectRatio: "16 / 9", border: `1.5px dashed ${v.upPay.bc}`, background: v.upPay.bg, overflow: "hidden", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.78 0.075 85)">
-<span style={{ display: v.upPay.emptyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px", textAlign: "center" }}>
-<span style={{ display: "grid", placeItems: "center", width: "52px", height: "52px", border: "1.5px solid rgba(236,232,223,.4)", borderRadius: "50%", color: "oklch(0.78 0.075 85)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "22px", height: "22px" }}><path d="M12 15V4M7 9l5-5 5 5M4 14v6h16v-6" fill="none" stroke="currentColor" strokeWidth="1.6"></path></svg></span>
-<span style={{ fontSize: "16px", fontWeight: "500" }}>{v.upPay.prompt}</span>
-<span style={{ fontSize: "13px", color: "rgba(236,232,223,.62)" }}>JPG or PNG up to 1 MB</span>
-</span>
-<span style={{ display: v.upPay.prevD, position: "absolute", inset: "0", background: "#0c0b0a" }}>
-{v.upPay.hasImg ? (<img decoding="async" src={v.upPay.url} alt="Your payment screenshot" style={{ width: "100%", height: "100%", objectFit: "contain" }} />) : null}
-<span style={{ display: v.upPay.pdfD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", background: "rgba(236,232,223,.05)" }}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: "40px", height: "40px", color: "oklch(0.78 0.075 85)" }}><path d="M6 2h9l5 5v15H6zM15 2v5h5" fill="none" stroke="currentColor" strokeWidth="1.4"></path></svg><span style={{ fontSize: "13px", fontWeight: "700", letterSpacing: ".2em" }}>PDF</span></span>
-<span style={{ position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" }}><span data-scan="pay" style={{ position: "absolute", inset: "0", opacity: "0" }}><span style={{ position: "absolute", left: "0", right: "0", top: "-64px", height: "64px", background: "linear-gradient(rgba(220,183,106,0),rgba(220,183,106,.3))" }}></span><span style={{ position: "absolute", left: "0", right: "0", top: "0", height: "2px", background: "#F3DFA8" }}></span></span></span>
-<span style={{ display: v.upPay.busyD, position: "absolute", inset: "0", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "rgba(12,11,10,.66)" }}>
-<span data-up-pct="pay" style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "34px", lineHeight: "1" }}>0%</span>
-<span style={{ position: "relative", width: "56%", height: "2px", background: "rgba(236,232,223,.2)" }}><span data-up-bar="pay" style={{ position: "absolute", inset: "0", background: "oklch(0.78 0.075 85)", transform: "scaleX(0)", transformOrigin: "left" }}></span></span>
-<span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".22em" }}>UPLOADING</span>
-</span>
-</span>
-<input type="file" name="payfile" accept="image/*" aria-label="Upload payment screenshot" onChange={v.upPay.pick} style={{ position: "absolute", inset: "0", zIndex: "2", width: "100%", height: "100%", opacity: "0", cursor: "pointer" }} />
-</label>
-<div data-s-in="" style={{ display: v.upPay.rowD, alignItems: "center", justifyContent: "space-between", gap: "10px 16px", flexWrap: "wrap" }}>
-<span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: "0", flex: "1" }}>
-<svg viewBox="0 0 16 16" aria-hidden="true" style={{ flex: "none", width: "16px", height: "16px", color: "oklch(0.78 0.075 85)" }}><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2"></path></svg>
-<span style={{ minWidth: "0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "15px" }}>{v.upPay.name}</span>
-<span style={{ flex: "none", fontSize: "13px", color: "rgba(236,232,223,.62)" }}>{v.upPay.size}</span>
-</span>
-<span style={{ display: "flex", gap: "18px" }}>
-<button type="button" onClick={v.upPay.replace} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REPLACE</button>
-<button type="button" onClick={v.upPay.remove} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REMOVE</button>
-</span>
-</div>
-<div data-s-in="" style={{ display: v.upPay.failD, alignItems: "center", justifyContent: "space-between", gap: "10px 16px", flexWrap: "wrap" }}>
-<span style={{ minWidth: "0", flex: "1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "15px" }}>{v.upPay.name}</span>
-<span style={{ display: "flex", gap: "18px" }}>
-<button type="button" onClick={v.upPay.retry} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">RETRY UPLOAD</button>
-<button type="button" onClick={v.upPay.remove} style={{ padding: "6px 0", border: "0", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", textDecoration: "underline", textUnderlineOffset: "4px" }} style-hover="color:oklch(0.78 0.075 85)">REMOVE</button>
-</span>
-</div>
-{v.err.payfile ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.payfile}</span>) : null}
+<UploadZone u={v.upPay} kind="pay" name="payfile" ariaLabel="Upload payment screenshot" alt="Your payment screenshot" typesHint="JPG or PNG up to 1 MB" err={v.err.payfile} />
                       </div>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>UPI TRANSACTION ID (UTR)</span>
@@ -323,7 +337,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                     </div>
 
                     <div style={{ display: v.d.pass, flexDirection: "column", gap: "16px", width: "100%", alignItems: "center" }}>
-                      {(v.passQr || v.isDev) ? <EntryPassCard key={v.passUserId || 'dev'} previewPass={v.previewPass} onContinue={v.exploreFromPass} onRegisterAgain={v.registerAgain} /> : null}
+                      {(v.passQr || v.isDev) ? <EntryPassCard key={v.passUserId || 'dev'} previewPass={v.previewPass} onContinue={v.exploreFromPass} onRegisterAgain={v.registerAgain} onIdCardUploaded={v.idCardUploaded} /> : null}
                       {v.previewPending && <button type="button" className={styles.previewApprove} onClick={v.devApproveRegistration}>Simulate team approval</button>}
 
                       {/* Clean minimal footer underneath the ticket */}

@@ -608,6 +608,7 @@ function ResultScreen(p: ResultScreenProps) {
         <div className={`${styles.screen} ${styles.green}`} role="status">
           <p className={styles.state}>VALID PASS</p>
           <p className={styles.sub}>Compare with the college ID card.</p>
+          <UploadedIdCard registration={view.details.registration} />
           <DetailsList details={view.details} />
           <div className={styles.actions}>
             <button type="button" className={`${styles.btn} ${styles.btnApprove}`} onClick={() => p.onApprove(view.source, view.scanId)}>
@@ -776,6 +777,49 @@ function ResultScreen(p: ResultScreenProps) {
         </div>
       );
   }
+}
+
+/**
+ * The college ID card photo the student uploaded (GET /api/admin/registrations/id-card, a short-lived signed URL), to
+ * compare with the card they show. Only a help: it never decides anything, and a failure just says so.
+ */
+function UploadedIdCard({ registration }: { registration: string }) {
+  const [state, setState] = useState<{ for: string; url?: string; note?: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    (async () => {
+      let next: { url?: string; note?: string };
+      try {
+        const token = await currentToken();
+        const res = await fetch(`/api/admin/registrations/id-card?id=${encodeURIComponent(registration)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cache: 'no-store',
+          signal: ctrl.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        next = res.ok && typeof data.url === 'string'
+          ? { url: data.url }
+          : { note: res.status === 404 ? 'No ID card uploaded. Check the physical card carefully.' : 'Could not load the uploaded ID card.' };
+      } catch {
+        next = { note: 'Could not load the uploaded ID card.' };
+      }
+      if (!cancelled) setState({ for: registration, ...next });
+    })();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [registration]);
+
+  const current = state?.for === registration ? state : null;
+  if (!current) return <p className={styles.idCardNote}>Loading the uploaded ID card…</p>;
+  if (!current.url) return <p className={styles.idCardNote}>{current.note}</p>;
+  // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL of a private upload
+  return <img className={styles.idCard} src={current.url} alt="College ID card uploaded by the student" />;
 }
 
 function DetailsList({ details }: { details: Details }) {
