@@ -68,6 +68,11 @@ export async function POST(req: NextRequest) {
       pass.rejectionReason = details.data?.rejection_reason ?? null;
       pass.attemptsLeft = attemptsLeft(rejected.count ?? 0);
     }
+    if ((mine.registration_status === 'pending' || mine.registration_status === 'confirmed') && details.data) {
+      // The college ID card (section 19): MY PASS asks for it until it is uploaded.
+      pass.idCard = details.data.id_card_path ? 'uploaded' : 'pending';
+      pass.idCardReuploadReason = details.data.id_card_path ? null : details.data.id_card_reupload_reason ?? null;
+    }
     if (mine.registration_status !== 'confirmed' || mine.pass_status !== 'active' || !mine.pass) {
       return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
     }

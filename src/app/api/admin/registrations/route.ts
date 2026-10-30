@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyRegistrationStaff } from '@/lib/auth-server';
 import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
 import { isRejectionReason } from '@/lib/rejections';
+import { ID_CARD_REQUIRED_ERROR, isIdCardRequiredError } from '@/lib/id-cards';
 
 export const runtime = 'nodejs';
 
@@ -256,7 +257,8 @@ export async function PATCH(req: NextRequest) {
     // Fetch existing registration to verify status
     const { data: existing, error: fetchErr } = await supabase
       .from('registrations')
-      .select('id, status, registration_id, user_id')
+      // '*' rather than naming id_card_path, so reviewing keeps working on a database without section 19 yet.
+      .select('*')
       .eq('id', registrationId)
       .maybeSingle();
 
@@ -285,6 +287,11 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // No approval without the college ID card (also refused by trg_require_id_card_for_approval). Rejecting is fine.
+    if (status === 'confirmed' && 'id_card_path' in existing && !existing.id_card_path) {
+      return NextResponse.json({ error: ID_CARD_REQUIRED_ERROR }, { status: 409 });
+    }
+
     const { data: updated, error: updateErr } = await supabase
       .from('registrations')
       .update({
@@ -301,6 +308,10 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     if (updateErr) {
+      // A re-upload was asked for between the check above and this update.
+      if (isIdCardRequiredError(updateErr)) {
+        return NextResponse.json({ error: ID_CARD_REQUIRED_ERROR }, { status: 409 });
+      }
       console.error('/api/admin/registrations database error:', updateErr);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }

@@ -7,6 +7,7 @@ const details = {
   name: 'Ananya Rao', college: '  Example   Institute of Technology  ',
   phone: '9876543210', gender: 'female', enrollment_no: ' CS/2026-42 ',
   payment_proof_path: `${ownerId}/30000000-0000-4000-8000-000000000001.jpg`,
+  id_card_path: `${ownerId}/30000000-0000-4000-8000-000000000002.jpg`,
   utr: '123456789012',
 };
 
