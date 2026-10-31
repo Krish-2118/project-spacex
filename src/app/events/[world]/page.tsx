@@ -95,7 +95,7 @@ export default async function WorldPage({ params }: PageProps<'/events/[world]'>
           <p className={styles.lead}>{w.intro}</p>
           <div className={styles.actions}>
             <a href={`/#/world/${w.slug}`} className={`${styles.cta} ${styles.ctaPrimary}`}>ENTER THE WORLD</a>
-            <Link href="/events" className={`${styles.cta} ${styles.ctaGhost}`}>ALL EVENTS</Link>
+            <Link prefetch={false} href="/events" className={`${styles.cta} ${styles.ctaGhost}`}>ALL EVENTS</Link>
           </div>
         </section>
 
@@ -123,7 +123,7 @@ export default async function WorldPage({ params }: PageProps<'/events/[world]'>
 
         <section className={styles.section} aria-label="Next world">
           <p className={styles.kicker}>NEXT WORLD · {next.statL.toUpperCase()}</p>
-          <p className={styles.h2} style={{ '--accent': next.accentL } as CSSProperties}><Link href={`/events/${next.slug}`}>{next.name} →</Link></p>
+          <p className={styles.h2} style={{ '--accent': next.accentL } as CSSProperties}><Link prefetch={false} href={`/events/${next.slug}`}>{next.name} →</Link></p>
         </section>
       </div>
     </EventsChrome>

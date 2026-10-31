@@ -47,7 +47,7 @@ export default async function EventsPage() {
         </p>
         <div className={styles.actions}>
           <a href={`/#/worlds/${WORLDS[0].slug}`} className={`${styles.cta} ${styles.ctaPrimary}`}>EXPLORE THE WORLDS</a>
-          <Link href="/" className={`${styles.cta} ${styles.ctaGhost}`}>BACK TO INNOVISION</Link>
+          <Link prefetch={false} href="/" className={`${styles.cta} ${styles.ctaGhost}`}>BACK TO INNOVISION</Link>
         </div>
       </section>
 
@@ -59,7 +59,7 @@ export default async function EventsPage() {
           {worlds.map(({ w, list }) => (
             <article key={w.slug} className={styles.world} style={{ '--accent': w.accentL } as CSSProperties}>
               <p className={styles.kicker} style={{ margin: 0, color: w.accentL }}>{w.statL.toUpperCase()} · {w.category.toUpperCase()}</p>
-              <h3 className={styles.h2}><Link href={`/events/${w.slug}`}>{w.name}</Link></h3>
+              <h3 className={styles.h2}><Link prefetch={false} href={`/events/${w.slug}`}>{w.name}</Link></h3>
               <p className={styles.tagline} style={{ margin: 0 }}>{w.tagline}</p>
               <p className={styles.worldIntro}>{w.intro}</p>
               {list.length > 0 ? (
@@ -73,7 +73,7 @@ export default async function EventsPage() {
                 <p className={styles.count}>LINE-UP ANNOUNCED SOON</p>
               )}
               <div className={styles.links}>
-                <Link href={`/events/${w.slug}`} className={styles.link}>{w.name.toUpperCase()} →</Link>
+                <Link prefetch={false} href={`/events/${w.slug}`} className={styles.link}>{w.name.toUpperCase()} →</Link>
                 <a href={`/#/world/${w.slug}`} className={styles.link}>ENTER THE WORLD</a>
               </div>
             </article>
