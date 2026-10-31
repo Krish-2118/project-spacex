@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyRegistrationViewer } from '@/lib/auth-server';
 import { isPaymentProofPath, isUuid, PAYMENT_PROOF_URL_TTL_SECONDS } from '@/lib/security';
 import { signPaymentProofUrl } from '@/lib/payment-proofs';
 
@@ -7,12 +7,13 @@ export const runtime = 'nodejs';
 
 /**
  * GET /api/admin/registrations/payment-proof?id=<registration uuid>
- * Registration-Team/Admin only. Returns a short-lived signed URL for the registration's private payment screenshot.
+ * Registration-Team/Admin/Viewer only. Returns a short-lived signed URL for the registration's private payment
+ * screenshot.
  * Staff have no Storage read access of their own: this route is the only way to view a proof.
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

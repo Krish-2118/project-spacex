@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyRegistrationStaff, verifyRegistrationViewer } from '@/lib/auth-server';
 import { isUuid, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
 /**
- * Campus ambassadors, for admins and the registration team only (verifyRegistrationStaff): the AMBASSADORS tab of the
- * admin dashboard is the programme's only portal. Students become ambassadors themselves (GET MY CODE, POST
+ * Campus ambassadors, for admins and the registration team only (verifyRegistrationStaff; the read-only 'viewer' role
+ * may GET, verifyRegistrationViewer): the AMBASSADORS tab of the admin dashboard is the programme's only portal. Students become ambassadors themselves (GET MY CODE, POST
  * /api/ambassador/code); staff watch the counts, contact them and revoke a code that is abused. Everything runs as the
  * service role: no client role can read or write the table or the leaderboard view (supabase/schema.sql, section 16).
  *
@@ -32,7 +32,7 @@ const dbError = (where: string, error: unknown) => {
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

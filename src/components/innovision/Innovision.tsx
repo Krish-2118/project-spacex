@@ -3205,7 +3205,7 @@ export class Innovision extends Component<Props, State> {
         if (s.user?.id) this.refreshUserProfile(s.user.id);
         this.setState({ adminOpen: true, profileOpen: false });
       },
-      isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team')),
+      isStaff: !!(s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team' || s.user.role === 'viewer')),
       hasRegistered: !!(s.registration || this.pass),
       // A pending or confirmed registration without its college ID card: MY PASS asks for it (a dot on the button).
       idCardPending: !!s.registration && s.registration.status !== 'rejected' && 'id_card_path' in s.registration && !s.registration.id_card_path,
@@ -3294,7 +3294,7 @@ export class Innovision extends Component<Props, State> {
           onCreate={this.createAmbassadorCode}
           onLogout={() => { this.setState({ ambDialog: null }); this.logout(); }}
         />
-        {s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team') && (
+        {s.user && (s.user.role === 'admin' || s.user.role === 'it-team' || s.user.role === 'registration-team' || s.user.role === 'viewer') && (
           <AdminDashboard
             isOpen={s.adminOpen}
             onClose={() => this.setState({ adminOpen: false })}

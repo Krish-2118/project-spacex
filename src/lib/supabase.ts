@@ -16,7 +16,7 @@ export interface UserProfile {
   avatar_url: string;
   phone: string | null;
   student_type: 'internal' | 'external';
-  role: 'user' | 'it-team' | 'registration-team' | 'admin';
+  role: 'user' | 'it-team' | 'registration-team' | 'viewer' | 'admin';
   enrollment_no?: string | null;
   created_at?: string;
   updated_at?: string;

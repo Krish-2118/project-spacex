@@ -15,6 +15,8 @@ import { csvCell, formatReferralCode } from '@/lib/validation';
 
 interface AmbassadorsManagerProps {
   getAuthToken: () => Promise<string | null>;
+  /** The 'viewer' role: lists, registrations and the export only, no edit / revoke / restore / delete. */
+  readOnly?: boolean;
 }
 
 interface Ambassador {
@@ -105,7 +107,7 @@ const RESPONSIVE_CSS = `
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const statusColor = (s: string) => (s === 'confirmed' ? 'oklch(0.8 0.14 150)' : s === 'rejected' ? BAD : GOLD);
 
-export default function AmbassadorsManager({ getAuthToken }: AmbassadorsManagerProps) {
+export default function AmbassadorsManager({ getAuthToken, readOnly = false }: AmbassadorsManagerProps) {
   const [rows, setRows] = useState<Ambassador[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -339,18 +341,22 @@ export default function AmbassadorsManager({ getAuthToken }: AmbassadorsManagerP
                         <button type="button" style={smallBtn} onClick={() => void toggleOpen(a)} aria-expanded={openId === a.id}>
                           {openId === a.id ? 'HIDE' : 'REGISTRATIONS'}
                         </button>
-                        <button type="button" style={smallBtn} disabled={busy} onClick={() => setEditing({ id: a.id, name: a.name, college: a.college ?? '' })}>EDIT</button>
-                        {revoked ? (
-                          <button type="button" style={smallBtn} disabled={busy} onClick={() => void patch(a.id, { action: 'restore' }, `${a.name}'s code works again.`)}>RESTORE</button>
-                        ) : (
-                          <button type="button" style={dangerBtn} disabled={busy} onClick={() => (isAsking(a.id, 'revoke') ? void patch(a.id, { action: 'revoke' }, `${a.name}'s code was revoked.`) : ask(a.id, 'revoke'))}>
-                            {isAsking(a.id, 'revoke') ? 'CONFIRM REVOKE?' : 'REVOKE'}
-                          </button>
-                        )}
-                        {a.confirmed_registrations + a.pending_registrations === 0 && (
-                          <button type="button" style={dangerBtn} disabled={busy} onClick={() => (isAsking(a.id, 'delete') ? void remove(a) : ask(a.id, 'delete'))}>
-                            {isAsking(a.id, 'delete') ? 'CONFIRM DELETE?' : 'DELETE'}
-                          </button>
+                        {!readOnly && (
+                          <>
+                            <button type="button" style={smallBtn} disabled={busy} onClick={() => setEditing({ id: a.id, name: a.name, college: a.college ?? '' })}>EDIT</button>
+                            {revoked ? (
+                              <button type="button" style={smallBtn} disabled={busy} onClick={() => void patch(a.id, { action: 'restore' }, `${a.name}'s code works again.`)}>RESTORE</button>
+                            ) : (
+                              <button type="button" style={dangerBtn} disabled={busy} onClick={() => (isAsking(a.id, 'revoke') ? void patch(a.id, { action: 'revoke' }, `${a.name}'s code was revoked.`) : ask(a.id, 'revoke'))}>
+                                {isAsking(a.id, 'revoke') ? 'CONFIRM REVOKE?' : 'REVOKE'}
+                              </button>
+                            )}
+                            {a.confirmed_registrations + a.pending_registrations === 0 && (
+                              <button type="button" style={dangerBtn} disabled={busy} onClick={() => (isAsking(a.id, 'delete') ? void remove(a) : ask(a.id, 'delete'))}>
+                                {isAsking(a.id, 'delete') ? 'CONFIRM DELETE?' : 'DELETE'}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

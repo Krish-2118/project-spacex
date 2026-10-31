@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyRegistrationStaff, verifyRegistrationViewer } from '@/lib/auth-server';
 import { isIdCardPath, isUuid, readJsonObject } from '@/lib/security';
 import { ID_CARD_URL_TTL_SECONDS, signIdCardUrl } from '@/lib/id-card-storage';
 import { isIdCardReuploadReason } from '@/lib/id-cards';
@@ -8,13 +8,14 @@ export const runtime = 'nodejs';
 
 /**
  * GET /api/admin/registrations/id-card?id=<registration uuid>
- * Registration-Team/Admin only. Returns a short-lived signed URL for the registration's private college ID card photo.
+ * Registration-Team/Admin/Viewer only. Returns a short-lived signed URL for the registration's private college ID card
+ * photo.
  * Staff have no Storage read access of their own: this route is the only way to view a card (the admin list and the
  * gate scanner both use it).
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

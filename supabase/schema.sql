@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   phone TEXT,
   student_type TEXT DEFAULT 'external' CHECK (student_type IN ('internal', 'external')),
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'it-team', 'registration-team', 'admin')),
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'it-team', 'registration-team', 'viewer', 'admin')),
   enrollment_no TEXT,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -127,7 +127,7 @@ BEGIN
   -- EXISTS never updates it), which would refuse every assignment of the new role. Same list as the table definition.
   ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
   ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
-    CHECK (role IN ('user', 'it-team', 'registration-team', 'admin'));
+    CHECK (role IN ('user', 'it-team', 'registration-team', 'viewer', 'admin'));
   ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_full_name_check;
   ALTER TABLE public.profiles ADD CONSTRAINT profiles_full_name_check
     CHECK (full_name IS NULL OR char_length(full_name) <= 120) NOT VALID;
@@ -215,6 +215,14 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 CREATE OR REPLACE FUNCTION public.is_registration_staff(uid UUID) RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role IN ('admin', 'registration-team')
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
+
+-- Who may READ every registration: the registration team and admins, plus the read-only 'viewer' role. Writes stay on
+-- is_registration_staff, so a viewer can look at registrations but never review them.
+CREATE OR REPLACE FUNCTION public.can_view_registrations(uid UUID) RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = uid AND uid = auth.uid() AND role IN ('admin', 'registration-team', 'viewer')
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
@@ -355,7 +363,7 @@ CREATE TRIGGER trg_protect_profile_fields
 -- Registrations Policies
 DROP POLICY IF EXISTS "Users can view own registrations or staff can view all" ON public.registrations;
 CREATE POLICY "Users can view own registrations or staff can view all" ON public.registrations FOR
-SELECT TO authenticated USING (user_id = auth.uid() OR public.is_registration_staff(auth.uid()));
+SELECT TO authenticated USING (user_id = auth.uid() OR public.can_view_registrations(auth.uid()));
 
 -- No direct INSERT for end users: every registration is created by /api/register (service role), which applies the
 -- rules the database can't (proof object really uploaded by the same user, rate limits). The INSERT privilege itself is revoked in section 11; the insert trigger below stays as defense in depth.
@@ -583,7 +591,8 @@ DELETE TO authenticated USING (public.is_event_staff(auth.uid()));
 
 -- 9. FUNCTION PRIVILEGES
 -- The role-helper functions are SECURITY DEFINER; don't let anonymous callers probe arbitrary users' roles via RPC.
--- (authenticated keeps EXECUTE because the RLS policies above call is_admin / is_event_staff / is_registration_staff.)
+-- (authenticated keeps EXECUTE because the RLS policies above call is_admin / is_event_staff / is_registration_staff /
+-- can_view_registrations.)
 -- is_staff() was split into is_event_staff() and is_registration_staff(). Databases created before the split still
 -- have it, and the oldest version answers for ANY uid with EXECUTE left to anon (anyone could probe who is staff).
 -- No policy above uses it any more, so remove it; if something added outside this script still depends on it, keep
@@ -599,9 +608,11 @@ REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_admin(UUID) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_event_staff(UUID) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_registration_staff(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.can_view_registrations(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_event_staff(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_registration_staff(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_view_registrations(UUID) TO authenticated;
 -- get_user_role isn't used by any policy or by the app.
 REVOKE EXECUTE ON FUNCTION public.get_user_role(UUID) FROM authenticated;
 

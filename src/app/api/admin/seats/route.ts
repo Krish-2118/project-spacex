@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { verifyAdmin, verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyAdmin, verifyRegistrationViewer } from '@/lib/auth-server';
 import { readJsonObject } from '@/lib/security';
 import { seatCountError } from '@/lib/seats';
 
@@ -35,11 +35,11 @@ const UNAVAILABLE =
 
 /**
  * GET /api/admin/seats
- * The seat counter for the admin dashboard (admins and the registration team).
+ * The seat counter for the admin dashboard (admins, the registration team and viewers).
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
