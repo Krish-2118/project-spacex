@@ -2947,8 +2947,10 @@ export class Innovision extends Component<Props, State> {
       authSub: reg
         ? 'Three short stops to register for Innovision 2026 at NIT Rourkela.'
         : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact the registration helpdesk for assistance.') : 'Your payment is under review by the registration team. Your pass appears here after approval.',
-      // The seat counter (GET /api/seats) beside the registration form.
-      showSeats: reg,
+      // The seat counter (GET /api/seats) beside the registration form. Only while the overlay is open: it is mounted,
+      // closed, at idle (warmDeferred), and a mounted counter polls every 30 s. `auth` turns true before the overlay
+      // animates in and false after it has animated out, so the counter is never cut off mid-animation.
+      showSeats: reg && s.auth,
       // REGISTER AGAIN on a rejected pass; the pass itself decides whether to show it (attempts left).
       registerAgain: REGISTRATIONS_OPEN ? this.registerAgain : undefined,
       idCardUploaded: this.idCardUploaded,
