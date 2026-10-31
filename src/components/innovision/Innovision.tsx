@@ -728,8 +728,10 @@ export class Innovision extends Component<Props, State> {
     this._warmed = true;
     if (slowNet()) return;
     // The overlay and view a visitor is most likely to open next are fetched ahead too (their own hover/tap also does).
-    // The pages of their own too, so MERCH (and REGISTER while closed) open at once (a no-op on the dev server).
-    this.cleanups.push(this.idle(() => { this.prefetch('auth'); this.prefetch('detail'); OWN_PAGES.forEach((p) => this.props.router?.prefetch(p)); }));
+    // The pages of their own (OWN_PAGES: MERCH, REGISTER while closed) are NOT prefetched: each router.prefetch cost 3
+    // uncached RSC requests on every home page view, for a page few visitors open. A click on one still switches
+    // client-side (the document click listener in componentDidMount), fetching the route then.
+    this.cleanups.push(this.idle(() => { this.prefetch('auth'); this.prefetch('detail'); }));
     // The menu (where the top bar has a MENU button) and the register / log-in overlay are mounted, closed, ahead of
     // time: mounting one on its first tap blocked a phone for ~100 ms just as its reveal began. One per idle period.
     this.cleanups.push(this.idle(() => {
