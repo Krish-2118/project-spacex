@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyRegistrationStaff, verifyRegistrationViewer } from '@/lib/auth-server';
 import { isUuid, readJsonObject, sanitizeFilterValue } from '@/lib/security';
 import { isRejectionReason } from '@/lib/rejections';
 import { ID_CARD_REQUIRED_ERROR, isIdCardRequiredError } from '@/lib/id-cards';
@@ -111,7 +111,7 @@ async function withReviewer(supabase: SupabaseClient, registrations: Record<stri
 // GET all registrations (with optional filtering)
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

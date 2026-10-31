@@ -240,10 +240,12 @@ Staff open the dashboard from their profile on the site. Access depends on `prof
 | ------------------- | ------------------------------------------------------------------------ |
 | `user`              | Register for the fest and view their pass.                               |
 | `registration-team` | Review registrations and payment proofs, approve or reject them.         |
+| `viewer`            | See what the registration team sees and export it, but change nothing.   |
 | `it-team`           | Manage events and gallery photos.                                        |
 | `admin`             | Everything above, plus managing users' roles.                            |
 
-Admins can switch users between `user`, `it-team` and `registration-team`. The `admin` role itself can only be granted
+Admins can switch users between `user`, `it-team`, `registration-team` and `viewer` (run
+`supabase/manual/add_viewer_role.sql` once before giving anyone `viewer`). The `admin` role itself can only be granted
 directly in the database:
 
 ```sql
@@ -263,8 +265,8 @@ update public.profiles set role = 'admin' where email = 'someone@example.com';
 | `/api/auth/logout`                          | POST                       | Signed-in user                 |
 | `/api/register`                             | GET, POST                  | Signed-in user                 |
 | `/api/upload`                               | POST                       | Signed-in user (payment proof) |
-| `/api/admin/registrations`                  | GET, PATCH                 | Admin, registration team       |
-| `/api/admin/registrations/payment-proof`    | GET                        | Admin, registration team       |
+| `/api/admin/registrations`                  | GET, PATCH                 | Admin, registration team (GET: also viewer) |
+| `/api/admin/registrations/payment-proof`    | GET                        | Admin, registration team, viewer |
 | `/api/admin/events`                         | GET, POST, PATCH, DELETE   | Admin, IT team                 |
 | `/api/admin/gallery`                        | GET, POST, PATCH, DELETE   | Admin, IT team                 |
 | `/api/admin/users`                          | GET, PATCH                 | Admin                          |

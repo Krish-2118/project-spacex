@@ -41,7 +41,7 @@ export default function ProfileOverlay({
 
   if (!isOpen || !user) return null;
 
-  const isStaff = user.role === 'admin' || user.role === 'it-team' || user.role === 'registration-team';
+  const isStaff = user.role === 'admin' || user.role === 'it-team' || user.role === 'registration-team' || user.role === 'viewer';
   const isInternal = user.student_type === 'internal' || user.email.toLowerCase().endsWith('@nitrkl.ac.in');
 
   const handleSavePhone = async (e: React.FormEvent) => {
@@ -230,7 +230,7 @@ export default function ProfileOverlay({
                       background:
                         user.role === 'admin'
                           ? 'oklch(0.65 0.18 30)'
-                          : user.role === 'it-team' || user.role === 'registration-team'
+                          : user.role === 'it-team' || user.role === 'registration-team' || user.role === 'viewer'
                           ? 'oklch(0.65 0.15 240)'
                           : 'rgba(236,232,223,0.1)',
                       color: '#ECE8DF',
@@ -562,7 +562,9 @@ export default function ProfileOverlay({
                   ? 'You have Administrator privileges to review registrations, verify payment proofs, export records, manage events and the gallery, and manage staff roles.'
                   : user.role === 'it-team'
                     ? 'You have IT-Team privileges to manage events and the gallery.'
-                    : 'You have Registration-Team privileges to review registrations, verify payment proofs, and export records.'}
+                    : user.role === 'viewer'
+                      ? 'You have view-only access to registrations, payment proofs, ID cards and exports. You cannot approve or reject.'
+                      : 'You have Registration-Team privileges to review registrations, verify payment proofs, and export records.'}
               </p>
               <button
                 id="open-admin-dashboard-btn"

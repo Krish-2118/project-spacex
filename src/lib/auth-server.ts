@@ -1,9 +1,11 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+export type StaffRole = 'admin' | 'it-team' | 'registration-team' | 'viewer';
+
 export interface StaffAuthSuccess {
   user: User;
-  role: 'admin' | 'it-team' | 'registration-team';
+  role: StaffRole;
   supabase: SupabaseClient;
   /** The caller's validated access token, for calls that must run as the caller (getSupabaseAsUser). */
   token: string;
@@ -109,7 +111,7 @@ export async function verifyEventStaff(req: AuthSource): Promise<StaffAuthResult
     return { error: 'Forbidden: Admin or IT-Team authorization required.', status: 403 };
   }
 
-  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase, token: auth.token };
+  return { user: auth.user, role: profile.role as StaffRole, supabase, token: auth.token };
 }
 
 /**
@@ -133,7 +135,32 @@ export async function verifyRegistrationStaff(req: AuthSource): Promise<StaffAut
     return { error: 'Forbidden: Admin or Registration-Team authorization required.', status: 403 };
   }
 
-  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase, token: auth.token };
+  return { user: auth.user, role: profile.role as StaffRole, supabase, token: auth.token };
+}
+
+/**
+ * Read-only access to registration data: the Registration Team and Administrators, plus the 'viewer' role (sees
+ * everything the registration team sees, changes nothing). Only for GET handlers; writes stay on
+ * verifyRegistrationStaff.
+ */
+export async function verifyRegistrationViewer(req: AuthSource): Promise<StaffAuthResult> {
+  const auth = await getAuthenticatedUser(req);
+  if (!auth) {
+    return { error: 'Unauthorized: Session missing or expired. Please sign in again.', status: 401 };
+  }
+
+  const supabase = getSupabaseAdmin(auth.token);
+  const { data: profile, error: profErr } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  if (profErr || !profile || !['admin', 'registration-team', 'viewer'].includes(profile.role)) {
+    return { error: 'Forbidden: Admin, Registration-Team or Viewer authorization required.', status: 403 };
+  }
+
+  return { user: auth.user, role: profile.role as StaffRole, supabase, token: auth.token };
 }
 
 /** Like verifyEventStaff / verifyRegistrationStaff, but only lets the 'admin' role through. */
@@ -154,7 +181,7 @@ export async function verifyAdmin(req: AuthSource): Promise<StaffAuthResult> {
     return { error: 'Forbidden: Superadmin access required to modify user roles', status: 403 };
   }
 
-  return { user: auth.user, role: profile.role as 'admin' | 'it-team' | 'registration-team', supabase, token: auth.token };
+  return { user: auth.user, role: profile.role as StaffRole, supabase, token: auth.token };
 }
 
 export { isValidGoogleDriveUrl } from '@/lib/validation';

@@ -67,11 +67,11 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Allowed roles to be assigned via the web dashboard: only 'user', 'it-team', or 'registration-team'
-    const assignableRoles = ['user', 'it-team', 'registration-team'];
+    // Allowed roles to be assigned via the web dashboard: only 'user', 'it-team', 'registration-team' or 'viewer'
+    const assignableRoles = ['user', 'it-team', 'registration-team', 'viewer'];
     if (typeof role !== 'string' || !assignableRoles.includes(role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Only "user", "it-team", and "registration-team" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
+        { error: 'Invalid role. Only "user", "it-team", "registration-team" and "viewer" can be assigned via the dashboard. Admin roles must be set directly in the database.' },
         { status: 400 }
       );
     }
@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Target user profile verified as non-admin -> execute role change to 'user', 'it-team', or 'registration-team'
+    // Target user profile verified as non-admin -> execute role change to 'user', 'it-team', 'registration-team' or 'viewer'
     const { data: updated, error } = await supabase
       .from('profiles')
       .update({ role, updated_at: new Date().toISOString() })
@@ -105,6 +105,13 @@ export async function PATCH(req: NextRequest) {
       .select()
       .maybeSingle();
 
+    // 23514: the role CHECK of a database without supabase/manual/add_viewer_role.sql refuses 'viewer'.
+    if (error?.code === '23514' && role === 'viewer') {
+      return NextResponse.json(
+        { error: 'The viewer role is not set up yet. Run supabase/manual/add_viewer_role.sql in Supabase.' },
+        { status: 500 }
+      );
+    }
     if (error) {
       console.error('/api/admin/users database error:', error);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });

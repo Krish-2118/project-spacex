@@ -19,6 +19,9 @@ import { ID_CARD_REUPLOAD_REASONS, idCardReuploadLabel, type IdCardReuploadReaso
 /** A registration that still needs its college ID card (supabase/schema.sql section 19); rejected ones never do. */
 const idCardMissing = (r: Registration) => r.status !== 'rejected' && !r.id_card_path;
 
+/** Roles an admin can give from the USERS tab (/api/admin/users); 'admin' is set in the database only. */
+type AssignableRole = 'user' | 'it-team' | 'registration-team' | 'viewer';
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,12 +36,16 @@ export default function AdminDashboard({
   const isAdmin = currentUser.role === 'admin';
   const isItTeam = currentUser.role === 'it-team';
   const isRegTeam = currentUser.role === 'registration-team';
-  const isStaff = isAdmin || isItTeam || isRegTeam;
-  // Registration review (list, payment proofs, approve/reject) is Admin + Registration-Team only, matching
-  // verifyRegistrationStaff on the server. IT-Team manages events and gallery and never requests registration data.
+  const isViewer = currentUser.role === 'viewer';
+  const isStaff = isAdmin || isItTeam || isRegTeam || isViewer;
+  // Registration review (approve/reject, asking for a new ID card, editing ambassadors) is Admin + Registration-Team
+  // only, matching verifyRegistrationStaff on the server. Viewers see the same data (list, payment proofs, ID cards,
+  // exports; verifyRegistrationViewer) but change nothing. IT-Team manages events and gallery and never requests
+  // registration data.
   const canReviewRegistrations = isAdmin || isRegTeam;
+  const canViewRegistrations = canReviewRegistrations || isViewer;
 
-  const defaultTab = canReviewRegistrations ? 'registrations' : 'events';
+  const defaultTab = canViewRegistrations ? 'registrations' : 'events';
   const [tab, setTab] = useState<'registrations' | 'referrals' | 'ambassadors' | 'events' | 'gallery' | 'users' | 'entry'>(defaultTab);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -130,7 +137,7 @@ export default function AdminDashboard({
   // Payment screenshots and ID cards live in private buckets: ask the server for a short-lived signed URL (staff only).
   const [proofBusyId, setProofBusyId] = useState<string | null>(null);
   const viewUpload = async (reg: Registration, kind: 'payment-proof' | 'id-card') => {
-    if (!reg.id || !canReviewRegistrations) return;
+    if (!reg.id || !canViewRegistrations) return;
     const what = kind === 'id-card' ? 'ID card' : 'payment screenshot';
     try {
       setProofBusyId(`${reg.id}:${kind}`);
@@ -151,7 +158,7 @@ export default function AdminDashboard({
 
   // Fetch registrations
   const fetchRegistrations = useCallback(async () => {
-    if (!canReviewRegistrations) return;
+    if (!canViewRegistrations) return;
     try {
       setLoadingRegs(true);
       setErrorMsg('');
@@ -181,7 +188,7 @@ export default function AdminDashboard({
     } finally {
       setLoadingRegs(false);
     }
-  }, [statusFilter, typeFilter, searchReg, canReviewRegistrations]);
+  }, [statusFilter, typeFilter, searchReg, canViewRegistrations]);
 
   // Fetch users (Admin only: IT-Team cannot access users)
   const fetchUsers = useCallback(async () => {
@@ -214,17 +221,17 @@ export default function AdminDashboard({
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
-      if (canReviewRegistrations) fetchRegistrations();
+      if (canViewRegistrations) fetchRegistrations();
       if (isAdmin) fetchUsers();
     }, 0);
     return () => clearTimeout(timer);
-  }, [isOpen, fetchRegistrations, fetchUsers, isAdmin, canReviewRegistrations]);
+  }, [isOpen, fetchRegistrations, fetchUsers, isAdmin, canViewRegistrations]);
 
   // Active tab: 'users' is strictly admin-only; staff have their own tabs
   let activeTab = tab;
   if (tab === 'users' && !isAdmin) activeTab = defaultTab;
   if (tab === 'entry' && !isAdmin) activeTab = defaultTab;
-  if ((tab === 'registrations' || tab === 'referrals' || tab === 'ambassadors') && !canReviewRegistrations) activeTab = defaultTab;
+  if ((tab === 'registrations' || tab === 'referrals' || tab === 'ambassadors') && !canViewRegistrations) activeTab = defaultTab;
   if ((tab === 'events' || tab === 'gallery') && !isAdmin && !isItTeam) activeTab = defaultTab;
 
   if (!isOpen || !isStaff) return null;
@@ -347,8 +354,8 @@ export default function AdminDashboard({
     }
   };
 
-  // Handle Role Change using Modal / Toast (Only 'user', 'it-team', 'registration-team'; Admin role is DB only)
-  const handleChangeRole = (userId: string, newRole: 'user' | 'it-team' | 'registration-team', userEmail: string) => {
+  // Handle Role Change using Modal / Toast (Only 'user', 'it-team', 'registration-team', 'viewer'; Admin role is DB only)
+  const handleChangeRole = (userId: string, newRole: AssignableRole, userEmail: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Update User Role',
@@ -359,7 +366,7 @@ export default function AdminDashboard({
     });
   };
 
-  const executeChangeRole = async (userId: string, newRole: 'user' | 'it-team' | 'registration-team', userEmail: string) => {
+  const executeChangeRole = async (userId: string, newRole: AssignableRole, userEmail: string) => {
     try {
       setRoleBusyId(userId);
       const token = await getAuthToken();
@@ -976,7 +983,7 @@ export default function AdminDashboard({
 
           {/* Navigation Tabs */}
           <nav className="adm-nav" aria-label="Dashboard sections" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginLeft: '24px', minWidth: 0 }}>
-            {canReviewRegistrations && (
+            {canViewRegistrations && (
             <button
               id="tab-registrations"
               type="button"
@@ -997,7 +1004,7 @@ export default function AdminDashboard({
             </button>
             )}
 
-            {canReviewRegistrations && (
+            {canViewRegistrations && (
             <button
               id="tab-referrals"
               type="button"
@@ -1018,7 +1025,7 @@ export default function AdminDashboard({
             </button>
             )}
 
-            {canReviewRegistrations && (
+            {canViewRegistrations && (
             <button
               id="tab-ambassadors"
               type="button"
@@ -1607,7 +1614,7 @@ export default function AdminDashboard({
                                   >
                                     <span>{proofBusyId === `${reg.id}:id-card` ? 'Loading…' : 'View ID Card'}</span>
                                   </button>
-                                  {reg.status !== 'rejected' && (
+                                  {canReviewRegistrations && reg.status !== 'rejected' && (
                                     <button
                                       type="button"
                                       onClick={() => handleRequestIdCard(reg)}
@@ -1732,9 +1739,9 @@ export default function AdminDashboard({
                             </td>
                           )}
 
-                          {/* Action (Approve / Reject) */}
+                          {/* Action (Approve / Reject; viewers only see the lock) */}
                           <td style={{ padding: '14px 18px' }}>
-                            {isPending ? (
+                            {isPending && canReviewRegistrations ? (
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                   type="button"
@@ -1780,7 +1787,7 @@ export default function AdminDashboard({
                                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                 </svg>
-                                <span>LOCKED</span>
+                                <span>{isPending ? 'VIEW ONLY' : 'LOCKED'}</span>
                               </div>
                             )}
                           </td>
@@ -1828,13 +1835,13 @@ export default function AdminDashboard({
         )}
 
         {/* REFERRAL LEADERBOARD (Admin + Registration-Team) */}
-        {activeTab === 'referrals' && canReviewRegistrations && (
+        {activeTab === 'referrals' && canViewRegistrations && (
           <ReferralLeaderboard getAuthToken={getAuthToken} />
         )}
 
         {/* CAMPUS AMBASSADORS (Admin + Registration-Team): the programme's only portal */}
-        {activeTab === 'ambassadors' && canReviewRegistrations && (
-          <AmbassadorsManager getAuthToken={getAuthToken} />
+        {activeTab === 'ambassadors' && canViewRegistrations && (
+          <AmbassadorsManager getAuthToken={getAuthToken} readOnly={!canReviewRegistrations} />
         )}
 
         {/* TAB 5: VENUE ENTRY / CHECK-IN (Admin Only) */}
@@ -2108,14 +2115,14 @@ export default function AdminDashboard({
                                   value={u.role}
                                   disabled={isRoleBusy}
                                   onChange={(e) =>
-                                    handleChangeRole(u.id, e.target.value as 'user' | 'it-team' | 'registration-team', u.email)
+                                    handleChangeRole(u.id, e.target.value as AssignableRole, u.email)
                                   }
                                   style={{
                                     padding: '6px 10px',
                                     background: '#141312',
                                     border: '1px solid rgba(236,232,223,0.3)',
                                     color:
-                                      u.role === 'it-team' || u.role === 'registration-team'
+                                      u.role !== 'user'
                                         ? 'oklch(0.8 0.15 240)'
                                         : '#ECE8DF',
                                     fontSize: '12px',
@@ -2127,6 +2134,7 @@ export default function AdminDashboard({
                                   <option value="user">User (Normal)</option>
                                   <option value="it-team">IT-Team</option>
                                   <option value="registration-team">Registration-Team</option>
+                                  <option value="viewer">Viewer (read-only)</option>
                                 </select>
                                 {isRoleBusy && <span style={{ fontSize: '11px', color: 'oklch(0.8 0.12 85)' }}>Updating...</span>}
                               </div>

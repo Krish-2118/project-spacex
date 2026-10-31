@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRegistrationStaff } from '@/lib/auth-server';
+import { verifyRegistrationViewer } from '@/lib/auth-server';
 import { sanitizeFilterValue } from '@/lib/security';
 
 export const runtime = 'nodejs';
@@ -8,13 +8,13 @@ const REFERRALS_PAGE_SIZE = 30;
 
 /**
  * GET /api/admin/referrals?page=1&q=
- * Referral leaderboard for admins and the registration team: one row per registrant whose code was used by at least
+ * Referral leaderboard for admins, the registration team and viewers: one row per registrant whose code was used by at least
  * one confirmed or pending registration (public.referral_leaderboard, supabase/schema.sql section 14), most confirmed
  * referrals first. Paged on the server, REFERRALS_PAGE_SIZE rows per page; `q` searches name, email, college and code.
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyRegistrationStaff(req);
+    const auth = await verifyRegistrationViewer(req);
     if ('error' in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
