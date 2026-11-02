@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Isolated pass component test bundle
 .pass-test/
+
+# bank statements: never commit
+/STATEMENT*.xlsx

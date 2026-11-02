@@ -426,6 +426,8 @@ export default function AdminDashboard({
       'Rejection Reason',
       'Attempt',
       'Amount (INR)',
+      'Phase',
+      'Allowed by Staff',
       'UPI UTR',
       'Payment Screenshot (private ref)',
       'ID Card',
@@ -452,6 +454,8 @@ export default function AdminDashboard({
       rejectionLabel(r.rejection_reason),
       r.attempt ?? 1,
       r.amount,
+      r.phase ?? '',
+      r.allowed_by ? 'Yes' : '',
       r.utr,
       r.payment_proof_path,
       r.status === 'rejected'
@@ -1203,7 +1207,7 @@ export default function AdminDashboard({
         {/* TAB 1: REGISTRATIONS */}
         {activeTab === 'registrations' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            <SeatCounterCard getAuthToken={getAuthToken} canEdit={isAdmin} refreshKey={seatsKey} />
+            <SeatCounterCard getAuthToken={getAuthToken} canEdit={isAdmin} canAllowPayments={canReviewRegistrations} refreshKey={seatsKey} />
 
             {/* Stat Cards */}
             <div
@@ -1669,6 +1673,11 @@ export default function AdminDashboard({
                             {reg.utr && (
                               <div style={{ fontSize: '11px', color: 'rgba(236,232,223,0.6)', letterSpacing: '.04em' }}>
                                 UTR: {reg.utr}
+                              </div>
+                            )}
+                            {reg.allowed_by && (
+                              <div style={{ marginTop: '4px', fontSize: '11px', color: 'oklch(0.8 0.15 80)' }}>
+                                <strong>ALLOWED BY STAFF</strong>
                               </div>
                             )}
                             {/* The code this registrant entered: a campus ambassador's, or another registrant's. */}

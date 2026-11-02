@@ -417,7 +417,7 @@ export default function ProfileOverlay({
                     ? 'Your payment is being verified and your registration will be approved soon. Keep checking MY PASS: your entry QR will appear there once approved.'
                     : onRegisterAgain && (registration.attempts_left ?? 0) > 0
                     ? 'Your registration could not be verified. See why below, then register again with the right details.'
-                    : 'Your registration could not be verified. Please visit the helpdesk or contact the event administrators.'}
+                    : 'Your registration could not be verified. Please contact us.'}
                 </p>
 
                 {/* The college ID card (supabase/schema.sql section 19): uploaded from MY PASS. */}

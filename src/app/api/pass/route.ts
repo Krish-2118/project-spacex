@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
     pass.token = decryptEntryToken(ciphertext, mine.pass, key);
     if (!pass.token) {
       console.error('/api/pass: stored token does not decrypt (wrong ENTRY_PASS_ENCRYPTION_KEY?)');
-      return NextResponse.json({ error: 'Your pass could not be loaded. Please contact the help desk.' }, { status: 500 });
+      return NextResponse.json({ error: 'Your pass could not be loaded. Please contact us.' }, { status: 500 });
     }
     return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err: unknown) {

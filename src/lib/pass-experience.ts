@@ -28,8 +28,8 @@ export function isApprovedPass(pass: ParticipantPass): boolean {
 
 export function passStatusMessage(pass: ParticipantPass): string {
   if (pass.registrationStatus === 'pending') return 'Payment under review. The registration team will verify your payment before issuing your pass.';
-  if (pass.registrationStatus === 'rejected') return 'Your payment was not approved. Please contact the registration helpdesk.';
-  if (pass.passStatus === 'revoked') return 'Your pass has been cancelled. Please contact the registration helpdesk.';
+  if (pass.registrationStatus === 'rejected') return 'Your payment was not approved. Please contact us.';
+  if (pass.passStatus === 'revoked') return 'Your pass has been cancelled. Please contact us.';
   return 'Your pass is not available yet. Complete your registration and wait for the registration team to verify your payment.';
 }
 

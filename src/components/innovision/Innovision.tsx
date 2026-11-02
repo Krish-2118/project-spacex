@@ -35,6 +35,7 @@ import { LiveV } from './SiteFooter';
 import type { V } from './types';
 import {
   getSupabase,
+  startPayment,
   isSupabaseConfigured,
   getOrCreateUserProfile,
   updateUserPhone,
@@ -55,9 +56,8 @@ import {
   type GalleryPhoto,
 } from '@/lib/supabase';
 import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH, REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
-import { fetchSeatCount, SEATS_FULL_MESSAGE } from '@/lib/seats';
 import { AMBASSADOR_FORM_URL, AMBASSADOR_SECTION } from '@/config/ambassador';
-import { REGISTRATION_FEE, UPI_ID, UPI_PAY_LINK, UPI_QR_SRC } from '@/config/payment';
+import { buildUpiPayLink, PREVIEW_REGISTRATION_FEE, UPI_ID, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
 import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR, isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 import { httpErrorMessage, isTransientFailure } from '@/lib/api-errors';
@@ -1729,15 +1729,35 @@ export class Innovision extends Component<Props, State> {
       if (!this.alive || this.state.user?.id !== user.id) return;
       this.syncRegistration(fresh);
       if (!this.canRegisterAgain()) {
-        this.toast('You can’t register again right now. Please contact the registration helpdesk.');
+        this.toast('You can’t register again right now. Please contact us.');
         return;
       }
     }
     this.dropFiles();
     this.reg = null;
-    this.setState({ files: {}, step: 0, err: {} }, () => {
+    this.setState({ files: {}, step: 0, err: {}, payOffer: null, payCheck: 'idle' }, () => {
       if (this.state.auth) this.switchMode('register'); else this.openAuth('register');
     });
+  };
+  /**
+   * The payment step asks the server again: the last check failed, or (`fresh`) a student who hadn't paid wants the
+   * current fee. The payment details stay hidden until it answers. If registrations have closed and there's nothing to
+   * continue with, back to the details step with the reason.
+   */
+  refreshPayOffer = async (fresh = false) => {
+    if (this.state.payCheck === 'busy') return;
+    if (REGISTRATION_PREVIEW_ENABLED && this.state.user?.id === 'dev-preview-user') return;
+    this.setState({ payCheck: 'busy' });
+    const pay = await startPayment(fresh);
+    if (!this.alive) return;
+    if (pay.offer) { this.setState({ payOffer: pay.offer, payCheck: 'idle' }); return; }
+    if (/closed/i.test(pay.error ?? '')) {
+      this.setState({ payOffer: null, payCheck: 'idle' });
+      this.toStep(0);
+      this.setState({ err: { form: pay.error } });
+      return;
+    }
+    this.setState({ payCheck: 'failed' });
   };
   /** MY PASS uploaded the college ID card: reload the registration so the pending marks go away everywhere. */
   idCardUploaded = async () => {
@@ -2084,6 +2104,8 @@ export class Innovision extends Component<Props, State> {
     const f = this.$ && this.$('[data-auth-form]');
     if (f) f.reset();
     this.setState({
+      payOffer: null,
+      payCheck: 'idle',
       user: null,
       registration: null,
       adminOpen: false,
@@ -2111,7 +2133,8 @@ export class Innovision extends Component<Props, State> {
   // @ts-ignore
   newId() { return 'IV26-' + (Math.floor(Math.random() * 9000) + 1000); }
   drop(err, k) { const e = { ...err }; delete e[k]; return e; }
-  fee() { return REGISTRATION_FEE; }
+  /** The fee the server quoted this student (POST /api/register/start-payment). */
+  fee() { return this.state.payOffer?.amount ?? PREVIEW_REGISTRATION_FEE; }
   // @ts-ignore
   upi() { return UPI_ID; }
   speed() { const n = Number(this.props.riftSpeed ?? 1); return n > 0 ? n : 1; }
@@ -2633,18 +2656,23 @@ export class Innovision extends Component<Props, State> {
       if (this.fail(err)) return;
       this.reg = { name, college, email, phone, enrollment_no, gender, referred_by_code };
 
-      // Every student, NIT Rourkela included, continues to Step 1 (payment), unless every seat is taken: nobody should
-      // pay for a seat that isn't there. A count that can't be read doesn't hold the student up.
-      this.setState({ busyLbl: referred_by_code ? 'CHECKING CODE' : 'CHECKING SEATS' });
-      Promise.all([fetchSeatCount(), referred_by_code ? checkReferralCode(referred_by_code) : null]).then(([seats, res]) => {
+      // Every student, NIT Rourkela included, continues to Step 1 (payment), but only with the server's answer, read live
+      // from the database: a payment can't be refunded, so payment details are never shown on a guess. No answer (closed,
+      // offline, server error) means no payment details.
+      const preview = REGISTRATION_PREVIEW_ENABLED && user.id === 'dev-preview-user';
+      const started = preview
+        ? Promise.resolve({ offer: { state: 'pay' as const, amount: PREVIEW_REGISTRATION_FEE, currentFee: PREVIEW_REGISTRATION_FEE } })
+        : startPayment();
+      this.setState({ busyLbl: referred_by_code ? 'CHECKING CODE' : 'CHECKING' });
+      Promise.all([started, referred_by_code ? checkReferralCode(referred_by_code) : null]).then(([pay, res]) => {
         if (!this.alive) return;
         this.setState({ busyLbl: '' });
         // Moved on meanwhile (closed the form, signed out).
         if (!this.state.auth || this.state.authMode !== 'register' || this.state.step !== 0) return;
-        if (seats && seats.left === 0) { this.fail({ form: SEATS_FULL_MESSAGE }); return; }
         // A check that couldn't run (offline, busy) doesn't hold the student up: the submit checks the code again.
         if (res && 'valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
-        this.toStep(1);
+        if (!pay.offer) { this.fail({ form: pay.error }); return; }
+        this.setState({ payOffer: pay.offer, payCheck: 'idle' }, () => this.toStep(1));
       });
     } else if (s.step === 1) {
       this.toStep(2);
@@ -2948,7 +2976,7 @@ export class Innovision extends Component<Props, State> {
       authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : P.status === 'CONFIRMED' ? 'Your place in the odyssey' : P.status === 'REJECTED' ? 'Payment not approved' : 'Registration received',
       authSub: reg
         ? 'Three short stops to register for Innovision 2026 at NIT Rourkela.'
-        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact the registration helpdesk for assistance.') : 'Your payment is under review by the registration team. Your pass appears here after approval.',
+        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact us for assistance.') : 'Your payment is under review by the registration team. Your pass appears here after approval.',
       // The seat counter (GET /api/seats) beside the registration form. Only while the overlay is open: it is mounted,
       // closed, at idle (warmDeferred), and a mounted counter polls every 30 s. `auth` turns true before the overlay
       // animates in and false after it has animated out, so the counter is never cut off mid-animation.
@@ -2971,7 +2999,8 @@ export class Innovision extends Component<Props, State> {
       upPay: up('pay', 'payfile', 'Drop the screenshot here or browse (Max 1MB)'),
       upId: up('id', 'idfile', 'Drop a photo of your ID card here or browse'),
       fee, upi, copyUpi: this.copyUpi, copyLbl: s.copied ? 'COPIED' : 'COPY',
-      upiLink: UPI_PAY_LINK, upiQr: UPI_QR_SRC,
+      upiLink: buildUpiPayLink(fee), upiQr: UPI_QR_SRC,
+      payOffer: s.payOffer ?? null, payCheck: s.payCheck ?? 'idle', refreshPayOffer: this.refreshPayOffer,
       upiAppD: s.narrow ? 'inline-flex' : 'none',
       authSubmit: this.authSubmit, clearErr: this.clearErr, switchMode: this.switchMode, closeAuthH: () => this.closeAuth(),
       showSwitch: am !== 'pass' && !reg && !!s.user,
@@ -2988,7 +3017,7 @@ export class Innovision extends Component<Props, State> {
       passNote: P.status === 'CONFIRMED'
         ? 'You are confirmed. Download your entry pass now and show the QR with your college ID at the registration desk, so entry at NIT Rourkela is quick.'
         : P.status === 'REJECTED'
-        ? 'Your registration could not be approved. Please contact the helpdesk.'
+        ? 'Your registration could not be approved. Please contact us.'
         : 'Your payment is under review. Only the registration team can approve it. This page updates automatically while you are here.',
       // The code shared from the pass: an ambassador's CA code, else the registrant's own (shareCode).
       refCode: this.shareCode(), refCodeLabel: s.registration?.ambassador_code ? 'Your Ambassador Code:' : 'Your Referral Code:',

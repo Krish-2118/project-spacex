@@ -13,6 +13,7 @@
 -- refused by the old one-registration-per-user index.
 -- Kept out of supabase/migrations/ on purpose so the Supabase CLI never applies it automatically. Safe to re-run: it
 -- never resets the counter once it exists.
+-- Once registration_phases.sql has been run, don't re-run this file: it would put back the old counter trigger.
 -- ==============================================================================
 
 -- Section 5: staff reviewing through the Supabase API may only move a PENDING registration to confirmed/rejected

@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient, Session, User } from '@supabase/supabase-js';
 import { httpErrorMessage } from './api-errors';
 import type { RejectionReason } from './rejections';
+import { parsePaymentOffer, type PaymentOffer } from './seats';
 import { SITE_URL } from '@/config/site';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -60,6 +61,10 @@ export interface Registration {
   referred_via?: { kind: 'registrant' | 'ambassador'; code: string; name: string } | null;
   /** Why staff rejected it (src/lib/rejections.ts); null for other statuses and for rejections made before reasons. */
   rejection_reason?: RejectionReason | null;
+  /** The registration phase it was charged at (supabase/schema.sql section 20). */
+  phase?: number;
+  /** The staff member who allowed it (ALLOW A PAYMENT), if any. */
+  allowed_by?: string | null;
   /** Not a column: added by GET /api/register to a rejected registration, the registrations the user may still make. */
   attempts_left?: number;
   /** Not a column: added by GET /api/admin/registrations, 1 for a first registration, 2 after one rejection, ... */
@@ -652,6 +657,29 @@ export async function fetchUserRegistrationServer(userId: string, email?: string
   } catch (err) {
     console.error('Registration fetch failed:', err);
     return null;
+  }
+}
+
+/**
+ * Asks the server what this student may do on the payment step (POST /api/register/start-payment). Without an `offer`
+ * the form must not show payment details: `error` says why, and it applies to a failed request too.
+ */
+export async function startPayment(fresh = false): Promise<{ offer?: PaymentOffer; error?: string }> {
+  const failed = 'Could not check registrations. Please check your connection and try again.';
+  try {
+    const { data: { session } } = await getSupabase().auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch('/api/register/start-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ fresh }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: httpErrorMessage(res) || result.error || failed };
+    const offer = parsePaymentOffer(result);
+    return offer ? { offer } : { error: failed };
+  } catch {
+    return { error: failed };
   }
 }
 

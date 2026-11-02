@@ -24,7 +24,7 @@ export const REJECTION_REASONS = [
   {
     value: 'wrong_amount',
     label: 'Wrong amount',
-    message: 'The amount paid was not the registration fee. Pay the exact fee shown on the payment step.',
+    message: "The amount paid was not the registration fee. Don't pay the full fee again: contact us with your UTR.",
   },
   {
     value: 'duplicate_payment',
@@ -55,7 +55,7 @@ export function attemptsLeft(rejected: number): number {
 }
 
 export const ATTEMPTS_USED_UP_ERROR =
-  `This account has been rejected ${MAX_REGISTRATION_ATTEMPTS} times and can't register again. Please contact the registration helpdesk.`;
+  `This account has been rejected ${MAX_REGISTRATION_ATTEMPTS} times and can't register again. Please contact us.`;
 
 /** The database refused a registration because the account has no attempts left (trg_guard_registration_attempts). */
 export function isAttemptsUsedUpError(err: { message?: string } | null | undefined): boolean {
