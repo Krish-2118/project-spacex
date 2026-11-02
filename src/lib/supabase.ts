@@ -66,7 +66,7 @@ export interface Registration {
   /** Submitted after its phase closed and the time to pay ran out: staff check the payment is dated before pay_by. */
   submitted_late?: boolean;
   pay_by?: string | null;
-  /** The staff member who allowed it through the helpdesk, if any. */
+  /** The staff member who allowed it (ALLOW A PAYMENT), if any. */
   allowed_by?: string | null;
   /** The part of `amount` staff are still waiting for: approval is blocked until they record top_up_utr. */
   amount_due?: number;

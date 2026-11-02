@@ -8,7 +8,7 @@ import { formatSeats, MAX_FEE, MAX_SEATS, nextPhaseError, seatCountError } from 
  * SEAT COUNTER card on the admin Registrations tab (GET/PATCH /api/admin/seats). Total seats and seats left are what
  * the registration form shows ("1,042 / 1,300 seats left"); after an edit the database keeps moving seats left by
  * itself. At 0 the phase closes, and only START NEXT PHASE (admins) reopens registrations, with a new fee and numbers.
- * ALLOW A PAYMENT is the helpdesk's route for someone who paid while they couldn't submit. Admins edit; the registration
+ * ALLOW A PAYMENT is the staff route for someone who paid while they couldn't submit. Admins edit; the registration
  * team can allow a payment; viewers only see it.
  */
 
@@ -271,7 +271,7 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
     {canAllowPayments && counter ? (
       <section aria-label="Allow a payment" style={{ padding: '16px 22px', border: '1px solid rgba(236,232,223,0.12)' }}>
         {!allowForm.open ? (
-          <button type="button" onClick={() => setAllowForm((f) => ({ ...f, open: true }))} style={btn}>ALLOW A PAYMENT (HELPDESK)</button>
+          <button type="button" onClick={() => setAllowForm((f) => ({ ...f, open: true }))} style={btn}>ALLOW A PAYMENT</button>
         ) : (
           <form onSubmit={submitAllow} noValidate style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px' }}>
             <span style={{ flexBasis: '100%', fontSize: '12px', lineHeight: 1.5, color: 'rgba(236,232,223,0.6)' }}>

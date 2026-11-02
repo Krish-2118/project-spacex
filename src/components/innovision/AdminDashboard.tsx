@@ -431,7 +431,7 @@ export default function AdminDashboard({
       'Amount Due (INR)',
       'Top-up UTR',
       'Submitted Late',
-      'Allowed by Helpdesk',
+      'Allowed by Staff',
       'UPI UTR',
       'Payment Screenshot (private ref)',
       'ID Card',
@@ -1702,7 +1702,7 @@ export default function AdminDashboard({
                             )}
                             {reg.allowed_by && (
                               <div style={{ marginTop: '4px', fontSize: '11px', color: 'oklch(0.8 0.15 80)' }}>
-                                <strong>ALLOWED BY HELPDESK</strong>
+                                <strong>ALLOWED BY STAFF</strong>
                               </div>
                             )}
                             {/* The code this registrant entered: a campus ambassador's, or another registrant's. */}

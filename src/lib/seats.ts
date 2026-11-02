@@ -19,21 +19,14 @@ export interface SeatCount {
 }
 
 /**
- * Where a student who has paid but can't submit goes. Fill this in with the helpdesk's phone number or email: it is
- * shown in every message below that sends someone to the helpdesk.
+ * Must not say "nothing was charged": a student seeing this may have paid with a saved QR or the UPI ID.
+ * "Contact us" is the footer section that has the numbers.
  */
-export const REGISTRATION_HELPDESK_CONTACT = '';
-
-const HELPDESK = REGISTRATION_HELPDESK_CONTACT
-  ? `the registration helpdesk (${REGISTRATION_HELPDESK_CONTACT})`
-  : 'the registration helpdesk';
-
-/** Must not say "nothing was charged": a student seeing this may have paid with a saved QR or the UPI ID. */
-export const REGISTRATIONS_FULL_MESSAGE = `Registrations are closed. Already paid? Don't pay again: contact ${HELPDESK} with your UTR.`;
+export const REGISTRATIONS_FULL_MESSAGE = "Registrations are closed. Already paid? Don't pay again: contact us with your UTR.";
 
 /** What MY PASS says while staff are waiting for the rest of the fee. */
 export function amountDueMessage(amountDue: number): string {
-  return `₹${formatSeats(amountDue)} still due: pay it to the same UPI ID and send the UTR and screenshot to ${HELPDESK}.`;
+  return `₹${formatSeats(amountDue)} still due: pay it to the same UPI ID and send us the UTR and screenshot.`;
 }
 
 const isSeatNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_SEATS;

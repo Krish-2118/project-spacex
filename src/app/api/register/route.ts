@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
 
     // What this submit is charged, and whether it may go ahead: the fee quoted when the student started paying (even if
     // the phase has closed or the fee has risen since), or the current fee while a phase is open. Otherwise refused: they
-    // may have paid with a saved QR or the UPI ID, so the helpdesk checks the bank statement and allows it by hand.
+    // may have paid with a saved QR or the UPI ID, so staff check the bank statement and allow it by hand.
     const { data: payment, error: paymentError } = await adminClient.rpc('resolve_registration_payment', { p_user_id: user.id });
     if (paymentError || !payment) {
       console.error('Payment lookup failed in /api/register POST:', paymentError);

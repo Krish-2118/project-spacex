@@ -18,7 +18,7 @@ import {
 export const runtime = 'nodejs';
 
 const TOO_LARGE = 'That photo is larger than 2 MB. Please choose a smaller photo of your ID card.';
-const ALREADY_UPLOADED = 'Your college ID card is already uploaded. Contact the registration helpdesk to change it.';
+const ALREADY_UPLOADED = 'Your college ID card is already uploaded. Contact us to change it.';
 
 // Allow retries but stop bulk abuse of storage.
 const idCardLimiter = createRateLimiter({ limit: 20, windowMs: 10 * 60 * 1000 });

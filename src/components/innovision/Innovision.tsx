@@ -1730,7 +1730,7 @@ export class Innovision extends Component<Props, State> {
       if (!this.alive || this.state.user?.id !== user.id) return;
       this.syncRegistration(fresh);
       if (!this.canRegisterAgain()) {
-        this.toast('You can’t register again right now. Please contact the registration helpdesk.');
+        this.toast('You can’t register again right now. Please contact us.');
         return;
       }
     }
@@ -2977,7 +2977,7 @@ export class Innovision extends Component<Props, State> {
       authTitle: reg ? 'Claim your seat' : am === 'login' ? 'Welcome back' : P.status === 'CONFIRMED' ? 'Your place in the odyssey' : P.status === 'REJECTED' ? 'Payment not approved' : 'Registration received',
       authSub: reg
         ? 'Three short stops to register for Innovision 2026 at NIT Rourkela.'
-        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact the registration helpdesk for assistance.') : s.registration?.amount_due > 0 ? amountDueMessage(s.registration.amount_due) : 'Your payment is under review by the registration team. Your pass appears here after approval.',
+        : am === 'login' ? 'Sign in or create your account with Google.' : P.status === 'CONFIRMED' ? 'Your payment is verified. Your INNO pass is always available here.' : P.status === 'REJECTED' ? (this.canRegisterAgain() ? 'See why below, then register again with the right details.' : 'Please contact us for assistance.') : s.registration?.amount_due > 0 ? amountDueMessage(s.registration.amount_due) : 'Your payment is under review by the registration team. Your pass appears here after approval.',
       // The seat counter (GET /api/seats) beside the registration form. Only while the overlay is open: it is mounted,
       // closed, at idle (warmDeferred), and a mounted counter polls every 30 s. `auth` turns true before the overlay
       // animates in and false after it has animated out, so the counter is never cut off mid-animation.
@@ -3018,7 +3018,7 @@ export class Innovision extends Component<Props, State> {
       passNote: P.status === 'CONFIRMED'
         ? 'You are confirmed. Download your entry pass now and show the QR with your college ID at the registration desk, so entry at NIT Rourkela is quick.'
         : P.status === 'REJECTED'
-        ? 'Your registration could not be approved. Please contact the helpdesk.'
+        ? 'Your registration could not be approved. Please contact us.'
         : 'Your payment is under review. Only the registration team can approve it. This page updates automatically while you are here.',
       // The code shared from the pass: an ambassador's CA code, else the registrant's own (shareCode).
       refCode: this.shareCode(), refCodeLabel: s.registration?.ambassador_code ? 'Your Ambassador Code:' : 'Your Referral Code:',

@@ -10,7 +10,7 @@ const ALLOWED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * POST /api/admin/registrations/payment-pass  { email, amount, note }
- * Registration-Team/Admin only. The helpdesk route for a student who paid when they shouldn't have been able to (a saved
+ * Registration-Team/Admin only. The staff route for a student who paid when they shouldn't have been able to (a saved
  * QR or the UPI ID while registrations were closed), after staff have checked the bank statement. It doesn't create a
  * registration: the student still fills in the form and submits their proof, at `amount`, and it is reviewed as usual.
  */
