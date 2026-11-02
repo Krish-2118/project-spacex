@@ -15,8 +15,6 @@ const MAX_BATCHES = 20;
 // Ids per `in.(...)` lookup, keeping the request URL short.
 const LOOKUP_CHUNK = 150;
 
-const AMOUNT_DUE_ERROR = 'Part of the fee is still due. Record the top-up UTR before approving.';
-
 /** Who brought a registration in: the registrant's code they entered, or a campus ambassador's (never both). */
 type ReferredVia = { kind: 'registrant' | 'ambassador'; code: string; name: string } | null;
 
@@ -294,11 +292,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: ID_CARD_REQUIRED_ERROR }, { status: 409 });
     }
 
-    // No approval while part of the fee is due (also refused by trg_require_amount_paid_for_approval). Rejecting is fine.
-    if (status === 'confirmed' && existing.amount_due > 0) {
-      return NextResponse.json({ error: AMOUNT_DUE_ERROR }, { status: 409 });
-    }
-
     const { data: updated, error: updateErr } = await supabase
       .from('registrations')
       .update({
@@ -318,10 +311,6 @@ export async function PATCH(req: NextRequest) {
       // A re-upload was asked for between the check above and this update.
       if (isIdCardRequiredError(updateErr)) {
         return NextResponse.json({ error: ID_CARD_REQUIRED_ERROR }, { status: 409 });
-      }
-      // A difference was asked for between the check above and this update.
-      if (/amount due before approval/i.test(updateErr.message ?? '')) {
-        return NextResponse.json({ error: AMOUNT_DUE_ERROR }, { status: 409 });
       }
       console.error('/api/admin/registrations database error:', updateErr);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });

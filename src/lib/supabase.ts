@@ -63,14 +63,8 @@ export interface Registration {
   rejection_reason?: RejectionReason | null;
   /** The registration phase it was charged at (supabase/schema.sql section 20). */
   phase?: number;
-  /** Submitted after its phase closed and the time to pay ran out: staff check the payment is dated before pay_by. */
-  submitted_late?: boolean;
-  pay_by?: string | null;
   /** The staff member who allowed it (ALLOW A PAYMENT), if any. */
   allowed_by?: string | null;
-  /** The part of `amount` staff are still waiting for: approval is blocked until they record top_up_utr. */
-  amount_due?: number;
-  top_up_utr?: string | null;
   /** Not a column: added by GET /api/register to a rejected registration, the registrations the user may still make. */
   attempts_left?: number;
   /** Not a column: added by GET /api/admin/registrations, 1 for a first registration, 2 after one rejection, ... */
@@ -682,7 +676,7 @@ export async function startPayment(fresh = false): Promise<{ offer?: PaymentOffe
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok) return { error: httpErrorMessage(res) || result.error || failed };
-    const offer = parsePaymentOffer(result, Date.now());
+    const offer = parsePaymentOffer(result);
     return offer ? { offer } : { error: failed };
   } catch {
     return { error: failed };

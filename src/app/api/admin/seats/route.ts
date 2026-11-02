@@ -7,8 +7,8 @@ import { seatCountError } from '@/lib/seats';
 export const runtime = 'nodejs';
 
 /**
- * The counter as staff see it: the numbers, the phase and its fee, whether it is closed, how many students are on the
- * payment step right now (they may still submit after it closes), and who last set the numbers by hand and when.
+ * The counter as staff see it: the numbers, the phase and its fee, whether it is closed, and who last set the numbers
+ * by hand and when.
  */
 async function readCounter(supabase: SupabaseClient) {
   const { data, error } = await supabase
@@ -17,13 +17,6 @@ async function readCounter(supabase: SupabaseClient) {
     .eq('id', 1)
     .maybeSingle();
   if (error || !data) return { error: error ?? new Error('registration_counter has no row'), counter: null };
-
-  const { count, error: countError } = await supabase
-    .from('payment_passes')
-    .select('id', { count: 'exact', head: true })
-    .is('used_at', null)
-    .gt('pay_by', new Date().toISOString());
-  if (countError) return { error: countError, counter: null };
 
   let updatedBy: string | null = null;
   if (data.updated_by) {
@@ -42,7 +35,6 @@ async function readCounter(supabase: SupabaseClient) {
       phase: data.phase,
       fee: data.fee_inr,
       closedAt: data.closed_at,
-      paymentsInProgress: count ?? 0,
       updatedAt: data.updated_at,
       updatedBy,
     },

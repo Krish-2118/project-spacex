@@ -8,16 +8,16 @@ import { createRateLimiter, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
-// One call leaving the details step and one each time the time to pay runs out, so this only stops abuse.
+// One call each time a student leaves the details step, so this only stops abuse.
 const startLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60 * 1000 });
 
 /**
  * POST /api/register/start-payment  { fresh? }
  * Called before the form shows any payment details: a live read of the database, never a cached count. Answers with what
  * the student may do (issue_payment_pass, supabase/schema.sql section 20):
- *   { state: 'pay', amount, paySeconds, currentFee }          show the payment details for paySeconds, at this fee
- *   { state: 'already_paid', amount, paySeconds: 0, currentFee }  no payment details: continue only if already paid
- *   409 { code: 'registrations_closed', error }               no payment details at all
+ *   { state: 'pay', amount, currentFee }           show the payment details at this fee
+ *   { state: 'already_paid', amount, currentFee }  no payment details: continue only if already paid
+ *   409 { code: 'registrations_closed', error }    no payment details at all
  * The fee is locked here: the student may submit at it even if the phase closes or the fee rises meanwhile. `fresh` means
  * the student hasn't paid and wants the current fee instead of an older one they were quoted.
  */
@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       state: data.state,
       amount: data.amount,
-      paySeconds: data.pay_seconds,
       currentFee: data.current_fee ?? null,
     });
   } catch (err: unknown) {

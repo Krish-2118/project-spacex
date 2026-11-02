@@ -27,7 +27,6 @@ interface Counter {
   phase: number;
   fee: number;
   closedAt: string | null;
-  paymentsInProgress: number;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -151,7 +150,6 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
       const email = allowForm.email.trim();
       await post('/api/admin/registrations/payment-pass', { email, amount: Number(allowForm.amount), note: allowForm.note });
       setAllowForm({ open: true, email: '', amount: '', note: '', error: '', done: `${email} can now sign in and submit their proof, for 7 days.` });
-      setCounter(await request());
     } catch (err: unknown) {
       setAllowForm((f) => ({ ...f, done: '', error: err instanceof Error ? err.message : 'Failed to allow the payment' }));
     } finally {
@@ -197,18 +195,14 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
                 : ''}
             </span>
             <span style={{ fontSize: '12px', lineHeight: 1.5, color: closed ? 'oklch(0.74 0.15 35)' : 'rgba(236,232,223,0.8)', fontWeight: 700, letterSpacing: '.04em' }}>
-              PHASE {counter.phase} · ₹{formatSeats(counter.fee)} · {closed ? 'CLOSED' : 'OPEN'} · {formatSeats(counter.paymentsInProgress)} paying now
+              PHASE {counter.phase} · ₹{formatSeats(counter.fee)} · {closed ? 'CLOSED' : 'OPEN'}
             </span>
-            {closed && counter.paymentsInProgress > 0 ? (
-              <span style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(236,232,223,0.6)' }}>
-                Students who are paying now may still submit at their quoted fee, so more registrations can arrive after closing.
-              </span>
-            ) : null}
           </>
         )}
       </div>
 
-      {canEdit && counter && !editing ? (
+      {/* While closed, the only thing to do with the numbers is START NEXT PHASE: an edit wouldn't reopen anything. */}
+      {canEdit && counter && !editing && !closed ? (
         <button type="button" onClick={startEdit} style={btn}>EDIT NUMBERS</button>
       ) : null}
 

@@ -2,7 +2,7 @@
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
 import type { V } from './types';
 import { Logo } from './icons';
@@ -68,22 +68,9 @@ export default function AuthOverlay({ v }: { v: V }) {
   const isIterSoa = isIterSoaCollege(collegeValue) || isIterSoaEmail(v.regVals?.email);
   const [payQrOpen, setPayQrOpen] = useState(false);
 
-  // The time to pay on the payment step. When it runs out the payment details leave the page and the server is asked
-  // again: it renews the time while the phase is open, or says what the student can do now.
+  // What the server said this student may do on the payment step.
   const offer = v.payOffer;
-  const counting = v.payStep && offer?.state === 'pay';
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!counting) return undefined;
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [counting, offer]);
-  const payLeft = offer?.state === 'pay' ? Math.max(0, Math.ceil((offer.payUntilMs - nowMs) / 1000)) : 0;
-  const payOpen = v.payCheck !== 'busy' && v.payCheck !== 'failed' && payLeft > 0;
-  const refreshPayOffer = v.refreshPayOffer;
-  useEffect(() => {
-    if (counting && payLeft === 0 && v.payCheck === 'idle') refreshPayOffer();
-  }, [counting, payLeft, v.payCheck, refreshPayOffer]);
+  const payOpen = v.payCheck !== 'busy' && v.payCheck !== 'failed' && offer?.state === 'pay';
 
   return (
     <>
@@ -252,7 +239,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                       {/* The QR and UPI ID are only in the page while the server says this student may pay. */}
                       {!payOpen ? (
                         <div data-s-in="" role="status" style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "15px", lineHeight: "1.5", color: "rgba(236,232,223,.82)" }}>
-                          {v.payCheck === 'busy' || (offer?.state === 'pay' && v.payCheck !== 'failed') ? (
+                          {v.payCheck === 'busy' ? (
                             <span>Checking registrations…</span>
                           ) : v.payCheck === 'failed' ? (
                             <>
@@ -300,7 +287,6 @@ export default function AuthOverlay({ v }: { v: V }) {
                           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>AMOUNT</span>
                             <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,3.4vw,48px)", lineHeight: "1" }}>₹{v.fee}</span>
-                            <span style={{ fontSize: "13px", lineHeight: "1.45", color: "rgba(236,232,223,.62)", fontVariantNumeric: "tabular-nums" }}>Pay within {Math.floor(payLeft / 60)}:{String(payLeft % 60).padStart(2, "0")}</span>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                             <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>UPI ID</span>

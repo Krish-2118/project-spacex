@@ -3,7 +3,6 @@
 import React, { useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
 import type { UserProfile, Registration } from '@/lib/supabase';
-import { amountDueMessage } from '@/lib/seats';
 import EntryPassCard from './EntryPassCard';
 import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 
@@ -414,8 +413,6 @@ export default function ProfileOverlay({
                 <p style={{ margin: '0 0 16px', fontSize: '14px', lineHeight: 1.5, color: 'rgba(236,232,223,0.8)' }}>
                   {registration.status === 'confirmed'
                     ? 'Your registration is confirmed. Download your entry pass below and show the QR with your college ID at the registration desk.'
-                    : registration.status === 'pending' && (registration.amount_due ?? 0) > 0
-                    ? amountDueMessage(registration.amount_due ?? 0)
                     : registration.status === 'pending'
                     ? 'Your payment is being verified and your registration will be approved soon. Keep checking MY PASS: your entry QR will appear there once approved.'
                     : onRegisterAgain && (registration.attempts_left ?? 0) > 0

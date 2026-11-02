@@ -19,8 +19,6 @@ export interface ParticipantPass {
   idCard?: 'uploaded' | 'pending';
   /** With idCard 'pending': why staff asked for a new ID card (src/lib/id-cards.ts), if they did. */
   idCardReuploadReason?: string | null;
-  /** Pending registrations only: the part of the fee staff are still waiting for, in rupees. */
-  amountDue?: number;
 }
 
 export function isApprovedPass(pass: ParticipantPass): boolean {

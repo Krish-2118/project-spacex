@@ -12,7 +12,6 @@ import EntryManager from './admin/EntryManager';
 import ReferralLeaderboard from './admin/ReferralLeaderboard';
 import AmbassadorsManager from './admin/AmbassadorsManager';
 import SeatCounterCard from './admin/SeatCounterCard';
-import TopUpControls from './admin/TopUpControls';
 import { httpErrorMessage } from '@/lib/api-errors';
 import { MAX_REGISTRATION_ATTEMPTS, ordinal, REJECTION_REASONS, rejectionLabel, type RejectionReason } from '@/lib/rejections';
 import { ID_CARD_REUPLOAD_REASONS, idCardReuploadLabel, type IdCardReuploadReason } from '@/lib/id-cards';
@@ -428,9 +427,6 @@ export default function AdminDashboard({
       'Attempt',
       'Amount (INR)',
       'Phase',
-      'Amount Due (INR)',
-      'Top-up UTR',
-      'Submitted Late',
       'Allowed by Staff',
       'UPI UTR',
       'Payment Screenshot (private ref)',
@@ -459,9 +455,6 @@ export default function AdminDashboard({
       r.attempt ?? 1,
       r.amount,
       r.phase ?? '',
-      r.amount_due ?? 0,
-      r.top_up_utr ?? '',
-      r.submitted_late ? 'Yes' : '',
       r.allowed_by ? 'Yes' : '',
       r.utr,
       r.payment_proof_path,
@@ -1682,24 +1675,6 @@ export default function AdminDashboard({
                                 UTR: {reg.utr}
                               </div>
                             )}
-                            {reg.top_up_utr && (
-                              <div style={{ fontSize: '11px', color: 'rgba(236,232,223,0.6)', letterSpacing: '.04em' }}>
-                                Top-up UTR: {reg.top_up_utr}
-                              </div>
-                            )}
-                            {(reg.amount_due ?? 0) > 0 && (
-                              <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: 'oklch(0.74 0.15 35)' }}>
-                                ₹{reg.amount_due} STILL DUE
-                              </div>
-                            )}
-                            {reg.submitted_late && (
-                              <div style={{ marginTop: '4px', fontSize: '11px', color: 'oklch(0.8 0.15 80)' }}>
-                                <strong>SUBMITTED LATE.</strong>{' '}
-                                {reg.pay_by
-                                  ? `Check the bank statement: the payment must be dated before ${new Date(reg.pay_by).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.`
-                                  : 'A re-submission after a rejection: check the payment on the bank statement.'}
-                              </div>
-                            )}
                             {reg.allowed_by && (
                               <div style={{ marginTop: '4px', fontSize: '11px', color: 'oklch(0.8 0.15 80)' }}>
                                 <strong>ALLOWED BY STAFF</strong>
@@ -1776,13 +1751,12 @@ export default function AdminDashboard({
                           {/* Action (Approve / Reject; viewers only see the lock) */}
                           <td style={{ padding: '14px 18px' }}>
                             {isPending && canReviewRegistrations ? (
-                              <>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                   type="button"
-                                  disabled={isBusy || idCardMissing(reg) || (reg.amount_due ?? 0) > 0}
+                                  disabled={isBusy || idCardMissing(reg)}
                                   onClick={() => handleUpdateStatus(reg, 'confirmed')}
-                                  title={(reg.amount_due ?? 0) > 0 ? 'Record the top-up UTR before approving' : idCardMissing(reg) ? 'Waiting for the student to upload their college ID card' : 'Approve pass'}
+                                  title={idCardMissing(reg) ? 'Waiting for the student to upload their college ID card' : 'Approve pass'}
                                   style={{
                                     padding: '6px 12px',
                                     background: 'oklch(0.75 0.16 145)',
@@ -1791,8 +1765,8 @@ export default function AdminDashboard({
                                     fontSize: '11px',
                                     fontWeight: 700,
                                     letterSpacing: '.08em',
-                                    cursor: isBusy ? 'wait' : idCardMissing(reg) || (reg.amount_due ?? 0) > 0 ? 'not-allowed' : 'pointer',
-                                    opacity: idCardMissing(reg) || (reg.amount_due ?? 0) > 0 ? 0.4 : 1,
+                                    cursor: isBusy ? 'wait' : idCardMissing(reg) ? 'not-allowed' : 'pointer',
+                                    opacity: idCardMissing(reg) ? 0.4 : 1,
                                   }}
                                 >
                                   APPROVE
@@ -1816,12 +1790,6 @@ export default function AdminDashboard({
                                   REJECT
                                 </button>
                               </div>
-                              <TopUpControls
-                                reg={reg}
-                                getAuthToken={getAuthToken}
-                                onChanged={(updated) => setRegistrations((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)))}
-                              />
-                              </>
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(236,232,223,0.4)', fontSize: '11px', fontWeight: 700 }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
