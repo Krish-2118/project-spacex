@@ -6,14 +6,24 @@ import { seatCountError } from '@/lib/seats';
 
 export const runtime = 'nodejs';
 
-/** The counter as staff see it: the two numbers, and who last set them by hand and when. */
+/**
+ * The counter as staff see it: the numbers, the phase and its fee, whether it is closed, how many students are on the
+ * payment step right now (they may still submit after it closes), and who last set the numbers by hand and when.
+ */
 async function readCounter(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('registration_counter')
-    .select('total_seats, seats_left, updated_by, updated_at')
+    .select('total_seats, seats_left, phase, fee_inr, closed_at, updated_by, updated_at')
     .eq('id', 1)
     .maybeSingle();
   if (error || !data) return { error: error ?? new Error('registration_counter has no row'), counter: null };
+
+  const { count, error: countError } = await supabase
+    .from('payment_passes')
+    .select('id', { count: 'exact', head: true })
+    .is('used_at', null)
+    .gt('pay_by', new Date().toISOString());
+  if (countError) return { error: countError, counter: null };
 
   let updatedBy: string | null = null;
   if (data.updated_by) {
@@ -26,12 +36,21 @@ async function readCounter(supabase: SupabaseClient) {
   }
   return {
     error: null,
-    counter: { total: data.total_seats, left: data.seats_left, updatedAt: data.updated_at, updatedBy },
+    counter: {
+      total: data.total_seats,
+      left: data.seats_left,
+      phase: data.phase,
+      fee: data.fee_inr,
+      closedAt: data.closed_at,
+      paymentsInProgress: count ?? 0,
+      updatedAt: data.updated_at,
+      updatedBy,
+    },
   };
 }
 
 const UNAVAILABLE =
-  'The seat counter is not set up yet. Run supabase/manual/seat_counter_and_reregistration.sql in Supabase.';
+  'The seat counter is not set up yet. Run supabase/manual/seat_counter_and_reregistration.sql and registration_phases.sql in Supabase.';
 
 /**
  * GET /api/admin/seats
@@ -59,7 +78,7 @@ export async function GET(req: NextRequest) {
 /**
  * PATCH /api/admin/seats  { total, left }
  * Admins only: sets both numbers. The database keeps moving `left` from there as registrations come in and are
- * rejected.
+ * rejected. Setting `left` to 0 closes the phase. Nothing here reopens a closed one: only POST /api/admin/seats/phase.
  */
 export async function PATCH(req: NextRequest) {
   try {

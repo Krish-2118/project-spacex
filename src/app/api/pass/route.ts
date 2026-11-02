@@ -73,6 +73,10 @@ export async function POST(req: NextRequest) {
       pass.idCard = details.data.id_card_path ? 'uploaded' : 'pending';
       pass.idCardReuploadReason = details.data.id_card_path ? null : details.data.id_card_reupload_reason ?? null;
     }
+    // Staff asked for the rest of the fee (section 20): MY PASS says how much.
+    if (mine.registration_status === 'pending' && details.data?.amount_due > 0) {
+      pass.amountDue = details.data.amount_due;
+    }
     if (mine.registration_status !== 'confirmed' || mine.pass_status !== 'active' || !mine.pass) {
       return NextResponse.json({ success: true, pass }, { headers: { 'Cache-Control': 'private, no-store' } });
     }

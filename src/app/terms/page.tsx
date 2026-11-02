@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import LegalPage, { LegalContacts } from '@/components/legal/LegalPage';
-import { REGISTRATION_FEE } from '@/config/payment';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
@@ -28,7 +27,11 @@ export default function TermsPage() {
 
       <h2>Fee and payment</h2>
       <ul>
-        <li>The registration fee is <b>₹{REGISTRATION_FEE}</b>, paid by UPI to the account shown on the registration form.</li>
+        <li>
+          The registration fee is the amount shown on the registration form when you start paying, paid by UPI to the
+          account shown there. It may be higher in later registration phases.
+        </li>
+        <li>Registrations may close without notice. Don&apos;t pay while registrations are closed.</li>
         <li>After paying, you upload a screenshot of the payment and enter its UPI transaction ID (UTR).</li>
         <li>
           Your registration stays <b>pending</b> until the registration team has verified the payment. It is then

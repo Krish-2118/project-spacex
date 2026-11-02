@@ -38,7 +38,7 @@ export default function SeatCounter() {
   }, []);
 
   if (!seats) return null;
-  const full = seats.left === 0;
+  const full = seats.closed;
   const few = !full && seats.left <= FEW_LEFT;
   const share = seats.total > 0 ? seats.left / seats.total : 0;
 
@@ -46,11 +46,11 @@ export default function SeatCounter() {
     // Centered, like the rest of the form's intro (AuthOverlay.module.css .intro).
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%', maxWidth: '320px', margin: '26px auto 0' }}>
       <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '.16em', color: full || few ? WARN : 'rgba(236,232,223,.72)' }}>
-        {full ? 'REGISTRATIONS FULL' : few ? 'FILLING FAST' : 'SEATS LEFT'}
+        {full ? 'REGISTRATIONS CLOSED' : few ? 'FILLING FAST' : 'SEATS LEFT'}
       </span>
       <span
         role={full ? 'status' : undefined}
-        aria-label={full ? 'Registrations are full' : `${formatSeats(seats.left)} of ${formatSeats(seats.total)} seats left`}
+        aria-label={full ? 'Registrations are closed' : `${formatSeats(seats.left)} of ${formatSeats(seats.total)} seats left`}
         style={{ display: 'flex', alignItems: 'baseline', gap: '10px', fontVariantNumeric: 'tabular-nums' }}
       >
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(34px,3vw,44px)', lineHeight: 1, color: full ? WARN : '#ECE8DF' }}>
@@ -70,11 +70,6 @@ export default function SeatCounter() {
           }}
         />
       </span>
-      {full ? (
-        <span style={{ fontSize: '14px', lineHeight: 1.45, color: 'rgba(236,232,223,.72)' }}>
-          Every seat has been taken. Keep checking: a seat opens up whenever a registration is not approved.
-        </span>
-      ) : null}
     </div>
   );
 }

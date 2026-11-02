@@ -8,6 +8,7 @@ import IdCardUpload from './IdCardUpload';
 import styles from './PassIssued.module.css';
 import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 import { rejectionMessage } from '@/lib/rejections';
+import { amountDueMessage } from '@/lib/seats';
 
 interface EntryPassCardProps {
   onContinue?: () => void;
@@ -184,6 +185,13 @@ function PassState({
             ? 'Your payment is under review. The registration team can approve it only after your college ID card is uploaded (above).'
             : passStatusMessage(pass)}
         </p>
+
+        {isPending && (pass.amountDue ?? 0) > 0 ? (
+          <p className={styles.statusReason}>
+            <span className={styles.statusReasonLabel}>AMOUNT DUE</span>
+            {amountDueMessage(pass.amountDue ?? 0)}
+          </p>
+        ) : null}
 
         {isPending && pass.idCard === 'uploaded' ? (
           <p className={styles.statusDesc} style={{ color: '#c8b17a' }}>✓ College ID card uploaded</p>

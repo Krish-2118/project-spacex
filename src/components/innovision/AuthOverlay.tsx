@@ -2,7 +2,7 @@
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
 import type { V } from './types';
 import { Logo } from './icons';
@@ -12,6 +12,8 @@ import styles from './AuthOverlay.module.css';
 import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
+
+const payActionStyle = { alignSelf: "flex-start", minHeight: "44px", padding: "0 16px", border: "1.5px solid oklch(0.78 0.075 85)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".12em", color: "oklch(0.78 0.075 85)" };
 
 /** A drag-and-drop image upload (payment screenshot, ID card) driven by Innovision's upload view-model (`up()`). */
 function UploadZone({ u, kind, name, ariaLabel, alt, typesHint, err }: { u: V['upPay']; kind: string; name: string; ariaLabel: string; alt: string; typesHint: string; err: string }) {
@@ -65,6 +67,24 @@ export default function AuthOverlay({ v }: { v: V }) {
   const collegeValue = userCollege !== null ? userCollege : (v.regVals?.college || '');
   const isIterSoa = isIterSoaCollege(collegeValue) || isIterSoaEmail(v.regVals?.email);
   const [payQrOpen, setPayQrOpen] = useState(false);
+
+  // The time to pay on the payment step. When it runs out the payment details leave the page and the server is asked
+  // again: it renews the time while the phase is open, or says what the student can do now.
+  const offer = v.payOffer;
+  const counting = v.payStep && offer?.state === 'pay';
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!counting) return undefined;
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [counting, offer]);
+  const payLeft = offer?.state === 'pay' ? Math.max(0, Math.ceil((offer.payUntilMs - nowMs) / 1000)) : 0;
+  const payOpen = v.payCheck !== 'busy' && v.payCheck !== 'failed' && payLeft > 0;
+  const refreshPayOffer = v.refreshPayOffer;
+  useEffect(() => {
+    if (counting && payLeft === 0 && v.payCheck === 'idle') refreshPayOffer();
+  }, [counting, payLeft, v.payCheck, refreshPayOffer]);
+
   return (
     <>
       <div data-auth-root="" aria-hidden={v.authHidden} style={{ position: "fixed", inset: "0", zIndex: "62", visibility: "hidden", pointerEvents: "none" }}>
@@ -229,6 +249,29 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.s2, flexDirection: "column", gap: "22px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Pay the fee</h3>
+                      {/* The QR and UPI ID are only in the page while the server says this student may pay. */}
+                      {!payOpen ? (
+                        <div data-s-in="" role="status" style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "15px", lineHeight: "1.5", color: "rgba(236,232,223,.82)" }}>
+                          {v.payCheck === 'busy' || (offer?.state === 'pay' && v.payCheck !== 'failed') ? (
+                            <span>Checking registrations…</span>
+                          ) : v.payCheck === 'failed' ? (
+                            <>
+                              <span>Could not check registrations. Please check your connection and try again.</span>
+                              <button type="button" onClick={() => v.refreshPayOffer()} style={payActionStyle}>TRY AGAIN</button>
+                            </>
+                          ) : offer?.state === 'already_paid' ? (
+                            <>
+                              <span>Already paid ₹{offer.amount}? Continue and submit your proof. Don&apos;t pay again.</span>
+                              {offer.currentFee ? (
+                                <button type="button" onClick={() => v.refreshPayOffer(true)} style={payActionStyle}>I HAVEN&apos;T PAID: PAY ₹{offer.currentFee}</button>
+                              ) : (
+                                <span>Haven&apos;t paid? Don&apos;t pay now: registrations are closed.</span>
+                              )}
+                            </>
+                          ) : null}
+                        </div>
+                      ) : (
+                      <>
                       <div data-s-in="" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,200px),1fr))", gap: "28px", alignItems: "center" }}>
                         {/* Payment QR — prominent, click to enlarge */}
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", justifySelf: "center" }}>
@@ -257,6 +300,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>AMOUNT</span>
                             <span style={{ fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(36px,3.4vw,48px)", lineHeight: "1" }}>₹{v.fee}</span>
+                            <span style={{ fontSize: "13px", lineHeight: "1.45", color: "rgba(236,232,223,.62)", fontVariantNumeric: "tabular-nums" }}>Pay within {Math.floor(payLeft / 60)}:{String(payLeft % 60).padStart(2, "0")}</span>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                             <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>UPI ID</span>
@@ -264,6 +308,7 @@ export default function AuthOverlay({ v }: { v: V }) {
                               <span style={{ fontSize: "17px", fontWeight: "500", overflowWrap: "anywhere" }}>{v.upi}</span>
                               <button type="button" onClick={v.copyUpi} style={{ padding: "7px 12px", border: "1.5px solid rgba(236,232,223,.5)", background: "none", cursor: "pointer", fontWeight: "700", fontSize: "12px", letterSpacing: ".14em", color: "#ECE8DF", transition: "border-color .3s,color .3s" }} style-hover="border-color:oklch(0.78 0.075 85);color:oklch(0.78 0.075 85)">{v.copyLbl}</button>
                             </span>
+                            <span style={{ fontSize: "13px", lineHeight: "1.45", color: "rgba(236,232,223,.62)" }}>QR not working? Copy this UPI ID, then pay ₹{v.fee} to it from any UPI app (GPay, PhonePe, Paytm).</span>
                           </div>
                           <a href={v.upiLink} style={{ display: v.isPreviewUser ? "none" : v.upiAppD, alignItems: "center", justifyContent: "center", minHeight: "50px", padding: "0 20px", border: "1.5px solid oklch(0.78 0.075 85)", textDecoration: "none", fontWeight: "700", fontSize: "13px", letterSpacing: ".12em", color: "oklch(0.78 0.075 85)" }}>OPEN UPI APP</a>
                         </div>
@@ -273,6 +318,8 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.78 0.075 85)" }}>2</span><span>Pay exactly ₹{v.fee}.</span></li>
                         <li style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr)", gap: "10px" }}><span style={{ fontWeight: "700", color: "oklch(0.78 0.075 85)" }}>3</span><span>Screenshot the success screen. You&apos;ll upload it next.</span></li>
                       </ol>
+                      </>
+                      )}
                       {v.isPreviewUser && <p className={styles.previewNote}>Preview only: don’t make a payment. Continue to try the screenshot upload and 12-digit UTR fields.</p>}
                     </div>
 
@@ -411,7 +458,7 @@ export default function AuthOverlay({ v }: { v: V }) {
   </div>
 
   {/* Payment QR Lightbox */}
-  {payQrOpen && (
+  {payQrOpen && payOpen && (
     <div
       onClick={() => setPayQrOpen(false)}
       style={{

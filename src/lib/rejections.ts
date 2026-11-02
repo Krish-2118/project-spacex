@@ -24,7 +24,7 @@ export const REJECTION_REASONS = [
   {
     value: 'wrong_amount',
     label: 'Wrong amount',
-    message: 'The amount paid was not the registration fee. Pay the exact fee shown on the payment step.',
+    message: "The amount paid was not the registration fee. Don't pay the full fee again: contact the registration helpdesk with your UTR.",
   },
   {
     value: 'duplicate_payment',
