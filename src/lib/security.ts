@@ -243,6 +243,7 @@ export function isImageKitPathInFolder(filePath: unknown, folder: string): boole
 /**
  * Makes free text safe to interpolate into a PostgREST `.or()` / `ilike` filter string. Characters with filter
  * meaning (`,` `(` `)` `"` `\` `:` and the `*`/`%` wildcards) are removed so a search can't add extra conditions.
+ * The admin dashboard's search cleans its text the same way (searchTerm in validation.ts): keep the two in step.
  */
 export function sanitizeFilterValue(input: unknown, maxLength = 100): string {
   if (typeof input !== 'string') return '';
@@ -400,10 +401,10 @@ export function validateRegistrationInput(
 
   const enrollment_no = enrollment ? enrollment.trim() : '';
   if (!enrollment_no) {
-    return { ok: false, error: 'Enter your college roll / enrollment number or employee ID.', field: 'enrollment_no' };
+    return { ok: false, error: 'Enter your roll number or employee ID.', field: 'enrollment_no' };
   }
   if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
-    return { ok: false, error: 'Roll / enrollment number or employee ID contains invalid characters.', field: 'enrollment_no' };
+    return { ok: false, error: 'Roll number or employee ID contains invalid characters.', field: 'enrollment_no' };
   }
 
   // Optional: a registrant's or a campus ambassador's code. Same normalization as the form: case, spaces and dashes

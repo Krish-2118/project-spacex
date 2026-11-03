@@ -35,21 +35,30 @@ async function rowsById(supabase: SupabaseClient, table: string, columns: string
  * is a rejected one (only one may be pending or confirmed), so the user's rejected rows are enough, whatever the
  * filters list.
  */
-async function withAttempts(supabase: SupabaseClient, registrations: Record<string, unknown>[]) {
+async function withAttempts(supabase: SupabaseClient, registrations: Record<string, unknown>[], isWholeTable: boolean) {
   const userIds = [...new Set(registrations.map((r) => r.user_id).filter((v): v is string => typeof v === 'string'))];
   const rejected: Record<string, string>[] = [];
-  for (let i = 0; i < userIds.length; i += LOOKUP_CHUNK) {
-    // '*' rather than naming rejection_reason, so the list keeps loading on a database without section 17 yet.
-    const { data, error } = await supabase
-      .from('registrations')
-      .select('*')
-      .eq('status', 'rejected')
-      .in('user_id', userIds.slice(i, i + LOOKUP_CHUNK));
-    if (error) return { error, registrations };
-    rejected.push(...((data ?? []) as Record<string, string>[]));
+  if (isWholeTable) {
+    // The dashboard's list: every rejected row is already here, so this costs no request.
+    rejected.push(...(registrations.filter((r) => r.status === 'rejected' && typeof r.user_id === 'string') as Record<string, string>[]));
+  } else {
+    for (let i = 0; i < userIds.length; i += LOOKUP_CHUNK) {
+      // '*' rather than naming rejection_reason, so the list keeps loading on a database without section 17 yet.
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('status', 'rejected')
+        .in('user_id', userIds.slice(i, i + LOOKUP_CHUNK));
+      if (error) return { error, registrations };
+      rejected.push(...((data ?? []) as Record<string, string>[]));
+    }
   }
   const byUser = new Map<string, Record<string, string>[]>();
-  for (const r of rejected) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r]);
+  for (const r of rejected) {
+    const mine = byUser.get(r.user_id);
+    if (mine) mine.push(r);
+    else byUser.set(r.user_id, [r]);
+  }
   return {
     error: null,
     registrations: registrations.map((r) => {
@@ -68,12 +77,14 @@ async function withAttempts(supabase: SupabaseClient, registrations: Record<stri
 /** referred_via for every row: the referrer's code and name, looked up whether or not the filters list the referrer. */
 async function withReferredVia(supabase: SupabaseClient, registrations: Record<string, unknown>[]) {
   const ids = (key: string) => [...new Set(registrations.map((r) => r[key]).filter((v): v is string => typeof v === 'string'))];
+  // A referrer already in this list needs no lookup, which on the dashboard's unfiltered list is all of them.
+  const listed = new Map(registrations.map((r) => [r.id as string, r as Record<string, string>]));
   const [friends, ambassadors] = await Promise.all([
-    rowsById(supabase, 'registrations', 'id, referral_code, name', ids('referred_by')),
+    rowsById(supabase, 'registrations', 'id, referral_code, name', ids('referred_by').filter((id) => !listed.has(id))),
     rowsById(supabase, 'campus_ambassadors', 'id, code, name', ids('ambassador_id')),
   ]);
   if (friends.error || ambassadors.error) return { error: friends.error || ambassadors.error, registrations };
-  const friendById = new Map(friends.rows.map((f) => [f.id, f]));
+  const friendById = new Map([...listed, ...friends.rows.map((f) => [f.id, f] as const)]);
   const ambassadorById = new Map(ambassadors.rows.map((a) => [a.id, a]));
   return {
     error: null,
@@ -189,7 +200,9 @@ export async function GET(req: NextRequest) {
       console.error('/api/admin/registrations referrer lookup error:', enriched.error);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
-    const counted = await withAttempts(supabase, enriched.registrations);
+    const isWholeTable =
+      (!status || status === 'all') && (!studentType || studentType === 'all') && !ambassador && !query;
+    const counted = await withAttempts(supabase, enriched.registrations, isWholeTable);
     if (counted.error) {
       console.error('/api/admin/registrations attempts lookup error:', counted.error);
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });

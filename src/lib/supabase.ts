@@ -411,6 +411,7 @@ export async function signOutUser() {
 
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('inv_login_intent');
+    sessionStorage.removeItem(SESSION_SAVED_KEY);
     purgeLocalStorageTokens();
     // Cached registrations hold personal data (phone, UTR, proof references): don't leave them on shared computers.
     try {
@@ -424,11 +425,29 @@ export async function signOutUser() {
 }
 
 /**
+ * sessionStorage: the session this tab last saved through POST /api/auth/session (user id and token expiry, no token).
+ * Supabase reports SIGNED_IN every time a tab regains focus, and each save is three Supabase requests, so the same token
+ * is saved and validated once per tab, and again after a token refresh.
+ */
+const SESSION_SAVED_KEY = 'inv_session_saved';
+const sessionStamp = (session: Session) => `${session.user.id}:${session.expires_at ?? ''}`;
+
+/** True when the server has already validated and saved this exact session for this tab. */
+export function isSessionAlreadySaved(session: Session): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_SAVED_KEY) === sessionStamp(session);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Persists the user's active session and tokens into the database (user_sessions)
  * Sets an HttpOnly cookie so tokens never live in browser localStorage.
  */
 export async function saveSessionToDatabase(session: Session | null): Promise<boolean> {
   if (!session || !session.access_token || !session.user) return false;
+  if (isSessionAlreadySaved(session)) return true;
   try {
     const res = await fetch('/api/auth/session', {
       method: 'POST',
@@ -440,6 +459,11 @@ export async function saveSessionToDatabase(session: Session | null): Promise<bo
         userId: session.user.id,
       }),
     });
+    if (res.ok) {
+      try {
+        sessionStorage.setItem(SESSION_SAVED_KEY, sessionStamp(session));
+      } catch {}
+    }
     return res.ok;
   } catch (err) {
     console.warn('saveSessionToDatabase error:', err);
@@ -629,6 +653,8 @@ export async function fetchUserRegistrationServer(userId: string, email?: string
         }
         return result.registration as Registration;
       }
+      // The server answered that there is none: the direct query below is only for when it couldn't answer.
+      if (result.success) return null;
     }
   } catch (apiErr) {
     console.warn('API /api/register GET error, falling back to direct query:', apiErr);

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { UserProfile, Registration } from '@/lib/supabase';
 import { getSupabase, fetchSessionFromDatabase, getCookie } from '@/lib/supabase';
-import { csvCell, formatReferralCode, GENDER_OPTIONS, safeHttpUrl } from '@/lib/validation';
+import { csvCell, formatReferralCode, GENDER_OPTIONS, matchesRegistrationSearch, safeHttpUrl, searchTerm } from '@/lib/validation';
 
 const genderLabel = (value: string) => GENDER_OPTIONS.find((g) => g.value === value)?.label ?? value;
 import EventsManager from './admin/EventsManager';
@@ -18,6 +18,9 @@ import { ID_CARD_REUPLOAD_REASONS, idCardReuploadLabel, type IdCardReuploadReaso
 
 /** A registration that still needs its college ID card (supabase/schema.sql section 19); rejected ones never do. */
 const idCardMissing = (r: Registration) => r.status !== 'rejected' && !r.id_card_path;
+
+/** A filter or search change reloads the list in the background only if it was last loaded longer ago than this. */
+const REGS_FRESH_MS = 60_000;
 
 /** Roles an admin can give from the USERS tab (/api/admin/users); 'admin' is set in the database only. */
 type AssignableRole = 'user' | 'it-team' | 'registration-team' | 'viewer';
@@ -47,7 +50,10 @@ export default function AdminDashboard({
 
   const defaultTab = canViewRegistrations ? 'registrations' : 'events';
   const [tab, setTab] = useState<'registrations' | 'referrals' | 'ambassadors' | 'events' | 'gallery' | 'users' | 'entry'>(defaultTab);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  // Every registration, loaded once: the filters and search below work over it without asking the server again.
+  const [allRegistrations, setRegistrations] = useState<Registration[]>([]);
+  // Each row's status when loaded: the status filter uses it, so a row just reviewed stays in view until the next load.
+  const [loadedStatus, setLoadedStatus] = useState<Map<string, string>>(new Map());
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -79,6 +85,16 @@ export default function AdminDashboard({
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchReg, setSearchReg] = useState<string>('');
   const [searchUser, setSearchUser] = useState<string>('');
+
+  const registrations = useMemo(() => {
+    const search = searchTerm(searchReg);
+    return allRegistrations.filter(
+      (r) =>
+        (statusFilter === 'all' || (loadedStatus.get(r.id ?? '') ?? r.status) === statusFilter) &&
+        (typeFilter === 'all' || r.student_type === typeFilter) &&
+        (!search || matchesRegistrationSearch(r, search))
+    );
+  }, [allRegistrations, loadedStatus, statusFilter, typeFilter, searchReg]);
 
   // Pagination states (30 items per page)
   const [regPage, setRegPage] = useState<number>(1);
@@ -156,39 +172,48 @@ export default function AdminDashboard({
     }
   };
 
-  // Fetch registrations
-  const fetchRegistrations = useCallback(async () => {
-    if (!canViewRegistrations) return;
+  const regsRequest = useRef(0);
+  const regsLoading = useRef(false);
+  const regsLoadedAt = useRef(0);
+
+  // Fetch every registration. `background` keeps the table on screen; `opening`: the SEAT COUNTER card loads by itself as
+  // the dashboard opens, so it needn't be told to reload.
+  const fetchRegistrations = useCallback(async ({ background = false, opening = false } = {}) => {
+    if (!canViewRegistrations || (background && regsLoading.current)) return;
+    const request = ++regsRequest.current;
+    regsLoading.current = true;
     try {
-      setLoadingRegs(true);
+      if (!background) setLoadingRegs(true);
       setErrorMsg('');
       const token = await getAuthToken();
-
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.set('status', statusFilter);
-      if (typeFilter !== 'all') params.set('student_type', typeFilter);
-      if (searchReg.trim()) params.set('q', searchReg.trim());
 
       const headers: Record<string, string> = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`/api/admin/registrations?${params.toString()}`, {
+      const res = await fetch('/api/admin/registrations', {
         headers,
         credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
+      if (request !== regsRequest.current) return; // a newer request superseded this one
       if (!res.ok) throw new Error(httpErrorMessage(res) || data.error || 'Failed to fetch registrations');
       setRegistrations(data.registrations || []);
-      setSeatsKey((k) => k + 1);
+      setLoadedStatus(new Map((data.registrations || []).map((r: Registration) => [r.id ?? '', r.status])));
+      regsLoadedAt.current = Date.now();
+      if (!opening) setSeatsKey((k) => k + 1);
     } catch (err: unknown) {
+      if (request !== regsRequest.current) return;
       const message = err instanceof Error ? err.message : 'Error loading registrations';
       setErrorMsg(message);
     } finally {
-      setLoadingRegs(false);
+      if (request === regsRequest.current) {
+        regsLoading.current = false;
+        setLoadingRegs(false);
+      }
     }
-  }, [statusFilter, typeFilter, searchReg, canViewRegistrations]);
+  }, [canViewRegistrations]);
 
   // Fetch users (Admin only: IT-Team cannot access users)
   const fetchUsers = useCallback(async () => {
@@ -221,11 +246,33 @@ export default function AdminDashboard({
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
-      if (canViewRegistrations) fetchRegistrations();
-      if (isAdmin) fetchUsers();
+      if (canViewRegistrations) fetchRegistrations({ opening: true });
     }, 0);
     return () => clearTimeout(timer);
-  }, [isOpen, fetchRegistrations, fetchUsers, isAdmin, canViewRegistrations]);
+  }, [isOpen, fetchRegistrations, canViewRegistrations]);
+
+  // Filtering costs no request, but changing a filter used to bring in other staff's reviews too: still does, if the
+  // list is more than a minute old.
+  useEffect(() => {
+    if (!isOpen || !regsLoadedAt.current || Date.now() - regsLoadedAt.current < REGS_FRESH_MS) return;
+    const timer = setTimeout(() => fetchRegistrations({ background: true }), 0);
+    return () => clearTimeout(timer);
+  }, [isOpen, statusFilter, typeFilter, searchReg, fetchRegistrations]);
+
+  // The user directory loads when the USERS tab first opens, and again the next time the dashboard is opened.
+  const usersLoaded = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      usersLoaded.current = false;
+      return;
+    }
+    if (!isAdmin || tab !== 'users' || usersLoaded.current) return;
+    const timer = setTimeout(() => {
+      usersLoaded.current = true;
+      fetchUsers();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isOpen, isAdmin, tab, fetchUsers]);
 
   // Active tab: 'users' is strictly admin-only; staff have their own tabs
   let activeTab = tab;
@@ -1109,7 +1156,7 @@ export default function AdminDashboard({
                   cursor: 'pointer',
                 }}
               >
-                USERS & ROLES ({users.length})
+                USERS & ROLES{users.length > 0 ? ` (${users.length})` : ''}
               </button>
             )}
 
@@ -1375,7 +1422,7 @@ export default function AdminDashboard({
 
                 <button
                   type="button"
-                  onClick={fetchRegistrations}
+                  onClick={() => fetchRegistrations()}
                   style={{
                     height: '40px',
                     padding: '0 16px',

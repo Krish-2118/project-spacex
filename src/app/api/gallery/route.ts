@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 // Public, unauthenticated endpoint: serve from a short in-process cache and let the CDN cache it too, so floods of
 // anonymous requests don't each become a service-role database query.
 const CACHE_TTL_MS = 30 * 1000;
-const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=300' };
+const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=300' };
 let cached: { body: unknown; expires: number } | null = null;
 
 // Public GET route to fetch all gallery photos

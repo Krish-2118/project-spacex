@@ -9,6 +9,12 @@ import styles from './PassIssued.module.css';
 import { REGISTRATION_PREVIEW_ENABLED } from '@/config/launch';
 import { rejectionMessage } from '@/lib/rejections';
 
+// Each load is several Supabase requests, and every one adds to the project's log quota. A student waiting on a review
+// gets the answer soonest; other states rarely change. Coming back to the tab reloads at once.
+const POLL_WAITING_MS = 30_000;
+const POLL_SETTLED_MS = 60_000;
+const MIN_GAP_MS = 10_000;
+
 interface EntryPassCardProps {
   onContinue?: () => void;
   previewPass?: ParticipantPass;
@@ -36,14 +42,18 @@ function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain, onIdCardUploa
   useEffect(() => {
     let cancelled = false;
     let busy = false;
+    let lastAt = 0;
+    let pollMs = POLL_WAITING_MS;
 
     const load = async () => {
-      if (busy || document.visibilityState !== 'visible') return;
+      if (busy || document.visibilityState !== 'visible' || Date.now() - lastAt < MIN_GAP_MS) return;
       busy = true;
+      lastAt = Date.now();
 
       try {
         const data = await passRequest('/api/pass');
         if (!data.pass) throw new Error('Could not load your registration details.');
+        pollMs = data.pass.registrationStatus === 'pending' ? POLL_WAITING_MS : POLL_SETTLED_MS;
         if (!cancelled) {
           setPass(data.pass);
           setError('');
@@ -61,7 +71,11 @@ function AuthenticatedEntryPassCard({ onContinue, onRegisterAgain, onIdCardUploa
     };
 
     void load();
-    const interval = setInterval(() => void load(), 15_000);
+    // Ticks at the shorter period, and only loads once the current state's period has passed. The 1 s margin keeps a
+    // tick that lands just early from waiting a whole extra period.
+    const interval = setInterval(() => {
+      if (Date.now() - lastAt >= pollMs - 1000) void load();
+    }, POLL_WAITING_MS);
     window.addEventListener('focus', load);
     document.addEventListener('visibilitychange', load);
 

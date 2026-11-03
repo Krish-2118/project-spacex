@@ -28,7 +28,8 @@ interface MyEntryPass {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = await getAuthenticatedUser(req);
+    // Polled while MY PASS is open. A POST only because the first call after approval writes.
+    const auth = await getAuthenticatedUser(req, { cached: true });
     if (!auth) {
       return NextResponse.json({ error: 'Your session has expired. Please log in again.' }, { status: 401 });
     }
@@ -48,8 +49,9 @@ export async function POST(req: NextRequest) {
     const mine = data as MyEntryPass;
 
     // '*' rather than naming rejection_reason, so the pass keeps loading on a database without section 17 yet.
-    const details = await db.from('registrations').select('*')
-      .eq('user_id', auth.user.id).eq('registration_id', mine.registration_id ?? '').maybeSingle();
+    const details = mine.registration_id
+      ? await db.from('registrations').select('*').eq('user_id', auth.user.id).eq('registration_id', mine.registration_id).maybeSingle()
+      : { data: null, error: null };
     if (details.error) return NextResponse.json({ error: 'Could not load your registration.' }, { status: 500 });
     const pass: ParticipantPass = {
       registrationStatus: mine.registration_status,

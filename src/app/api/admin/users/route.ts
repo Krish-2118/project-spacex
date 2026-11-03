@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdmin } from '@/lib/auth-server';
+import { forgetCachedRole, verifyAdmin } from '@/lib/auth-server';
 import { isUuid, readJsonObject } from '@/lib/security';
 
 export const runtime = 'nodejs';
@@ -117,6 +117,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Database operation failed.' }, { status: 500 });
     }
 
+    forgetCachedRole(userId);
     return NextResponse.json({ success: true, user: updated });
   } catch (err: unknown) {
     console.error('/api/admin/users error:', err);

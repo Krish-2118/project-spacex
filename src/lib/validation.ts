@@ -2,6 +2,29 @@
  * Client & Server safe validation utilities for Innovision 2026.
  */
 
+/**
+ * The admin dashboard's search over its loaded list: the same fields and matching as `?q=` on GET
+ * /api/admin/registrations. `search` comes from searchTerm.
+ */
+export function matchesRegistrationSearch(
+  r: { name?: string | null; email?: string | null; registration_id?: string | null; college?: string | null; utr?: string | null; enrollment_no?: string | null },
+  search: string
+): boolean {
+  return [r.name, r.email, r.registration_id, r.college, r.utr, r.enrollment_no].some((v) => v?.toLowerCase().includes(search));
+}
+
+/**
+ * What matchesRegistrationSearch expects from what the user typed; empty means no search. Cleans the text as the server
+ * does for `?q=` (sanitizeFilterValue in security.ts, which browsers can't import): keep the two in step.
+ */
+export const searchTerm = (input: string): string =>
+  input
+    .replace(/[,()"'\\:*%]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100)
+    .toLowerCase();
+
 export const ITER_SOA_ERROR_MESSAGE =
   "Students of ITER / SOA (Siksha 'O' Anusandhan) are not allowed to register for Innovision 2026.";
 

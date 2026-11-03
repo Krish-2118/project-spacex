@@ -80,6 +80,10 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_registrations_user_id ON public.registrations(user_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations(status);
 CREATE INDEX IF NOT EXISTS idx_registrations_reg_id ON public.registrations(registration_id);
+-- GET /api/register looks a user up by id OR email on every poll.
+CREATE INDEX IF NOT EXISTS idx_registrations_email ON public.registrations(email);
+-- The admin list reads in (created_at, id) order, a page at a time.
+CREATE INDEX IF NOT EXISTS idx_registrations_created_at_id ON public.registrations(created_at, id);
 
 -- The old ITER - SOA college CHECK: trg_refuse_iter_soa_registration (section 18) refuses them now, without blocking
 -- staff from reviewing a registration made before the ban.
