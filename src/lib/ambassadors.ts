@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { REFERRAL_CODE_FORMAT_ERROR, referralCodeKind } from '@/lib/security';
+import { isFilterSafeEmail, REFERRAL_CODE_FORMAT_ERROR, referralCodeKind } from '@/lib/security';
 
 /**
  * Campus ambassadors and the referral codes a registrant may enter (supabase/schema.sql, sections 14 and 16).
@@ -97,6 +97,21 @@ export async function findOwnAmbassador(
   registrant: Registrant
 ): Promise<{ ambassador: OwnAmbassador | null; error: unknown }> {
   const columns = 'id, code, name, status, user_id';
+  // One request for both lookups (GET /api/register runs this on every poll). The email match wins, as below.
+  if (isFilterSafeEmail(registrant.email)) {
+    const { data, error } = await client
+      .from('campus_ambassadors')
+      .select('id, code, name, status, user_id, email')
+      .or(`email.eq.${registrant.email},user_id.eq.${registrant.userId}`)
+      .limit(2);
+    if (error) return { ambassador: null, error };
+    const match = data?.find((a) => a.email === registrant.email) ?? data?.[0];
+    if (!match) return { ambassador: null, error: null };
+    return {
+      ambassador: { id: match.id, code: match.code, name: match.name, status: match.status, user_id: match.user_id },
+      error: null,
+    };
+  }
   const byEmail = await client.from('campus_ambassadors').select(columns).eq('email', registrant.email).maybeSingle();
   if (byEmail.error || byEmail.data) return { ambassador: byEmail.data as OwnAmbassador | null, error: byEmail.error };
   const byUser = await client.from('campus_ambassadors').select(columns).eq('user_id', registrant.userId).maybeSingle();

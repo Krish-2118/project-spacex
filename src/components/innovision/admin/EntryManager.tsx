@@ -6,7 +6,7 @@ import { REJECT_REASON_LABELS } from '@/lib/entry-shared';
 
 /*
  * Admin "Entry" tab: venue check-in numbers and records. Read from GET /api/admin/entry/overview (admin only); voiding a
- * wrong check-in and reissuing a QR go through POST /api/admin/entry/{void,reissue}. Refreshes every 12 s by polling
+ * wrong check-in and reissuing a QR go through POST /api/admin/entry/{void,reissue}. Refreshes every 30 s by polling
  * (no realtime subscription). Counts are per registration: active passes and non-voided check-ins only.
  */
 
@@ -34,7 +34,7 @@ const LISTS: { key: List; label: string }[] = [
   { key: 'audit', label: 'AUDIT LOG' },
 ];
 const AUDIT_ACTIONS = ['', 'lookup', 'manual_lookup', 'check_in', 'reject', 'void', 'reissue'];
-const POLL_MS = 12_000;
+const POLL_MS = 30_000;
 const GOLD = 'oklch(0.8 0.12 85)';
 
 const s = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
@@ -184,7 +184,7 @@ export default function EntryManager({ getAuthToken, showToast, setConfirmModal 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
         <p style={{ margin: 0, fontSize: '13px', color: 'rgba(236,232,223,0.6)' }}>
-          Venue check-in · refreshes every 12 s{updatedAt ? ` · updated ${updatedAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}` : ''}
+          Venue check-in · refreshes every 30 s{updatedAt ? ` · updated ${updatedAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}` : ''}
         </p>
         <a href="/admin/scan" target="_blank" rel="noopener" style={{ ...smallBtn, textDecoration: 'none', color: GOLD, borderColor: GOLD }}>
           OPEN SCANNER ↗

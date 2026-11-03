@@ -230,9 +230,9 @@ export default function AuthOverlay({ v }: { v: V }) {
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>
-                          COLLEGE ROLL / ENROLLMENT NUMBER / EMPLOYEE ID
+                          ROLL NUMBER / EMPLOYEE ID
                         </span>
-                        <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" required placeholder="Your roll / enrollment number or employee ID"aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
+                        <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" required placeholder="Your roll number or employee ID" aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
                         {v.err.enrollment_no ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.enrollment_no}</span>) : null}
                       </label>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

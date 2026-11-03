@@ -47,6 +47,7 @@ import {
   signOutUser,
   cleanAuthUrl,
   saveSessionToDatabase,
+  isSessionAlreadySaved,
   fetchSessionFromDatabase,
   getCookie,
   purgeLocalStorageTokens,
@@ -1881,12 +1882,17 @@ export class Innovision extends Component<Props, State> {
       purgeLocalStorageTokens();
 
       if (session?.user) {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          console.warn('Cached session is invalid or user was removed. Signing out...');
-          this._authEpoch++;
-          await signOutUser();
-          return;
+        // Once per token per tab: a reload of a session the server has already validated skips this request.
+        let user = session.user;
+        if (!isSessionAlreadySaved(session)) {
+          const checked = await supabase.auth.getUser();
+          if (checked.error || !checked.data.user) {
+            console.warn('Cached session is invalid or user was removed. Signing out...');
+            this._authEpoch++;
+            await signOutUser();
+            return;
+          }
+          user = checked.data.user;
         }
         await Promise.all([saveSessionToDatabase(session), this.handleUserSession(user)]);
       } else {
@@ -2646,7 +2652,7 @@ export class Innovision extends Component<Props, State> {
         err.college = ITER_SOA_ERROR_MESSAGE;
       }
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
-      if (!enrollment_no) err.enrollment_no = 'Enter your college roll / enrollment number or employee ID.';
+      if (!enrollment_no) err.enrollment_no = 'Enter your roll number or employee ID.';
       else if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
         err.enrollment_no = 'Use only letters, numbers, spaces and / _ - (up to 50 characters).';
       }

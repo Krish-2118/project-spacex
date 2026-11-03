@@ -7,7 +7,7 @@ import { badRequest, entryAuthFailure, entryRateLimited, entryRpcFailure } from 
 
 export const runtime = 'nodejs';
 
-// The dashboard polls every ~12 s; this leaves room for searching and paging on top.
+// The dashboard polls every 30 s; this leaves room for searching and paging on top.
 const overviewLimiter = createRateLimiter({ limit: 60, windowMs: 60 * 1000 });
 
 const PAGE_SIZE = 30;

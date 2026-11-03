@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { safeHttpUrl } from '@/lib/validation';
 import { hashSessionToken, readJsonObject } from '@/lib/security';
+import { isTokenExpired } from '@/lib/auth-server';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +25,8 @@ export async function GET(req: NextRequest) {
     let currentAccessToken = accessToken;
     let currentRefreshToken = refreshToken;
 
-    if (accessToken) {
+    // An expired token goes straight to the refresh below: Supabase Auth could only refuse it.
+    if (accessToken && !isTokenExpired(accessToken)) {
       const userResult = await supabase.auth.getUser(accessToken);
       if (userResult.data?.user) {
         activeUser = userResult.data.user;

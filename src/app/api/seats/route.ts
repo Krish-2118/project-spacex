@@ -5,10 +5,10 @@ export const runtime = 'nodejs';
 
 // Public, unauthenticated endpoint polled by every open registration form: serve from a short in-process cache and let
 // the CDN cache it too, so a crowd watching the counter doesn't turn into one database query each. Short enough that
-// the number still visibly moves while someone is on the form. Display only: POST /api/register/start-payment reads the
+// the number still visibly moves on the form's 30-second poll. Display only: POST /api/register/start-payment reads the
 // database live to decide who may pay. Excluded from the global no-store API header in next.config.ts.
-const CACHE_TTL_MS = 5 * 1000;
-const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=5, s-maxage=5, stale-while-revalidate=10' };
+const CACHE_TTL_MS = 15 * 1000;
+const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=5, s-maxage=15, stale-while-revalidate=15' };
 const NO_STORE = { 'Cache-Control': 'no-store' };
 let cached: { body: { total: number; left: number; closed: boolean; femaleFull: boolean }; expires: number } | null = null;
 
