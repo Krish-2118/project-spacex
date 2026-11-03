@@ -662,9 +662,10 @@ export async function fetchUserRegistrationServer(userId: string, email?: string
 
 /**
  * Asks the server what this student may do on the payment step (POST /api/register/start-payment). Without an `offer`
- * the form must not show payment details: `error` says why, and it applies to a failed request too.
+ * the form must not show payment details: `error` says why, and it applies to a failed request too. `field` is the form
+ * field the server blamed, if any.
  */
-export async function startPayment(fresh = false): Promise<{ offer?: PaymentOffer; error?: string }> {
+export async function startPayment(gender: string, fresh = false): Promise<{ offer?: PaymentOffer; error?: string; field?: string }> {
   const failed = 'Could not check registrations. Please check your connection and try again.';
   try {
     const { data: { session } } = await getSupabase().auth.getSession();
@@ -672,14 +673,36 @@ export async function startPayment(fresh = false): Promise<{ offer?: PaymentOffe
     const res = await fetch('/api/register/start-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ fresh }),
+      body: JSON.stringify({ gender, fresh }),
     });
     const result = await res.json().catch(() => ({}));
-    if (!res.ok) return { error: httpErrorMessage(res) || result.error || failed };
+    if (!res.ok) {
+      return {
+        error: httpErrorMessage(res) || result.error || failed,
+        ...(typeof result.field === 'string' ? { field: result.field } : {}),
+      };
+    }
     const offer = parsePaymentOffer(result);
     return offer ? { offer } : { error: failed };
   } catch {
     return { error: failed };
+  }
+}
+
+/**
+ * Whether this student may still choose Female or Others at the cap (GET /api/register/female-access), or null when it
+ * couldn't be read. For display only: the form then keeps them marked full, and the server decides on continuing.
+ */
+export async function fetchFemaleAccess(): Promise<boolean | null> {
+  try {
+    const { data: { session } } = await getSupabase().auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch('/api/register/female-access', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) return null;
+    const result = await res.json();
+    return result.keepsAccess === true;
+  } catch {
+    return null;
   }
 }
 

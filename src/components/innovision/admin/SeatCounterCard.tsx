@@ -29,6 +29,8 @@ interface Counter {
   closedAt: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
+  /** The female seat cap; null if it couldn't be read. `full` also counts students on the payment step. */
+  female: { cap: number; registered: number; full: boolean } | null;
 }
 
 const GOLD = 'oklch(0.8 0.12 85)';
@@ -197,6 +199,11 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
             <span style={{ fontSize: '12px', lineHeight: 1.5, color: closed ? 'oklch(0.74 0.15 35)' : 'rgba(236,232,223,0.8)', fontWeight: 700, letterSpacing: '.04em' }}>
               PHASE {counter.phase} · ₹{formatSeats(counter.fee)} · {closed ? 'CLOSED' : 'OPEN'}
             </span>
+            {counter.female ? (
+              <span style={{ fontSize: '12px', lineHeight: 1.5, color: counter.female.full ? 'oklch(0.74 0.15 35)' : 'rgba(236,232,223,0.8)', fontWeight: 700, letterSpacing: '.04em' }}>
+                FEMALE {formatSeats(counter.female.registered)} / {formatSeats(counter.female.cap)} · {counter.female.full ? (counter.female.registered < counter.female.cap ? 'FULL (SEATS HELD WHILE PAYING)' : 'FULL') : 'OPEN'}
+              </span>
+            ) : null}
           </>
         )}
       </div>

@@ -1748,9 +1748,15 @@ export class Innovision extends Component<Props, State> {
     if (this.state.payCheck === 'busy') return;
     if (REGISTRATION_PREVIEW_ENABLED && this.state.user?.id === 'dev-preview-user') return;
     this.setState({ payCheck: 'busy' });
-    const pay = await startPayment(fresh);
+    const pay = await startPayment(this.reg?.gender ?? '', fresh);
     if (!this.alive) return;
     if (pay.offer) { this.setState({ payOffer: pay.offer, payCheck: 'idle' }); return; }
+    if (pay.field === 'gender') {
+      this.setState({ payOffer: null, payCheck: 'idle' });
+      this.toStep(0);
+      this.setState({ err: { gender: pay.error } });
+      return;
+    }
     if (/closed/i.test(pay.error ?? '')) {
       this.setState({ payOffer: null, payCheck: 'idle' });
       this.toStep(0);
@@ -2640,7 +2646,7 @@ export class Innovision extends Component<Props, State> {
         err.college = ITER_SOA_ERROR_MESSAGE;
       }
       if (!/^[6-9]\d{9}$/.test(phone)) err.phone = 'Use a 10-digit Indian mobile number.';
-      if (!enrollment_no) err.enrollment_no = 'Enter your college roll / enrollment number.';
+      if (!enrollment_no) err.enrollment_no = 'Enter your college roll / enrollment number or employee ID.';
       else if (enrollment_no.length > 50 || (enrollment_no && !/^[A-Za-z0-9/_ -]+$/.test(enrollment_no))) {
         err.enrollment_no = 'Use only letters, numbers, spaces and / _ - (up to 50 characters).';
       }
@@ -2662,7 +2668,7 @@ export class Innovision extends Component<Props, State> {
       const preview = REGISTRATION_PREVIEW_ENABLED && user.id === 'dev-preview-user';
       const started = preview
         ? Promise.resolve({ offer: { state: 'pay' as const, amount: PREVIEW_REGISTRATION_FEE, currentFee: PREVIEW_REGISTRATION_FEE } })
-        : startPayment();
+        : startPayment(gender);
       this.setState({ busyLbl: referred_by_code ? 'CHECKING CODE' : 'CHECKING' });
       Promise.all([started, referred_by_code ? checkReferralCode(referred_by_code) : null]).then(([pay, res]) => {
         if (!this.alive) return;
@@ -2671,7 +2677,7 @@ export class Innovision extends Component<Props, State> {
         if (!this.state.auth || this.state.authMode !== 'register' || this.state.step !== 0) return;
         // A check that couldn't run (offline, busy) doesn't hold the student up: the submit checks the code again.
         if (res && 'valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
-        if (!pay.offer) { this.fail({ form: pay.error }); return; }
+        if (!pay.offer) { this.fail(pay.field === 'gender' ? { gender: pay.error } : { form: pay.error }); return; }
         this.setState({ payOffer: pay.offer, payCheck: 'idle' }, () => this.toStep(1));
       });
     } else if (s.step === 1) {

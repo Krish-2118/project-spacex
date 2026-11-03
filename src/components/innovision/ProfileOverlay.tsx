@@ -352,7 +352,7 @@ export default function ProfileOverlay({
               {registration?.enrollment_no && (
                 <div>
                   <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', color: 'rgba(236,232,223,0.5)' }}>
-                    ENROLLMENT / ROLL NO
+                    ENROLLMENT / ROLL NO / EMPLOYEE ID
                   </span>
                   <div style={{ marginTop: '4px', fontSize: '14px', fontWeight: 500 }}>
                     {registration.enrollment_no}

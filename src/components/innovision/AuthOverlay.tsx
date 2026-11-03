@@ -2,14 +2,15 @@
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
 import type { V } from './types';
 import { Logo } from './icons';
 import EntryPassCard from './EntryPassCard';
-import SeatCounter from './SeatCounter';
+import SeatCounter, { useFemaleAccess, useSeatCount } from './SeatCounter';
 import styles from './AuthOverlay.module.css';
 import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
+import { FEMALE_SEATS_FULL_MESSAGE, genderChoices } from '@/lib/seats';
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
 
@@ -72,6 +73,21 @@ export default function AuthOverlay({ v }: { v: V }) {
   const offer = v.payOffer;
   const payOpen = v.payCheck !== 'busy' && v.payCheck !== 'failed' && offer?.state === 'pay';
 
+  // Only polled while the registration form is open. At the female seat cap, Female and Others are marked FULL unless the
+  // server says this student keeps them (or until it answers: the server has the last word either way).
+  const seats = useSeatCount(!!v.showSeats);
+  const femaleFull = !!seats?.femaleFull;
+  const femaleAccess = useFemaleAccess(femaleFull, v.user?.id, !!v.showSeats);
+  const genderCapped = femaleFull && femaleAccess !== true;
+  const genderFieldset = useRef<HTMLFieldSetElement>(null);
+  // A disabled radio that was already chosen still counts as chosen, so clear it once it's known to be closed to them.
+  useEffect(() => {
+    if (!femaleFull || femaleAccess !== false) return;
+    genderFieldset.current?.querySelectorAll<HTMLInputElement>('input:disabled').forEach((input) => {
+      input.checked = false;
+    });
+  }, [femaleFull, femaleAccess]);
+
   return (
     <>
       <div data-auth-root="" aria-hidden={v.authHidden} style={{ position: "fixed", inset: "0", zIndex: "62", visibility: "hidden", pointerEvents: "none" }}>
@@ -109,7 +125,7 @@ export default function AuthOverlay({ v }: { v: V }) {
               <div data-a-in="">
                 <h2 data-m-in="" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "var(--auth-title-size)", lineHeight: ".98", letterSpacing: ".01em", textWrap: "balance" }}>{v.authTitle}</h2>
                 <p data-m-in="" style={{ margin: "18px 0 0", maxWidth: "34ch", fontSize: "clamp(15px,1.2vw,18px)", lineHeight: "1.55", color: "rgba(236,232,223,.78)", textWrap: "pretty" }}>{v.authSub}</p>
-                {v.showSeats ? <SeatCounter /> : null}
+                {v.showSeats ? <SeatCounter seats={seats} /> : null}
               </div>
               <ol data-a-in="" aria-label="Registration progress" style={{ display: "none", flexDirection: "column", margin: "0", padding: "0", listStyle: "none" }}>
                 {v.prog.map((p, pI) => (
@@ -160,17 +176,20 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <input name="name" defaultValue={v.regVals.name} autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
                         {v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
                       </label>
-                      <fieldset data-s-in="" aria-invalid={v.inv.gender} style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0", padding: "0", border: "0", minWidth: "0" }}>
+                      <fieldset ref={genderFieldset} data-s-in="" aria-invalid={v.inv.gender} style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0", padding: "0", border: "0", minWidth: "0" }}>
                         <legend style={{ padding: "0", marginBottom: "8px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>GENDER</legend>
                         <span role="radiogroup" aria-label="Gender" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "8px" }}>
-                          {v.genderOptions.map((g) => (
-                            <label key={g.value} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", minHeight: "54px", padding: "0 12px", border: `1.5px solid ${v.bc.gender}`, background: "rgba(236,232,223,.04)", fontSize: "15px", fontWeight: "500", color: "#ECE8DF", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.78 0.075 85)">
-                              <input type="radio" name="gender" value={g.value} defaultChecked={v.regVals.gender === g.value} style={{ width: "16px", height: "16px", margin: "0", accentColor: "oklch(0.78 0.075 85)", cursor: "pointer" }} />
+                          {genderChoices(v.genderOptions, genderCapped).map((g) => (
+                            <label key={g.value} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "4px 10px", minHeight: "54px", padding: "6px 12px", border: `1.5px solid ${g.full ? "rgba(236,232,223,.16)" : v.bc.gender}`, background: g.full ? "transparent" : "rgba(236,232,223,.04)", fontSize: "15px", fontWeight: "500", color: g.full ? "rgba(236,232,223,.5)" : "#ECE8DF", cursor: g.full ? "not-allowed" : "pointer", transition: "border-color .3s,background-color .3s" }} style-hover={g.full ? undefined : "border-color:oklch(0.78 0.075 85)"}>
+                              <input type="radio" name="gender" value={g.value} disabled={g.full} defaultChecked={!g.full && v.regVals.gender === g.value} style={{ width: "16px", height: "16px", margin: "0", accentColor: "oklch(0.78 0.075 85)", cursor: g.full ? "not-allowed" : "pointer" }} />
                               {g.label}
+                              {g.full ? <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".12em", color: "oklch(0.76 0.14 35)" }}>FULL</span> : null}
                             </label>
                           ))}
                         </span>
-                        {v.err.gender ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.gender}</span>) : null}
+                        {genderCapped ? (<span role="status" style={{ fontSize: "14px", lineHeight: "1.45", color: "rgba(236,232,223,.86)" }}>{FEMALE_SEATS_FULL_MESSAGE}</span>) : null}
+                        {/* Not the cap's message a second time: a stale form can get it from the server before its next refresh. */}
+                        {v.err.gender && !(genderCapped && v.err.gender === FEMALE_SEATS_FULL_MESSAGE) ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.gender}</span>) : null}
                       </fieldset>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
@@ -211,9 +230,9 @@ export default function AuthOverlay({ v }: { v: V }) {
                       </label>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>
-                          COLLEGE ROLL / ENROLLMENT NUMBER
+                          COLLEGE ROLL / ENROLLMENT NUMBER / EMPLOYEE ID
                         </span>
-                        <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" required placeholder="Your college roll / enrollment number" aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
+                        <input name="enrollment_no" defaultValue={v.regVals.enrollment_no} autoComplete="off" required placeholder="Your roll / enrollment number or employee ID"aria-invalid={v.inv.enrollment_no} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.enrollment_no}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
                         {v.err.enrollment_no ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.enrollment_no}</span>) : null}
                       </label>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

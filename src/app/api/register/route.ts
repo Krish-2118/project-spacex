@@ -15,7 +15,7 @@ import {
   PHONE_IN_USE_ERROR_MESSAGE,
 } from '@/lib/validation';
 import { ATTEMPTS_USED_UP_ERROR, attemptsLeft, isAttemptsUsedUpError } from '@/lib/rejections';
-import { REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
+import { FEMALE_SEATS_FULL_MESSAGE, isFemaleSeatsFullError, REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
 import {
   classifyStudentType,
   createRateLimiter,
@@ -348,6 +348,10 @@ export async function POST(req: NextRequest) {
       }
       if (isIterSoaRefusal(regError)) {
         return NextResponse.json({ error: ITER_SOA_ERROR_MESSAGE, field: 'college' }, { status: 403 });
+      }
+      // The female seat cap (trg_guard_female_seats): the database is the only check here, so it holds under a rush.
+      if (isFemaleSeatsFullError(regError)) {
+        return NextResponse.json({ code: 'female_seats_full', error: FEMALE_SEATS_FULL_MESSAGE, field: 'gender' }, { status: 409 });
       }
       if (regError.code !== '23505') break;
       // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert (possibly
