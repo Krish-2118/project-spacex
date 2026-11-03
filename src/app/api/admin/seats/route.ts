@@ -27,6 +27,9 @@ async function readCounter(supabase: SupabaseClient) {
       .maybeSingle();
     updatedBy = profile?.full_name || profile?.email || null;
   }
+  // The card just leaves out the female line if this fails.
+  const female = await supabase.rpc('female_seats_status');
+  if (female.error) console.error('/api/admin/seats female seats read failed:', female.error);
   return {
     error: null,
     counter: {
@@ -37,6 +40,7 @@ async function readCounter(supabase: SupabaseClient) {
       closedAt: data.closed_at,
       updatedAt: data.updated_at,
       updatedBy,
+      female: female.data ? { cap: female.data.cap, registered: female.data.registered, full: female.data.full } : null,
     },
   };
 }

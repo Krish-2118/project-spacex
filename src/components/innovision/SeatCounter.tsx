@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { fetchSeatCount, formatSeats, type SeatCount } from '@/lib/seats';
+import { fetchFemaleAccess } from '@/lib/supabase';
 
 const POLL_MS = 30_000;
 const FEW_LEFT = 100;
@@ -8,13 +9,14 @@ const GOLD = 'oklch(0.78 0.075 85)';
 const WARN = 'oklch(0.76 0.14 35)';
 
 /**
- * "1,042 / 1,300 seats left" on the registration form (GET /api/seats), refreshed every 30 seconds while the tab is
- * visible, so students watch it go down. Renders nothing until the count is known, or when it can't be read.
+ * The public count (GET /api/seats), refreshed every 30 seconds while `enabled` and the tab is visible. Null until the
+ * count is known, or when it can't be read.
  */
-export default function SeatCounter() {
+export function useSeatCount(enabled: boolean): SeatCount | null {
   const [seats, setSeats] = useState<SeatCount | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     let busy = false;
     const refresh = async () => {
@@ -35,8 +37,35 @@ export default function SeatCounter() {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, []);
+  }, [enabled]);
 
+  return seats;
+}
+
+/**
+ * While the female seat cap is reached: whether this student keeps Female and Others, because they may already have paid
+ * (GET /api/register/female-access). True, false, or null until known or when it can't be read. Asked again each time the
+ * form opens, so a payment staff have just allowed shows up.
+ */
+export function useFemaleAccess(femaleFull: boolean, userId: string | undefined, enabled: boolean): boolean | null {
+  const [access, setAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!femaleFull || !userId || !enabled) return;
+    let cancelled = false;
+    void fetchFemaleAccess().then((next) => {
+      if (!cancelled) setAccess(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [femaleFull, userId, enabled]);
+
+  return access;
+}
+
+/** "1,042 / 1,300 seats left" on the registration form, so students watch it go down. Nothing until the count is known. */
+export default function SeatCounter({ seats }: { seats: SeatCount | null }) {
   if (!seats) return null;
   const full = seats.closed;
   const few = !full && seats.left <= FEW_LEFT;

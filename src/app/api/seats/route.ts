@@ -10,12 +10,12 @@ export const runtime = 'nodejs';
 const CACHE_TTL_MS = 5 * 1000;
 const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=5, s-maxage=5, stale-while-revalidate=10' };
 const NO_STORE = { 'Cache-Control': 'no-store' };
-let cached: { body: { total: number; left: number; closed: boolean }; expires: number } | null = null;
+let cached: { body: { total: number; left: number; closed: boolean; femaleFull: boolean }; expires: number } | null = null;
 
 /**
  * GET /api/seats
- * The seat counter on the registration form: { total, left, closed } (supabase/schema.sql, sections 17 and 20). Only
- * these, nothing about any registration. 503 while the counter isn't set up: the form then hides it.
+ * The seat counter on the registration form: { total, left, closed, femaleFull } (supabase/schema.sql, sections 17, 20
+ * and 21). Only these, nothing about any registration. 503 while the counter isn't set up: the form then hides it.
  */
 export async function GET() {
   try {
@@ -26,17 +26,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Seat counter unavailable' }, { status: 503, headers: NO_STORE });
     }
 
-    const { data, error } = await getSupabaseAdmin()
-      .from('registration_counter')
-      .select('total_seats, seats_left, closed_at')
-      .eq('id', 1)
-      .maybeSingle();
+    const client = getSupabaseAdmin();
+    const [{ data, error }, female] = await Promise.all([
+      client.from('registration_counter').select('total_seats, seats_left, closed_at').eq('id', 1).maybeSingle(),
+      client.rpc('female_seats_status'),
+    ]);
     if (error || !data) {
       if (error) console.error('Seat counter query failed:', error);
       return NextResponse.json({ error: 'Seat counter unavailable' }, { status: 503, headers: NO_STORE });
     }
+    // Display only: a failed lookup leaves the options open, and start-payment and the database still enforce the cap.
+    if (female.error) console.error('Female seats query failed:', female.error);
 
-    const body = { total: data.total_seats, left: data.seats_left, closed: data.closed_at !== null };
+    const body = {
+      total: data.total_seats,
+      left: data.seats_left,
+      closed: data.closed_at !== null,
+      femaleFull: female.data?.full === true,
+    };
     cached = { body, expires: Date.now() + CACHE_TTL_MS };
     return NextResponse.json(body, { headers: CACHE_HEADERS });
   } catch (err: unknown) {

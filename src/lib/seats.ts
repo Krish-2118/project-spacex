@@ -16,6 +16,8 @@ export interface SeatCount {
   total: number;
   left: number;
   closed: boolean;
+  /** The female seat cap is reached (supabase/schema.sql, section 21): Female and Others show as FULL on the form. */
+  femaleFull: boolean;
 }
 
 /**
@@ -24,14 +26,28 @@ export interface SeatCount {
  */
 export const REGISTRATIONS_FULL_MESSAGE = "Registrations are closed. Already paid? Don't pay again: contact us with your UTR.";
 
+/** Under the Gender options at the cap, and the server's refusal. The same rule as above about what it may not say. */
+export const FEMALE_SEATS_FULL_MESSAGE =
+  "Female and Others seats are full right now. A seat may open up if a registration is not approved, so check back later. Already paid? Don't pay again: contact us with your UTR.";
+
+/** The refusal from trg_guard_female_seats (supabase/schema.sql, section 21). */
+export function isFemaleSeatsFullError(err: { message?: string } | null | undefined): boolean {
+  return /Female and Others seats are full/i.test(err?.message ?? '');
+}
+
+/** The Gender options as the form shows them: at the cap, Female and Others are marked full. */
+export function genderChoices<T extends { value: string }>(options: readonly T[], capped: boolean): (T & { full: boolean })[] {
+  return options.map((o) => ({ ...o, full: capped && (o.value === 'female' || o.value === 'others') }));
+}
+
 const isSeatNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_SEATS;
 
-/** The counter from a JSON body ({ total, left, closed }), or null if it isn't a valid one. */
+/** The counter from a JSON body ({ total, left, closed, femaleFull }), or null if it isn't a valid one. */
 export function parseSeatCount(value: unknown): SeatCount | null {
   if (!value || typeof value !== 'object') return null;
-  const { total, left, closed } = value as Record<string, unknown>;
+  const { total, left, closed, femaleFull } = value as Record<string, unknown>;
   if (!isSeatNumber(total) || !isSeatNumber(left) || left > total) return null;
-  return { total, left, closed: closed === true || left === 0 };
+  return { total, left, closed: closed === true || left === 0, femaleFull: femaleFull === true };
 }
 
 /** Why an admin's new numbers can't be saved, or null if they can. */
