@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/auth-server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { registrationsClosedResponse, registrationsOpen } from '@/lib/registration-gate';
 import { ATTEMPTS_USED_UP_ERROR, attemptsLeft } from '@/lib/rejections';
-import { FEMALE_SEATS_FULL_MESSAGE, REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
+import { FORM_OUT_OF_DATE_MESSAGE, MALE_ACCOMMODATION_CLOSED_MESSAGE, REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
 import { createRateLimiter, readJsonObject, REGISTRATION_GENDERS } from '@/lib/security';
 
 export const runtime = 'nodejs';
@@ -12,15 +12,17 @@ export const runtime = 'nodejs';
 const startLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60 * 1000 });
 
 /**
- * POST /api/register/start-payment  { gender, fresh? }
+ * POST /api/register/start-payment  { gender, no_accommodation, fresh? }
  * Called before the form shows any payment details: a live read of the database, never a cached count. Answers with what
- * the student may do (start_payment_for_gender, supabase/schema.sql sections 20 and 21):
- *   { state: 'pay', amount, currentFee }           show the payment details at this fee
- *   { state: 'already_paid', amount, currentFee }  no payment details: continue only if already paid
- *   409 { code: 'registrations_closed', error }    no payment details at all
- *   409 { code: 'female_seats_full', error, field: 'gender' }  no payment details for this gender
- * The fee is locked here: the student may submit at it even if the phase closes or the fee rises meanwhile. `fresh` means
- * the student hasn't paid and wants the current fee instead of an older one they were quoted.
+ * the student may do (start_payment_with_accommodation, supabase/schema.sql sections 20 and 22):
+ *   { state: 'pay', amount, currentFee, accommodation }           show the payment details at this fee
+ *   { state: 'already_paid', amount, currentFee, accommodation }  no payment details: continue only if already paid
+ *   409 { code: 'registrations_closed', error }                   no payment details at all
+ *   409 { code: 'male_accommodation_closed', error, field }       only without accommodation
+ *   409 { code: 'form_out_of_date', error, field }                the form must be refreshed first
+ * The fee and accommodation are locked here: the student may submit with them even if the phase closes, the fee rises or
+ * Male accommodation closes meanwhile. `fresh` means the student hasn't paid and wants the current fee instead of an older
+ * one they were quoted.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -41,10 +43,14 @@ export async function POST(req: NextRequest) {
     const body = await readJsonObject(req);
     if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status });
 
-    // Required, so the seat cap is always checked before anyone is shown a way to pay.
-    const { gender } = body.value;
+    // Required, so accommodation is always decided before anyone is shown a way to pay.
+    const { gender, no_accommodation: noAccommodation } = body.value;
     if (!(REGISTRATION_GENDERS as readonly unknown[]).includes(gender)) {
       return NextResponse.json({ error: 'Select your gender.', field: 'gender' }, { status: 400 });
+    }
+    // A form that doesn't send the box never told the student about accommodation: nobody pays without having seen it.
+    if (typeof noAccommodation !== 'boolean' || (gender !== 'male' && !noAccommodation)) {
+      return NextResponse.json({ code: 'form_out_of_date', error: FORM_OUT_OF_DATE_MESSAGE, field: 'no_accommodation' }, { status: 409 });
     }
 
     // Nobody who can't submit should be shown a way to pay.
@@ -64,18 +70,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: ATTEMPTS_USED_UP_ERROR }, { status: 403 });
     }
 
-    const { data, error } = await client.rpc('start_payment_for_gender', {
+    const { data, error } = await client.rpc('start_payment_with_accommodation', {
       p_user_id: user.id,
       p_fresh: body.value.fresh === true,
       p_gender: gender,
+      p_no_accommodation: noAccommodation,
     });
     if (error || !data) {
       console.error('/api/register/start-payment pass failed:', error);
       return NextResponse.json({ error: 'Could not start the payment. Please try again.' }, { status: 500 });
     }
 
-    if (data.state === 'female_full') {
-      return NextResponse.json({ code: 'female_seats_full', error: FEMALE_SEATS_FULL_MESSAGE, field: 'gender' }, { status: 409 });
+    if (data.state === 'accommodation_closed') {
+      return NextResponse.json(
+        { code: 'male_accommodation_closed', error: MALE_ACCOMMODATION_CLOSED_MESSAGE, field: 'no_accommodation' },
+        { status: 409 }
+      );
     }
 
     if (data.state === 'closed') {
@@ -85,6 +95,7 @@ export async function POST(req: NextRequest) {
       state: data.state,
       amount: data.amount,
       currentFee: data.current_fee ?? null,
+      accommodation: data.accommodation,
     });
   } catch (err: unknown) {
     console.error('API /api/register/start-payment error:', err);

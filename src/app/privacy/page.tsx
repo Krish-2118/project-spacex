@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <h2>What we collect</h2>
       <ul>
         <li><b>From Google sign-in:</b> your name, email address and profile photo. We never see your Google password.</li>
-        <li><b>When you register:</b> your name, gender, college, enrolment or roll number and phone number, and a photo of the front of your college ID card that you upload.</li>
+        <li><b>When you register:</b> your name, gender, whether you need accommodation, college, enrolment or roll number and phone number, and a photo of the front of your college ID card that you upload.</li>
         <li><b>For the fee:</b> the UPI transaction ID (UTR) and the screenshot of your payment that you upload. We do not collect card, bank or UPI PIN details.</li>
         <li><b>Referral codes:</b> if you enter a friend&apos;s or a campus ambassador&apos;s code when you register, we record whose code it was.</li>
         <li>

@@ -49,6 +49,10 @@ export default function PassTicket({ pass, animate = false }: {
               <span className={styles.valueMono}>{pass.registrationId || 'PENDING'}</span>
             </div>
           </div>
+          <div className={styles.metaCol}>
+            <span className={styles.label}>ACCOMMODATION</span>
+            <span className={styles.value}>{pass.accommodation === false ? 'Not included' : 'Included'}</span>
+          </div>
         </div>
       </div>
 

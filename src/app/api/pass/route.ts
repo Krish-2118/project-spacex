@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       registrationId: mine.registration_id ?? null,
       name: mine.name ?? null,
       college: details.data?.college ?? null,
+      accommodation: details.data?.accommodation !== false,
       checkedIn: !!mine.checked_in,
       token: null as string | null,
     };

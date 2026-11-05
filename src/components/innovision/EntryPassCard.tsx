@@ -203,6 +203,10 @@ function PassState({
           <p className={styles.statusDesc} style={{ color: '#c8b17a' }}>✓ College ID card uploaded</p>
         ) : null}
 
+        {isPending ? (
+          <p className={styles.statusDesc}>Accommodation: {pass.accommodation === false ? 'not included' : 'included'}</p>
+        ) : null}
+
         {reason ? (
           <p className={styles.statusReason}>
             <span className={styles.statusReasonLabel}>WHY</span>

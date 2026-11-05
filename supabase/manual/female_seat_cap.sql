@@ -11,6 +11,8 @@
 -- Kept out of supabase/migrations/ on purpose so the Supabase CLI never applies it automatically. Safe to re-run: it never
 -- changes the cap once set.
 --
+-- Don't re-run this after no_accommodation.sql: it restores the old cap rules.
+--
 -- To change the cap:   UPDATE public.registration_counter SET female_cap = 400 WHERE id = 1;
 -- To see the count:    SELECT public.female_seats_status();
 -- ==============================================================================

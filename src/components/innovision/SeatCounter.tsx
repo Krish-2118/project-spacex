@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { fetchSeatCount, formatSeats, type SeatCount } from '@/lib/seats';
-import { fetchFemaleAccess } from '@/lib/supabase';
 
 const POLL_MS = 30_000;
 const FEW_LEFT = 100;
@@ -40,28 +39,6 @@ export function useSeatCount(enabled: boolean): SeatCount | null {
   }, [enabled]);
 
   return seats;
-}
-
-/**
- * While the female seat cap is reached: whether this student keeps Female and Others, because they may already have paid
- * (GET /api/register/female-access). True, false, or null until known or when it can't be read. Asked again each time the
- * form opens, so a payment staff have just allowed shows up.
- */
-export function useFemaleAccess(femaleFull: boolean, userId: string | undefined, enabled: boolean): boolean | null {
-  const [access, setAccess] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!femaleFull || !userId || !enabled) return;
-    let cancelled = false;
-    void fetchFemaleAccess().then((next) => {
-      if (!cancelled) setAccess(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [femaleFull, userId, enabled]);
-
-  return access;
 }
 
 /** "1,042 / 1,300 seats left" on the registration form, so students watch it go down. Nothing until the count is known. */

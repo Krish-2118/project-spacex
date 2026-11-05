@@ -2,15 +2,15 @@
 // @ts-nocheck
 "use client";
 /* eslint-disable @next/next/no-img-element -- decorative/user-uploaded images not suited for next/image */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useDialogFocus } from './useDialogFocus';
 import type { V } from './types';
 import { Logo } from './icons';
 import EntryPassCard from './EntryPassCard';
-import SeatCounter, { useFemaleAccess, useSeatCount } from './SeatCounter';
+import SeatCounter, { useSeatCount } from './SeatCounter';
 import styles from './AuthOverlay.module.css';
 import { isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
-import { FEMALE_SEATS_FULL_MESSAGE, genderChoices } from '@/lib/seats';
+import { accommodationBox } from '@/lib/seats';
 
 /* ── Payment QR lightbox state lives here, outside JSX ── */
 
@@ -73,20 +73,11 @@ export default function AuthOverlay({ v }: { v: V }) {
   const offer = v.payOffer;
   const payOpen = v.payCheck !== 'busy' && v.payCheck !== 'failed' && offer?.state === 'pay';
 
-  // Only polled while the registration form is open. At the female seat cap, Female and Others are marked FULL unless the
-  // server says this student keeps them (or until it answers: the server has the last word either way).
+  // Only polled while the registration form is open. Display only: the server decides accommodation on the next step.
   const seats = useSeatCount(!!v.showSeats);
-  const femaleFull = !!seats?.femaleFull;
-  const femaleAccess = useFemaleAccess(femaleFull, v.user?.id, !!v.showSeats);
-  const genderCapped = femaleFull && femaleAccess !== true;
-  const genderFieldset = useRef<HTMLFieldSetElement>(null);
-  // A disabled radio that was already chosen still counts as chosen, so clear it once it's known to be closed to them.
-  useEffect(() => {
-    if (!femaleFull || femaleAccess !== false) return;
-    genderFieldset.current?.querySelectorAll<HTMLInputElement>('input:disabled').forEach((input) => {
-      input.checked = false;
-    });
-  }, [femaleFull, femaleAccess]);
+  const [genderPick, setGenderPick] = useState<string | null>(null);
+  const [maleTicked, setMaleTicked] = useState(false);
+  const box = accommodationBox(genderPick ?? v.regVals?.gender ?? '', seats?.maleAccommodationOpen !== false, maleTicked);
 
   return (
     <>
@@ -176,21 +167,27 @@ export default function AuthOverlay({ v }: { v: V }) {
                         <input name="name" defaultValue={v.regVals.name} autoComplete="name" placeholder="As on your college ID" aria-invalid={v.inv.name} style={{ height: "54px", padding: "0 16px", borderRadius: "0", background: "rgba(236,232,223,.04)", fontSize: "16px", color: "#ECE8DF", outline: "none", transition: "border-color .3s,background-color .3s", border: `1.5px solid ${v.bc.name}` }} style-focus="border-color:oklch(0.78 0.075 85);background:rgba(236,232,223,.08)" />
                         {v.err.name ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.name}</span>) : null}
                       </label>
-                      <fieldset ref={genderFieldset} data-s-in="" aria-invalid={v.inv.gender} style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0", padding: "0", border: "0", minWidth: "0" }}>
+                      <fieldset data-s-in="" aria-invalid={v.inv.gender} style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0", padding: "0", border: "0", minWidth: "0" }}>
                         <legend style={{ padding: "0", marginBottom: "8px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>GENDER</legend>
                         <span role="radiogroup" aria-label="Gender" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "8px" }}>
-                          {genderChoices(v.genderOptions, genderCapped).map((g) => (
-                            <label key={g.value} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "4px 10px", minHeight: "54px", padding: "6px 12px", border: `1.5px solid ${g.full ? "rgba(236,232,223,.16)" : v.bc.gender}`, background: g.full ? "transparent" : "rgba(236,232,223,.04)", fontSize: "15px", fontWeight: "500", color: g.full ? "rgba(236,232,223,.5)" : "#ECE8DF", cursor: g.full ? "not-allowed" : "pointer", transition: "border-color .3s,background-color .3s" }} style-hover={g.full ? undefined : "border-color:oklch(0.78 0.075 85)"}>
-                              <input type="radio" name="gender" value={g.value} disabled={g.full} defaultChecked={!g.full && v.regVals.gender === g.value} style={{ width: "16px", height: "16px", margin: "0", accentColor: "oklch(0.78 0.075 85)", cursor: g.full ? "not-allowed" : "pointer" }} />
+                          {v.genderOptions.map((g) => (
+                            <label key={g.value} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "4px 10px", minHeight: "54px", padding: "6px 12px", border: `1.5px solid ${v.bc.gender}`, background: "rgba(236,232,223,.04)", fontSize: "15px", fontWeight: "500", color: "#ECE8DF", cursor: "pointer", transition: "border-color .3s,background-color .3s" }} style-hover="border-color:oklch(0.78 0.075 85)">
+                              <input type="radio" name="gender" value={g.value} defaultChecked={v.regVals.gender === g.value} onChange={(e) => setGenderPick(e.target.value)} style={{ width: "16px", height: "16px", margin: "0", accentColor: "oklch(0.78 0.075 85)", cursor: "pointer" }} />
                               {g.label}
-                              {g.full ? <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: ".12em", color: "oklch(0.76 0.14 35)" }}>FULL</span> : null}
                             </label>
                           ))}
                         </span>
-                        {genderCapped ? (<span role="status" style={{ fontSize: "14px", lineHeight: "1.45", color: "rgba(236,232,223,.86)" }}>{FEMALE_SEATS_FULL_MESSAGE}</span>) : null}
-                        {/* Not the cap's message a second time: a stale form can get it from the server before its next refresh. */}
-                        {v.err.gender && !(genderCapped && v.err.gender === FEMALE_SEATS_FULL_MESSAGE) ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.gender}</span>) : null}
+                        {v.err.gender ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.gender}</span>) : null}
                       </fieldset>
+                      {/* Locked for Female and Others, and for Male once an admin closes it. A disabled box still has its ticked state, which is what authSubmit reads. */}
+                      <div data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "10px", minHeight: "44px", fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)", cursor: box.locked ? "not-allowed" : "pointer" }}>
+                          <input type="checkbox" name="no_accommodation" checked={box.checked} disabled={box.locked} onChange={(e) => setMaleTicked(e.target.checked)} aria-invalid={!!v.err.no_accommodation} style={{ flex: "none", width: "18px", height: "18px", margin: "0", accentColor: "oklch(0.78 0.075 85)", cursor: box.locked ? "not-allowed" : "pointer" }} />
+                          NO ACCOMMODATION
+                        </label>
+                        <span style={{ fontSize: "13px", lineHeight: "1.4", color: "rgba(236,232,223,.62)" }}>{box.note}</span>
+                        {v.err.no_accommodation ? (<span role="alert" style={{ fontSize: "14px", lineHeight: "1.4", color: "oklch(0.76 0.14 35)" }}>{v.err.no_accommodation}</span>) : null}
+                      </div>
                       <label data-s-in="" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <span style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".16em", color: "rgba(236,232,223,.86)" }}>COLLEGE NAME</span>
                         <input
@@ -255,6 +252,12 @@ export default function AuthOverlay({ v }: { v: V }) {
 
                     <div style={{ display: v.d.s2, flexDirection: "column", gap: "22px" }}>
                       <h3 data-s-in="" style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontWeight: "400", fontSize: "clamp(24px,2.2vw,32px)", lineHeight: "1.1" }}>Pay the fee</h3>
+                      {/* The server's answer, not the box: seen before any way to pay, since a payment can't be refunded. */}
+                      {offer ? (
+                        <p data-s-in="" role="status" style={{ margin: "0", padding: "12px 14px", border: "1px solid rgba(236,232,223,.18)", background: "rgba(236,232,223,.04)", fontSize: "12px", fontWeight: "700", letterSpacing: ".12em", lineHeight: "1.45", color: "rgba(236,232,223,.86)" }}>
+                          ACCOMMODATION: <span style={{ color: offer.accommodation ? "oklch(0.78 0.075 85)" : "oklch(0.76 0.14 35)" }}>{offer.accommodation ? "INCLUDED" : "NOT INCLUDED"}</span>
+                        </p>
+                      ) : null}
                       {/* The QR and UPI ID are only in the page while the server says this student may pay. */}
                       {!payOpen ? (
                         <div data-s-in="" role="status" style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "15px", lineHeight: "1.5", color: "rgba(236,232,223,.82)" }}>

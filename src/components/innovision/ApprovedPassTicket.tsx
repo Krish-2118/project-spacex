@@ -86,6 +86,7 @@ export default function ApprovedPassTicket({ pass, animate = false }: { pass: Pa
         <button type="button" onClick={savePdf} disabled={saving} aria-busy={saving} className={styles.print}>{saving ? 'Preparing PDF…' : 'Save PDF'}</button>
         {pass.token && <button ref={qrButton} type="button" onClick={() => setQrOpen(true)}>View entry QR</button>}
       </div>
+      <p className={styles.note}>Accommodation: {pass.accommodation === false ? 'not included' : 'included'}</p>
       <p className={styles.note}>{pass.qrUnavailable || 'Keep your pass handy. Your registration ID is always available here.'}</p>
       {saveError && <p className={styles.note} role="alert">{saveError}</p>}
 

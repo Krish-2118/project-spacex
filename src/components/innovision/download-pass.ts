@@ -28,7 +28,7 @@ async function renderPass(pass: ParticipantPass, qr: string | null) {
   };
   const name = wrap(pass.name ?? '', `700 44px ${sans}`, 592);
   const college = wrap(pass.college ?? '', `24px ${sans}`, 592);
-  const height = 550 + name.length * 58 + college.length * 34 + (qr ? 300 : 0);
+  const height = 620 + name.length * 58 + college.length * 34 + (qr ? 300 : 0);
   canvas.width = 1400; canvas.height = height * 2;
   ctx.scale(2, 2);
   ctx.fillStyle = '#ECE8DF'; ctx.fillRect(0, 0, 700, height);
@@ -44,7 +44,9 @@ async function renderPass(pass: ParticipantPass, qr: string | null) {
   y += 26; text('COLLEGE', '16px monospace', '#5c574f'); y += 36;
   for (const line of college) { text(line, `24px ${sans}`); y += 34; }
   y += 24; text('VENUE', '16px monospace', '#5c574f'); y += 34;
-  text('NIT Rourkela', `24px ${sans}`); y += 40;
+  text('NIT Rourkela', `24px ${sans}`); y += 46;
+  text('ACCOMMODATION', '16px monospace', '#5c574f'); y += 34;
+  text(pass.accommodation === false ? 'Not included' : 'Included', `24px ${sans}`); y += 40;
   ctx.strokeStyle = '#b5a78d'; ctx.setLineDash([4, 7]); ctx.beginPath(); ctx.moveTo(25, y); ctx.lineTo(675, y); ctx.stroke(); ctx.setLineDash([]);
   y += 42; text('REGISTRATION ID', '16px monospace', '#5c574f'); y += 38;
   text(pass.registrationId ?? '', 'bold 30px monospace'); y += 40;

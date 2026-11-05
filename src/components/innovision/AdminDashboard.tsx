@@ -77,6 +77,8 @@ export default function AdminDashboard({
   const [idCardReason, setIdCardReason] = useState<IdCardReuploadReason | ''>('');
   // Client-side over the loaded list: registrations with or without their college ID card.
   const [idCardFilter, setIdCardFilter] = useState<'all' | 'missing' | 'uploaded'>('all');
+  // Client-side over the loaded list too: registrations with or without accommodation.
+  const [accommodationFilter, setAccommodationFilter] = useState<'all' | 'with' | 'without'>('all');
   // Bumped whenever the seat count may have moved (list reloaded, registration reviewed): the SEAT COUNTER card reloads.
   const [seatsKey, setSeatsKey] = useState(0);
 
@@ -447,11 +449,12 @@ export default function AdminDashboard({
     }
   };
 
-  // The loaded list narrowed by the ID card filter (the table, its pages and the CSV export all use it).
-  const visibleRegistrations =
-    idCardFilter === 'all'
-      ? registrations
-      : registrations.filter((r) => r.status !== 'rejected' && (idCardFilter === 'missing') === !r.id_card_path);
+  // The loaded list narrowed by the ID card and accommodation filters (the table, its pages and the CSV export all use it).
+  const visibleRegistrations = registrations.filter(
+    (r) =>
+      (idCardFilter === 'all' || (r.status !== 'rejected' && (idCardFilter === 'missing') === !r.id_card_path)) &&
+      (accommodationFilter === 'all' || (accommodationFilter === 'with') === (r.accommodation !== false))
+  );
 
   // Export Registrations CSV
   const exportRegistrationsCSV = () => {
@@ -464,6 +467,7 @@ export default function AdminDashboard({
       'Registration ID',
       'Name',
       'Gender',
+      'Accommodation',
       'Email',
       'Phone',
       'College',
@@ -492,6 +496,7 @@ export default function AdminDashboard({
       r.registration_id,
       r.name,
       r.gender ? genderLabel(r.gender) : '',
+      r.accommodation === false ? 'No' : 'Yes',
       r.email,
       r.phone,
       r.college,
@@ -769,6 +774,7 @@ export default function AdminDashboard({
   }));
   // Legacy rows from before gender was asked have none.
   const genderUnknown = totalRegs - genderCounts.reduce((sum, g) => sum + g.value, 0);
+  const withoutAccommodation = registrations.filter((r) => r.accommodation === false).length;
   // The confirm dialog's button waits for a reason: a rejection's, or why a new ID card is needed.
   const modalReasonMissing =
     (confirmModal?.actionType === 'reject' && !rejectReason) || (confirmModal?.actionType === 'idcard' && !idCardReason);
@@ -1308,6 +1314,15 @@ export default function AdminDashboard({
                       ))}
                     </div>
                   )}
+                  {i === 0 && (
+                    <div
+                      aria-label="Registrations by accommodation"
+                      style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: '4px', fontSize: '12px', color: 'rgba(236,232,223,0.6)' }}
+                    >
+                      <span>With accommodation <b style={{ color: '#ECE8DF', fontWeight: 700 }}>{totalRegs - withoutAccommodation}</b></span>
+                      <span>Without <b style={{ color: '#ECE8DF', fontWeight: 700 }}>{withoutAccommodation}</b></span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1418,6 +1433,30 @@ export default function AdminDashboard({
                   <option value="all">Any ID Card</option>
                   <option value="missing">ID Card Pending</option>
                   <option value="uploaded">ID Card Uploaded</option>
+                </select>
+
+                {/* Accommodation filter (over the loaded list) */}
+                <select
+                  id="filter-reg-accommodation"
+                  aria-label="Accommodation"
+                  value={accommodationFilter}
+                  onChange={(e) => {
+                    setAccommodationFilter(e.target.value as 'all' | 'with' | 'without');
+                    setRegPage(1);
+                  }}
+                  style={{
+                    height: '40px',
+                    padding: '0 14px',
+                    background: '#141312',
+                    border: '1px solid rgba(236,232,223,0.2)',
+                    color: '#ECE8DF',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="all">Any Accommodation</option>
+                  <option value="with">With Accommodation</option>
+                  <option value="without">No Accommodation</option>
                 </select>
 
                 <button
@@ -1587,6 +1626,9 @@ export default function AdminDashboard({
                             {reg.gender && (
                               <div style={{ fontSize: '12px', color: 'rgba(236,232,223,0.5)' }}>{genderLabel(reg.gender)}</div>
                             )}
+                            <div style={{ fontSize: '12px', color: reg.accommodation === false ? 'oklch(0.76 0.14 35)' : 'rgba(236,232,223,0.5)' }}>
+                              {reg.accommodation === false ? 'No accommodation' : 'Accommodation'}
+                            </div>
                           </td>
 
                           {/* College & Enrollment */}

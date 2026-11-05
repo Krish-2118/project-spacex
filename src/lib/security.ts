@@ -285,6 +285,8 @@ export interface RegistrationInput {
   utr: string;
   /** Someone else's referral code, normalized; null when left empty (optional). /api/register checks it exists. */
   referred_by_code: string | null;
+  /** The NO ACCOMMODATION box; null from a form too old to send it. /api/register decides what it means. */
+  no_accommodation: boolean | null;
 }
 
 /** Must match GENDER_OPTIONS in validation.ts and the registrations.gender CHECK in supabase/schema.sql. */
@@ -320,7 +322,7 @@ export const REFERRAL_CODE_FORMAT_ERROR =
 
 /** Form field a validation error belongs to, so the registration form can show it on the right step. */
 export type RegistrationField =
-  | 'name' | 'college' | 'phone' | 'gender' | 'enrollment_no' | 'referred_by_code' | 'idfile' | 'payfile' | 'utr' | 'form';
+  | 'name' | 'college' | 'phone' | 'gender' | 'no_accommodation' | 'enrollment_no' | 'referred_by_code' | 'idfile' | 'payfile' | 'utr' | 'form';
 
 export type RegistrationValidation =
   | { ok: true; data: RegistrationInput }
@@ -447,6 +449,7 @@ export function validateRegistrationInput(
       id_card_path: idCardPath,
       utr,
       referred_by_code: referred_by_code || null,
+      no_accommodation: typeof b.no_accommodation === 'boolean' ? b.no_accommodation : null,
     },
   };
 }

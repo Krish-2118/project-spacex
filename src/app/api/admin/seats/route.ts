@@ -13,20 +13,17 @@ export const runtime = 'nodejs';
 async function readCounter(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('registration_counter')
-    .select('total_seats, seats_left, phase, fee_inr, closed_at, updated_by, updated_at')
+    .select('total_seats, seats_left, phase, fee_inr, closed_at, updated_by, updated_at, male_accommodation_open, male_accommodation_updated_by, male_accommodation_updated_at')
     .eq('id', 1)
     .maybeSingle();
   if (error || !data) return { error: error ?? new Error('registration_counter has no row'), counter: null };
 
-  let updatedBy: string | null = null;
-  if (data.updated_by) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', data.updated_by)
-      .maybeSingle();
-    updatedBy = profile?.full_name || profile?.email || null;
-  }
+  const staffName = async (id: string | null) => {
+    if (!id) return null;
+    const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', id).maybeSingle();
+    return profile?.full_name || profile?.email || null;
+  };
+  const [updatedBy, maleUpdatedBy] = await Promise.all([staffName(data.updated_by), staffName(data.male_accommodation_updated_by)]);
   // The card just leaves out the female line if this fails.
   const female = await supabase.rpc('female_seats_status');
   if (female.error) console.error('/api/admin/seats female seats read failed:', female.error);
@@ -41,12 +38,17 @@ async function readCounter(supabase: SupabaseClient) {
       updatedAt: data.updated_at,
       updatedBy,
       female: female.data ? { cap: female.data.cap, registered: female.data.registered, full: female.data.full } : null,
+      maleAccommodation: {
+        open: data.male_accommodation_open,
+        updatedAt: data.male_accommodation_updated_at,
+        updatedBy: maleUpdatedBy,
+      },
     },
   };
 }
 
 const UNAVAILABLE =
-  'The seat counter is not set up yet. Run supabase/manual/seat_counter_and_reregistration.sql and registration_phases.sql in Supabase.';
+  'The seat counter is not set up yet. Run supabase/manual/seat_counter_and_reregistration.sql, registration_phases.sql and no_accommodation.sql in Supabase.';
 
 /**
  * GET /api/admin/seats

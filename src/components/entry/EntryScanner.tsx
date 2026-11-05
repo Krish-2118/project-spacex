@@ -20,6 +20,7 @@ interface Details {
   college: string;
   phone: string;
   utr: string | null;
+  accommodation?: boolean;
 }
 interface CheckInInfo {
   registration_id?: string;
@@ -833,6 +834,8 @@ function DetailsList({ details }: { details: Details }) {
       <dd>{details.college}</dd>
       <dt>Phone</dt>
       <dd>{details.phone}</dd>
+      <dt>Accommodation</dt>
+      <dd>{details.accommodation === false ? 'Not included' : 'Included'}</dd>
       <dt>UTR</dt>
       <dd>{details.utr || '—'}</dd>
       <dt>Reg. ID</dt>

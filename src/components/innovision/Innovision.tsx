@@ -60,6 +60,7 @@ import { REGISTRATIONS_OPEN, REGISTRATIONS_SOON_PATH, MERCH_PATH, REGISTRATION_P
 import { AMBASSADOR_FORM_URL, AMBASSADOR_SECTION } from '@/config/ambassador';
 import { buildUpiPayLink, PREVIEW_REGISTRATION_FEE, UPI_ID, UPI_QR_SRC } from '@/config/payment';
 import { SKIP_INTRO_KEY } from '@/components/coming-soon/SkipIntroOnReturn';
+import { formNoAccommodation } from '@/lib/seats';
 import { isValidGoogleDriveUrl, GENDER_OPTIONS as GENDERS, normalizeReferralCode, isReferralCode, formatReferralCode, REFERRAL_CODE_FORMAT_ERROR, isIterSoaCollege, isIterSoaEmail, ITER_SOA_ERROR_MESSAGE } from '@/lib/validation';
 import { httpErrorMessage, isTransientFailure } from '@/lib/api-errors';
 import { ID_CARD_UPLOAD_TARGET_BYTES } from '@/lib/id-cards';
@@ -1749,13 +1750,13 @@ export class Innovision extends Component<Props, State> {
     if (this.state.payCheck === 'busy') return;
     if (REGISTRATION_PREVIEW_ENABLED && this.state.user?.id === 'dev-preview-user') return;
     this.setState({ payCheck: 'busy' });
-    const pay = await startPayment(this.reg?.gender ?? '', fresh);
+    const pay = await startPayment(this.reg?.gender ?? '', this.reg?.no_accommodation === true, fresh);
     if (!this.alive) return;
     if (pay.offer) { this.setState({ payOffer: pay.offer, payCheck: 'idle' }); return; }
-    if (pay.field === 'gender') {
+    if (pay.field === 'gender' || pay.field === 'no_accommodation') {
       this.setState({ payOffer: null, payCheck: 'idle' });
       this.toStep(0);
-      this.setState({ err: { gender: pay.error } });
+      this.setState({ err: { [pay.field]: pay.error } });
       return;
     }
     if (/closed/i.test(pay.error ?? '')) {
@@ -2666,15 +2667,17 @@ export class Innovision extends Component<Props, State> {
       if (referred_by_code && !isReferralCode(referred_by_code)) err.referred_by_code = REFERRAL_CODE_FORMAT_ERROR;
 
       if (this.fail(err)) return;
-      this.reg = { name, college, email, phone, enrollment_no, gender, referred_by_code };
+      // The box's ticked state, which a locked (disabled) box still has. Shown by the server's answer on the next step.
+      const no_accommodation = formNoAccommodation(gender, !!f['no_accommodation']?.checked);
+      this.reg = { name, college, email, phone, enrollment_no, gender, no_accommodation, referred_by_code };
 
       // Every student, NIT Rourkela included, continues to Step 1 (payment), but only with the server's answer, read live
       // from the database: a payment can't be refunded, so payment details are never shown on a guess. No answer (closed,
       // offline, server error) means no payment details.
       const preview = REGISTRATION_PREVIEW_ENABLED && user.id === 'dev-preview-user';
       const started = preview
-        ? Promise.resolve({ offer: { state: 'pay' as const, amount: PREVIEW_REGISTRATION_FEE, currentFee: PREVIEW_REGISTRATION_FEE } })
-        : startPayment(gender);
+        ? Promise.resolve({ offer: { state: 'pay' as const, amount: PREVIEW_REGISTRATION_FEE, currentFee: PREVIEW_REGISTRATION_FEE, accommodation: !no_accommodation } })
+        : startPayment(gender, no_accommodation);
       this.setState({ busyLbl: referred_by_code ? 'CHECKING CODE' : 'CHECKING' });
       Promise.all([started, referred_by_code ? checkReferralCode(referred_by_code) : null]).then(([pay, res]) => {
         if (!this.alive) return;
@@ -2683,7 +2686,7 @@ export class Innovision extends Component<Props, State> {
         if (!this.state.auth || this.state.authMode !== 'register' || this.state.step !== 0) return;
         // A check that couldn't run (offline, busy) doesn't hold the student up: the submit checks the code again.
         if (res && 'valid' in res && !res.valid) { this.fail({ referred_by_code: res.error }); return; }
-        if (!pay.offer) { this.fail(pay.field === 'gender' ? { gender: pay.error } : { form: pay.error }); return; }
+        if (!pay.offer) { this.fail(pay.field === 'gender' || pay.field === 'no_accommodation' ? { [pay.field]: pay.error } : { form: pay.error }); return; }
         this.setState({ payOffer: pay.offer, payCheck: 'idle' }, () => this.toStep(1));
       });
     } else if (s.step === 1) {
@@ -2715,6 +2718,7 @@ export class Innovision extends Component<Props, State> {
             phone: r.phone || '9876543210',
             enrollment_no: r.enrollment_no,
             gender: r.gender,
+            accommodation: !r.no_accommodation,
             student_type: 'external' as const,
             payment_proof_path: 'mock/proof.png',
             id_card_path: 'mock/id-card.png',
@@ -2762,6 +2766,7 @@ export class Innovision extends Component<Props, State> {
           phone: r.phone,
           enrollment_no: r.enrollment_no,
           gender: r.gender,
+          no_accommodation: r.no_accommodation === true,
           // student_type, amount and status are decided by the server (the body's values are ignored).
           student_type: (isInternal ? 'internal' : 'external') as Registration['student_type'],
           payment_proof_path: fp.remotePath,
@@ -2778,7 +2783,7 @@ export class Innovision extends Component<Props, State> {
           const msg = saveRes.error || 'Registration failed';
           this.toast(msg);
           const field = saveRes.field || '';
-          const detailsField = ['name', 'college', 'phone', 'gender', 'enrollment_no', 'referred_by_code'].includes(field);
+          const detailsField = ['name', 'college', 'phone', 'gender', 'no_accommodation', 'enrollment_no', 'referred_by_code'].includes(field);
           if (isTransientFailure(saveRes.status) || !(detailsField || field === 'idfile' || field === 'payfile' || field === 'utr')) {
             // Rate limited, server error, offline, closed or signed out: stay on this step with the UTR and screenshot
             // intact, so the student can submit again by hand. Nothing is resubmitted automatically.
@@ -2947,7 +2952,7 @@ export class Innovision extends Component<Props, State> {
   authVals(s) {
   // @ts-ignore
     const am = s.authMode, st = s.step, reg = am === 'register', show = (b) => (b ? 'flex' : 'none'), gold = 'oklch(0.78 0.075 85)', cream = '#ECE8DF', bad = 'oklch(0.74 0.15 35)';
-    const E = Object.assign({ name: '', gender: '', college: '', email: '', phone: '', enrollment_no: '', referred_by_code: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '', form: '' }, s.err);
+    const E = Object.assign({ name: '', gender: '', no_accommodation: '', college: '', email: '', phone: '', enrollment_no: '', referred_by_code: '', idfile: '', payfile: '', utr: '', lemail: '', lid: '', form: '' }, s.err);
     const bc = {}, inv = {};
   // @ts-ignore
     Object.keys(E).forEach((k) => { bc[k] = E[k] ? bad : 'rgba(236,232,223,.28)'; inv[k] = String(!!E[k]); });

@@ -8,6 +8,8 @@ export interface ParticipantPass {
   checkedIn: boolean;
   token: string | null;
   qrUnavailable?: string;
+  /** Whether this registration includes accommodation. */
+  accommodation?: boolean;
   /** Rejected registrations only: the reason staff gave (src/lib/rejections.ts), if any. */
   rejectionReason?: string | null;
   /** Rejected registrations only: how many more times the student may register. */

@@ -16,8 +16,8 @@ export interface SeatCount {
   total: number;
   left: number;
   closed: boolean;
-  /** The female seat cap is reached (supabase/schema.sql, section 21): Female and Others show as FULL on the form. */
-  femaleFull: boolean;
+  /** Male students may still choose accommodation (supabase/schema.sql, section 22). Admins close it. */
+  maleAccommodationOpen: boolean;
 }
 
 /**
@@ -26,28 +26,62 @@ export interface SeatCount {
  */
 export const REGISTRATIONS_FULL_MESSAGE = "Registrations are closed. Already paid? Don't pay again: contact us with your UTR.";
 
-/** Under the Gender options at the cap, and the server's refusal. The same rule as above about what it may not say. */
-export const FEMALE_SEATS_FULL_MESSAGE =
-  "Female and Others seats are full right now. A seat may open up if a registration is not approved, so check back later. Already paid? Don't pay again: contact us with your UTR.";
+/** A Male student asked for accommodation after an admin closed it. */
+export const MALE_ACCOMMODATION_CLOSED_MESSAGE =
+  'Accommodation is no longer available for new registrations. Tick NO ACCOMMODATION to continue.';
 
-/** The refusal from trg_guard_female_seats (supabase/schema.sql, section 21). */
-export function isFemaleSeatsFullError(err: { message?: string } | null | undefined): boolean {
-  return /Female and Others seats are full/i.test(err?.message ?? '');
+/**
+ * A form from before accommodation was added: it never told the student whether theirs is included, so nothing is accepted
+ * until it has been refreshed. The same rule as above about what it may not say.
+ */
+export const FORM_OUT_OF_DATE_MESSAGE = "This form is out of date. Refresh the page to continue. Already paid? Don't pay again.";
+
+/** A refusal from trg_guard_registration_accommodation (supabase/schema.sql, section 22). */
+export function isAccommodationRefusal(err: { message?: string } | null | undefined): boolean {
+  return /Female and Others seats are full|Male accommodation is closed/i.test(err?.message ?? '');
 }
 
-/** The Gender options as the form shows them: at the cap, Female and Others are marked full. */
-export function genderChoices<T extends { value: string }>(options: readonly T[], capped: boolean): (T & { full: boolean })[] {
-  return options.map((o) => ({ ...o, full: capped && (o.value === 'female' || o.value === 'others') }));
+/** The NO ACCOMMODATION box on the form. `maleTicked` is what a Male student chose, kept for when it opens again. */
+export function accommodationBox(gender: string, maleOpen: boolean, maleTicked: boolean): { checked: boolean; locked: boolean; note: string } {
+  if (gender === 'female' || gender === 'others' || (gender === 'male' && !maleOpen)) {
+    return { checked: true, locked: true, note: "This registration doesn't include accommodation." };
+  }
+  if (gender === 'male') {
+    return { checked: maleTicked, locked: false, note: "Tick this if you don't need accommodation. The fee stays the same." };
+  }
+  return { checked: false, locked: true, note: 'Select your gender first.' };
+}
+
+/** What the form sends for the box: a disabled box still has its ticked state, so this doesn't depend on it for Female or Others. */
+export function formNoAccommodation(gender: string, boxChecked: boolean): boolean {
+  return gender !== 'male' || boxChecked;
+}
+
+/**
+ * Whether a new registration includes accommodation, for POST /api/register, from what the form sent (`noAccommodation`,
+ * null from a form too old to send it) and resolve_registration_payment. The decision saved on the pass wins: it is what
+ * the student was shown. Null means ask the student to refresh: their form never told them.
+ */
+export function accommodationForSubmit(
+  gender: string,
+  noAccommodation: boolean | null,
+  payment: { pass_id?: unknown; pass_accommodation?: boolean | null; male_accommodation_open?: boolean }
+): boolean | null {
+  if (gender !== 'male') return noAccommodation === true ? false : null;
+  if (typeof payment.pass_accommodation === 'boolean') return payment.pass_accommodation;
+  if (noAccommodation === true) return false;
+  // A pass from before this existed was quoted with accommodation, as was an old form with no pass while it's open.
+  return payment.pass_id || payment.male_accommodation_open !== false ? true : null;
 }
 
 const isSeatNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_SEATS;
 
-/** The counter from a JSON body ({ total, left, closed, femaleFull }), or null if it isn't a valid one. */
+/** The counter from a JSON body ({ total, left, closed, maleAccommodationOpen }), or null if it isn't a valid one. */
 export function parseSeatCount(value: unknown): SeatCount | null {
   if (!value || typeof value !== 'object') return null;
-  const { total, left, closed, femaleFull } = value as Record<string, unknown>;
+  const { total, left, closed, maleAccommodationOpen } = value as Record<string, unknown>;
   if (!isSeatNumber(total) || !isSeatNumber(left) || left > total) return null;
-  return { total, left, closed: closed === true || left === 0, femaleFull: femaleFull === true };
+  return { total, left, closed: closed === true || left === 0, maleAccommodationOpen: maleAccommodationOpen !== false };
 }
 
 /** Why an admin's new numbers can't be saved, or null if they can. */
@@ -96,12 +130,14 @@ export interface PaymentOffer {
   amount: number;
   /** The fee of the phase open now, if there is one: an 'already_paid' student who hasn't paid can pay this instead. */
   currentFee: number | null;
+  /** Whether this registration includes accommodation: the form shows this before the payment details. */
+  accommodation: boolean;
 }
 
 /** The offer from a POST /api/register/start-payment response, or null if it isn't a valid one. */
 export function parsePaymentOffer(value: unknown): PaymentOffer | null {
   if (!value || typeof value !== 'object') return null;
-  const { state, amount, currentFee } = value as Record<string, unknown>;
-  if ((state !== 'pay' && state !== 'already_paid') || !isFee(amount)) return null;
-  return { state, amount, currentFee: isFee(currentFee) ? currentFee : null };
+  const { state, amount, currentFee, accommodation } = value as Record<string, unknown>;
+  if ((state !== 'pay' && state !== 'already_paid') || !isFee(amount) || typeof accommodation !== 'boolean') return null;
+  return { state, amount, currentFee: isFee(currentFee) ? currentFee : null, accommodation };
 }

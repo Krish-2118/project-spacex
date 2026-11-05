@@ -31,6 +31,10 @@ export default function TermsPage() {
           The registration fee is the amount shown on the registration form when you start paying, paid by UPI to the
           account shown there. It may be higher in later registration phases.
         </li>
+        <li>
+          Whether your registration includes accommodation is shown on the registration form before you pay, and on your
+          pass. The fee is the same with or without it.
+        </li>
         <li>Registrations may close without notice. Don&apos;t pay while registrations are closed.</li>
         <li>After paying, you upload a screenshot of the payment and enter its UPI transaction ID (UTR).</li>
         <li>

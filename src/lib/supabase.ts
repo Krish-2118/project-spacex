@@ -34,6 +34,8 @@ export interface Registration {
   enrollment_no?: string | null;
   student_type: 'internal' | 'external';
   gender: 'male' | 'female' | 'others';
+  /** Whether this registration includes accommodation (supabase/schema.sql section 22). */
+  accommodation?: boolean;
   /** Object path in the private `payment-proofs` bucket. Not a URL: staff view it via a short-lived signed URL. */
   payment_proof_path?: string | null;
   /** College ID card photo, an object path in the private `id-cards` bucket; null until the student uploads it. */
@@ -691,7 +693,7 @@ export async function fetchUserRegistrationServer(userId: string, email?: string
  * the form must not show payment details: `error` says why, and it applies to a failed request too. `field` is the form
  * field the server blamed, if any.
  */
-export async function startPayment(gender: string, fresh = false): Promise<{ offer?: PaymentOffer; error?: string; field?: string }> {
+export async function startPayment(gender: string, noAccommodation: boolean, fresh = false): Promise<{ offer?: PaymentOffer; error?: string; field?: string }> {
   const failed = 'Could not check registrations. Please check your connection and try again.';
   try {
     const { data: { session } } = await getSupabase().auth.getSession();
@@ -699,7 +701,7 @@ export async function startPayment(gender: string, fresh = false): Promise<{ off
     const res = await fetch('/api/register/start-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ gender, fresh }),
+      body: JSON.stringify({ gender, no_accommodation: noAccommodation, fresh }),
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -716,23 +718,6 @@ export async function startPayment(gender: string, fresh = false): Promise<{ off
 }
 
 /**
- * Whether this student may still choose Female or Others at the cap (GET /api/register/female-access), or null when it
- * couldn't be read. For display only: the form then keeps them marked full, and the server decides on continuing.
- */
-export async function fetchFemaleAccess(): Promise<boolean | null> {
-  try {
-    const { data: { session } } = await getSupabase().auth.getSession();
-    const token = session?.access_token;
-    const res = await fetch('/api/register/female-access', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    if (!res.ok) return null;
-    const result = await res.json();
-    return result.keepsAccess === true;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Create a new registration
  * Passes through /api/register which is protected by server auth middleware
  */
@@ -743,6 +728,8 @@ export async function createRegistration(
   > & {
     /** Someone else's referral code entered in the form (optional). */
     referred_by_code?: string;
+    /** The NO ACCOMMODATION box. */
+    no_accommodation: boolean;
   }
 ): Promise<{
   success: boolean;

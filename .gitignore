@@ -57,8 +57,23 @@ next-env.d.ts
 # Isolated pass component test bundle
 .pass-test/
 
-# bank statements: never commit
-/STATEMENT*.xlsx
+# spreadsheets in the repo root (bank statements, registration exports with
+# students' personal data, ad-hoc sheets): never commit
+/*.xlsx
+/*.xls
+/*.csv
 
-# registration exports (students' personal data): never commit
-/innovision_registrations_*.csv
+# Office lock files
+~$*
+
+# OS and editor clutter
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# stray logs and temp files
+*.log
+*.tmp
+*.bak

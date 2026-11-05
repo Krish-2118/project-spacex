@@ -29,8 +29,10 @@ interface Counter {
   closedAt: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
-  /** The female seat cap; null if it couldn't be read. `full` also counts students on the payment step. */
+  /** Female registrations with accommodation; null if it couldn't be read. */
   female: { cap: number; registered: number; full: boolean } | null;
+  /** Whether Male students may choose accommodation, and who last changed it. */
+  maleAccommodation: { open: boolean; updatedAt: string | null; updatedBy: string | null };
 }
 
 const GOLD = 'oklch(0.8 0.12 85)';
@@ -56,6 +58,7 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
   const [saving, setSaving] = useState(false);
   const [phaseForm, setPhaseForm] = useState({ open: false, confirming: false, fee: '', total: '', left: '', error: '' });
   const [allowForm, setAllowForm] = useState({ open: false, email: '', amount: '', note: '', error: '', done: '' });
+  const [maleSwitch, setMaleSwitch] = useState({ confirming: false, error: '' });
   // AdminDashboard recreates getAuthToken on every render; read it through a ref so loading isn't restarted each time.
   const tokenRef = useRef(getAuthToken);
   useEffect(() => {
@@ -159,6 +162,19 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
     }
   };
 
+  const changeMaleAccommodation = async (open: boolean) => {
+    try {
+      setSaving(true);
+      await post('/api/admin/seats/accommodation', { open });
+      setCounter(await request());
+      setMaleSwitch({ confirming: false, error: '' });
+    } catch (err: unknown) {
+      setMaleSwitch({ confirming: false, error: err instanceof Error ? err.message : 'Failed to change male accommodation' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const taken = counter ? counter.total - counter.left : 0;
   const share = counter && counter.total > 0 ? counter.left / counter.total : 0;
   const closed = !!counter?.closedAt;
@@ -200,10 +216,16 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
               PHASE {counter.phase} · ₹{formatSeats(counter.fee)} · {closed ? 'CLOSED' : 'OPEN'}
             </span>
             {counter.female ? (
-              <span style={{ fontSize: '12px', lineHeight: 1.5, color: counter.female.full ? 'oklch(0.74 0.15 35)' : 'rgba(236,232,223,0.8)', fontWeight: 700, letterSpacing: '.04em' }}>
-                FEMALE {formatSeats(counter.female.registered)} / {formatSeats(counter.female.cap)} · {counter.female.full ? (counter.female.registered < counter.female.cap ? 'FULL (SEATS HELD WHILE PAYING)' : 'FULL') : 'OPEN'}
+              <span style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(236,232,223,0.8)', fontWeight: 700, letterSpacing: '.04em' }}>
+                FEMALE WITH ACCOMMODATION {formatSeats(counter.female.registered)} / {formatSeats(counter.female.cap)} · NEW FEMALE AND OTHERS: NO ACCOMMODATION
               </span>
             ) : null}
+            <span style={{ fontSize: '12px', lineHeight: 1.5, color: counter.maleAccommodation.open ? 'rgba(236,232,223,0.8)' : 'oklch(0.74 0.15 35)', fontWeight: 700, letterSpacing: '.04em' }}>
+              MALE ACCOMMODATION: {counter.maleAccommodation.open ? 'OPTIONAL' : 'CLOSED'}
+              {counter.maleAccommodation.updatedAt && counter.maleAccommodation.updatedBy
+                ? ` · Last changed by ${counter.maleAccommodation.updatedBy} on ${new Date(counter.maleAccommodation.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`
+                : ''}
+            </span>
           </>
         )}
       </div>
@@ -233,6 +255,30 @@ export default function SeatCounterCard({ getAuthToken, canEdit, canAllowPayment
         </form>
       ) : null}
     </section>
+
+    {/* Two steps, like START NEXT PHASE: it reaches students the moment it is saved. */}
+    {canEdit && counter ? (
+      <section aria-label="Male accommodation" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', padding: '16px 22px', border: '1px solid rgba(236,232,223,0.12)' }}>
+        {!maleSwitch.confirming ? (
+          <button type="button" disabled={saving} onClick={() => setMaleSwitch({ confirming: true, error: '' })} style={btn}>
+            {counter.maleAccommodation.open ? 'CLOSE MALE ACCOMMODATION' : 'REOPEN MALE ACCOMMODATION'}
+          </button>
+        ) : (
+          <>
+            <span style={{ flexBasis: '100%', fontSize: '13px', lineHeight: 1.5, color: 'rgba(236,232,223,0.8)' }}>
+              {counter.maleAccommodation.open
+                ? 'New male registrations will be without accommodation, with the box ticked and locked. Existing registrations keep theirs, and so does anyone already shown it on the payment step. You can reopen it at any time.'
+                : 'New male registrations can choose accommodation again. Those registered without it stay without it.'}
+            </span>
+            <button type="button" disabled={saving} onClick={() => changeMaleAccommodation(!counter.maleAccommodation.open)} style={{ ...btn, background: GOLD, color: '#141312', border: 0, cursor: saving ? 'wait' : 'pointer' }}>
+              {saving ? 'SAVING…' : counter.maleAccommodation.open ? 'CONFIRM: CLOSE' : 'CONFIRM: REOPEN'}
+            </button>
+            <button type="button" disabled={saving} onClick={() => setMaleSwitch({ confirming: false, error: '' })} style={btn}>CANCEL</button>
+          </>
+        )}
+        {maleSwitch.error ? <span role="alert" style={{ flexBasis: '100%', fontSize: '13px', color: 'oklch(0.74 0.15 35)' }}>{maleSwitch.error}</span> : null}
+      </section>
+    ) : null}
 
     {canEdit && counter && closed ? (
       <section aria-label="Start the next phase" style={{ padding: '16px 22px', border: '1px solid rgba(220,183,106,0.25)' }}>

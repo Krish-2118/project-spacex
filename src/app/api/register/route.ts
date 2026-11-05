@@ -15,7 +15,7 @@ import {
   PHONE_IN_USE_ERROR_MESSAGE,
 } from '@/lib/validation';
 import { ATTEMPTS_USED_UP_ERROR, attemptsLeft, isAttemptsUsedUpError } from '@/lib/rejections';
-import { FEMALE_SEATS_FULL_MESSAGE, isFemaleSeatsFullError, REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
+import { accommodationForSubmit, FORM_OUT_OF_DATE_MESSAGE, isAccommodationRefusal, REGISTRATIONS_FULL_MESSAGE } from '@/lib/seats';
 import {
   classifyStudentType,
   createRateLimiter,
@@ -246,6 +246,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ code: 'registrations_closed', error: REGISTRATIONS_FULL_MESSAGE }, { status: 409 });
     }
 
+    // Saved when the student started paying (start-payment), never taken from the body alone. Null: this form never told
+    // them whether accommodation is included.
+    const accommodation = accommodationForSubmit(input.gender, input.no_accommodation, payment);
+    if (accommodation === null) {
+      return NextResponse.json({ code: 'form_out_of_date', error: FORM_OUT_OF_DATE_MESSAGE, field: 'no_accommodation' }, { status: 409 });
+    }
+
     // A UPI transaction can only pay for one registration.
     const { data: utrOwner } = await adminClient
       .from('registrations')
@@ -308,6 +315,7 @@ export async function POST(req: NextRequest) {
       phone: input.phone,
       enrollment_no: input.enrollment_no,
       gender: input.gender,
+      accommodation,
       student_type: studentType,
       // Only the private storage object path is stored, never a URL or the image itself.
       payment_proof_path: input.payment_proof_path,
@@ -349,9 +357,9 @@ export async function POST(req: NextRequest) {
       if (isIterSoaRefusal(regError)) {
         return NextResponse.json({ error: ITER_SOA_ERROR_MESSAGE, field: 'college' }, { status: 403 });
       }
-      // The female seat cap (trg_guard_female_seats): the database is the only check here, so it holds under a rush.
-      if (isFemaleSeatsFullError(regError)) {
-        return NextResponse.json({ code: 'female_seats_full', error: FEMALE_SEATS_FULL_MESSAGE, field: 'gender' }, { status: 409 });
+      // Accommodation was closed between the check above and this insert (trg_guard_registration_accommodation).
+      if (isAccommodationRefusal(regError)) {
+        return NextResponse.json({ code: 'form_out_of_date', error: FORM_OUT_OF_DATE_MESSAGE, field: 'no_accommodation' }, { status: 409 });
       }
       if (regError.code !== '23505') break;
       // Unique violation on utr: another registration claimed this UTR between the pre-check and the insert (possibly
